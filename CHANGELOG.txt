@@ -1,0 +1,24 @@
+Version 0.2.2
+- Support demo versions:
+  - Original Lemmings Demo
+  - Oh No! More Lemmings Demo
+  - Holiday Lemmings 1993 Demo
+  - Holiday Lemmings 1994 Demo
+- Cleaned source
+- Source release
+- Bugfixes
+
+Version 0.2.1
+- Support Xmas and Holiday Lemmings
+- Bugfix
+
+Version 0.2
+- Support "Oh no! More Lemmings" -> introduced folder structure (see README.txt)
+- Timer runs 13% slower (previously it was too fast)
+- Wrap around during level selection: FUN30 <-> FUN01; TRICKY30 <-> TRICKY01; and so on
+- Start-up time reduced
+- exit game with L+R (only in main menu)
+- added left handed control (see README.txt)
+
+Version 0.1
+- Initial release

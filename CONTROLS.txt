@@ -1,0 +1,32 @@
+Main menu:
+
+A, START      start 1 player game
+B, X, SELECT  select level
+UP, DOWN      change rating; switch between original Lemmings and "Oh no! More Lemmings"
+touch         touch at a lemming to trigger one of the actions above
+L + R         exit
+
+
+Level selection:
+
+UP, DOWN      select previous/next level
+LEFT, RIGHT   change rating
+B             cancel selection
+A, START      start 1 player game with selected level
+touch         no effect (sorry!)
+
+
+In game:
+
+C-PAD         move cursor
+A             click at cursor position
+B             pause/resume
+X, D RIGHT    select next skill
+Y, D LEFT     select previous skill
+D UP          increase release rate
+D DOWN        decrease release rate
+L             time runs 3 times faster while held down
+R + C-PAD     scroll horizontal
+SELECT        highlight/select non-priorized lemming
+START         press twice to nuke level (give up); does not work while game is paused
+touch         move cursor to touch position and click

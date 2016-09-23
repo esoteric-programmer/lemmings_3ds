@@ -1,0 +1,28 @@
+#ifndef LEMMING_H
+#define LEMMING_H
+#include "level.h"
+#include "draw.h"
+#include "main_data.h"
+#include "settings.h"
+#include "lemming_data.h"
+
+extern const int action_image_offsets[18][2];
+
+void init_lemmings(struct Lemming[MAX_NUM_OF_LEMMINGS]);
+void add_lemming(struct Lemming[MAX_NUM_OF_LEMMINGS], struct Entrances*, u8 release_rate, u8 total_lems);
+u8 lemmings_left(u8 total_lems); // get number of lemmings that did not have entered the level yet.
+void nuke(struct Level* level);
+
+void update_lemmings(struct Lemming[MAX_NUM_OF_LEMMINGS], struct Level*, struct Image* masks[23]);
+
+
+// x,y: mouse position
+// returns number of lemmings under cursor
+u8 select_lemming(struct Lemming[MAX_NUM_OF_LEMMINGS], s16 x, s16 y, u8 right_mouse_btn, s16* lem1_idx, s16* lem2_idx);
+
+// return 0 on failure, 1 on success
+// skills: CLIMBING=0, FLOATING=1, etc. (ordering like at the skill panel)
+u8 assign_skill(u8 skill, struct Lemming* lem1, struct Lemming* lem2, struct Level*);
+
+const char* get_lemming_description(struct Lemming*); // returns ptr to pre-initialized string (no heap is reserved, do not free the pointer)
+#endif

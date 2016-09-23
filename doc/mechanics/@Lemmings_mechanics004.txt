@@ -1,0 +1,13 @@
+Ok, next installment of game mechanics code.
+ 
+This one covers floating, building and shrugging.
+ 
+As mentioned before, the details for floating is captures in a table, floatParametersTable.  The table is indexed by lemming.floatParametersTableIndex ranging from 0 to 15, with 16 wrapping back to 8.  Recall the function lemming.SetToFloating() starts the floater off on animationFrameIndex 0, in case you're wondering why 0 is missing from the table given in the code.  On subsequent frames where lemming.DoCurrentAction(FLOATING) would be called, the table is used to determine how far to fall and which animation frame to use.  There are actually a few frames where the fall distance is 0 or even -1, that really is what happens in DOS Lemmings.
+ 
+The code for building is somewhat long (due to the number of different conditions that would terminate building before it finishes) but should be straightforward.  The lemming.LayBrick() function as defined is accurate, except that I omitted the color for SetPixelAt.  In DOS Lemmings it is the color from palette index 7 which is always copied from palette index 8, and the pixel should be drawn with the "no overdrawing terrain" method (so that if the build brick sticks into existing terrain, it goes "behind" the terrain so to speak).
+ 
+-----------------------------
+ 
+I'll probably cover the processing of interactive objects next.  Or perhaps I'll cover the code for entering new lemmings.
+ 
+I also just remembered that a while ago I hacked a version of original DOS Lemmings where time is slowed down (by about a factor of 4 I think).  I attached the executable here.  You should find this useful for either verifying the accuracy of your cloning of the DOS Lemmings mechanics, and also to deal with some aspect of the game that I haven't disassembled (eg. how many frames per game second, which if I counted correctly is apparently 17).

@@ -1,0 +1,8 @@
+Copy these files from original DOS Lemmings Demo here:
+GROUND0O.DAT
+GROUND3O.DAT
+LEVEL000.DAT
+MAIN.DAT
+ODDTABLE.DAT
+VGAGR0.DAT
+VGAGR3.DAT

@@ -1,0 +1,11 @@
+After this, just one more skill to go!
+ 
+The code omitted definition for lemming.ApplyBashingMask().  The mask graphics in DOS Lemmings have the same dimensions (16x10) as the animation frames for bashing, and there are 4 masks, with left/right versions.
+ 
+So:
+ 
+1) upper-left of the 16x10 mask graphics should be located at (lemming.x + lemming.frameLeftdx, lemming.y + lemming.frameTopdy)
+ 
+2) if we index the 4 masks as 0 - 3, use the mask indexed lemming.animationFrameIndex - 2
+ 
+3) don't forget to check lemming.dx to pick the left/right version

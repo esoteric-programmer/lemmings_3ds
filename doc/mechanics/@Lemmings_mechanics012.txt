@@ -1,0 +1,7 @@
+This e-mail adds the code for the final lemmings action, mining.
+ 
+I didn't include code for lemming.ApplyMinerMask(x,y), but it's similar in style to bashing.  There are 2 16x13 mining masks and separate left/right versions, so be sure to check lemming.dx within lemming.ApplyMinerMask().  If we index the 2 masks as 0 and 1, then the mask to use would be indexed by lemming.animationFrameIndex - 1.  The (x,y) parameters passed into the function specifies the upper left corner location for the 16x13 mask.
+ 
+The check for steel and one-way walls, you see that the (belowObj == ONE_WAY_RIGHT) seems to be missing a check for the lemming's facing direction.  That's correct as is, and it is simply emulating the same bug in DOS Lemmings, which results in a one-way wall pointing right being unminable in either direction.
+ 
+Well, we're close to done.  The final thing to cover is ProcessSkillAssignments, next e-mail.

@@ -1,0 +1,33 @@
+ccexplore <ccexplore@yahoo.com> wrote:
+I'll probably cover the processing of interactive objects next.  Or perhaps I'll cover the code for entering new lemmings.
+Let's cover entering of new lemmings.
+ 
+This occurs in a separate function outside of UpdateLemmings().  EnterNewLemming() is called immediately before UpdateLemmings() and immediately after ProcessSkillAssignment(), in that order in the game's "master loop".
+ 
+The code given in the attached text file omits some matter which does not belong directly to EnterNewLemming(), but is nevertheless important in order for the whole thing to function.
+ 
+Start off with when the level shows up on the screen and call that frame #0, the first iteration of the master loop where the various functions mentioned above are first called.
+
+On frame #15, the "let's go" (the sound effect BEFORE the entrances are opened)sound effect is cued.
+ 
+On frame #35, the entrance starts to open (with the entrance-opening sound effect cued), and this is also the first frame where the value of the "EntrancesHaveOpened" global variable alluded to in EnterNewLemmings() becomes TRUE.  EnterNewLemmings basically does nothing until that variable becomes TRUE.
+ 
+Then on frame #55, the background music starts to play.
+ 
+EnterNewLemming() has this global variable "nextLemmingCountdown".  Once the first lemming came out, it is calculated using the helper function CalculateNextLemmingCountdown() for subsequent lemmings, as seen in the code.  What about the very first lemming out?  Well nextLemmingCountdown is initialized with 20 when the level starts.
+ 
+One important thing to note is that due to probably a bug in DOS Lemmings, the frames #15, #35 and #55 referenced above continues to count even when the game is paused.  Since the timing of the first lemming out is indirectly tied to #35, you can gain a slight amount of time in DOS Lemmings by pausing immediately when the level shows up on the screen, and wait until you hear the entrance-open sound effect before unpausing.  [Unpausing later than that point doesn't make a difference, since EnterNewLemmings() which does the actual releasing of lemmings, and various other game-mechanics functions, obviously doesn't run while paused.]  Since the game clock (which determines whether you're out of time) doesn't run while pausing, this trick/bug lets you gain a small amount of time.  It is I believe necessary for geoo89's 9th level on his first CustLemm set.
+ 
+As for the helper function CalculateNextLemmingCountdown(), as you can see it is based on the release rate.  The "n < 0" line might seem a little strange since officially, release rates range from 1 to 99.  But of course, the file formats allows any release rates from 0 to 255 to be stored, and I believe on of geoo89's levels in his second CustLemm set explicitly uses a release rate outside 1-99, so the code for CalculateNextLemmingCountdown() is written to take that into account.  The division ("n / 2") used in the code there is integer truncated division, meaning 1 / 2 = 0, 3 / 2 = 1, etc.
+ 
+Finally, EnterNewLemming() refers to this "entrance" array of structures.  For DOS Lemmings, this is a 4-element array, indexed by my code from 0 to 3.  They are initialized by taking up to the first 4 entrances in the level as specified in the level data's interactive objects section.  (An entrance is any object whose "obj id" as defined in lemmings_file_format.txt is 1.)  If there are fewer than 4 entrances, the game makes copies of some of the entries to fill up all 4 slots in the array; the exact resulting entrance ordering is described later below.  The entrance[].lemmingx and entrance[].lemmingy, used to set the newly entered lemming's initial position, is calculated as follows:  (entrance.x + 24, entrance.y + 14), where (entrance.x,entrance.y) is the upper-left corner of the entrance object as specified in the level data.
+ 
+One thing omittd in EnterNewLemmings() is the definition for function lemming.Initialize().  This is because there are still some field variables I haven't talked about.  But basically the function should be intuitive, things like setting lemming.isClimber and lemming.isFloater to FALSE, lemming.explosionTimer to 0, etc.  Just be sure to update the function every time I introduce new lemming field variables.
+ 
+Finally, and this leads to the post I made today in the forums.  Entrance order when there are fewer than 4 entrances:
+ 
+1 entrance:  A,A,A,A
+2 entrances: A,B,B,A  [only in original lemmings; appears to be A,B,A,B in all subsequent versions, including CustLemm I believe]
+3 entrances: A,B,C,B
+ 
+Wow, looks like my e-mail this time is actually longer than the amount of code I added this time!  Hope you can understand it all, and feel free to ask questions if you don't.

@@ -1,0 +1,41 @@
+UpdateLemmings()
+
+  for each lemming
+
+    if NOT lemming.removed then
+      if (lemming.explosionTimer != 0)
+         CountdownReached0 = call lemming.UpdateExplosionTimer()
+         if (CountdownReached0)
+            skip to next lemming
+         end if
+      end if
+
+      HandleInteractiveObjects = call lemming.DoCurrentAction()
+  
+      if (HandleInteractiveObjects)
+         call lemming.CheckForInteractiveObjects()
+      end if
+    end if
+
+  next lemming
+
+  if (UserSetNuking AND ExploderAssignInProgress)
+    while (Index_LemmingToBeNuked <= NumberOfLemmingsOut AND
+           lemming[Index_LemmingToBeNuked].removed)
+      Index_LemmingToBeNuked = Index_LemmingToBeNuked + 1
+    end while
+
+    if (Index_LemmingToBeNuked > NumberOfLemmingsOut)
+      ExploderAssignInProgress = FALSE
+    else
+      if (lemming[Index_LemmingToBeNuked].explosionTimer == 0 AND
+          lemming[Index_LemmingToBeNuked].currentAction != SPLATTERING AND
+          lemming[Index_LemmingToBeNuked].currentAction != EXPLODING)
+        lemming[Index_LemmingToBeNuked].explosionTimer = 79
+      end if
+    end if
+  end if
+
+end UpdateLemmings
+  
+  

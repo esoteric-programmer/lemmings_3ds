@@ -1,0 +1,39 @@
+For this e-mail, I added the code for climbing, jumping and hoisting (transition from climber to walker).
+ 
+I also want to modify some code from the previous e-mail.  In the previous e-mail's code for walking, we have:
+ 
+HEAD_MIN_Y = -6
+ 
+and
+ 
+if (lemming.y + lemming.frameTopdy <= HEAD_MIN_Y)
+  lemming.y = HEAD_MIN_Y - 1 - lemming.frameTopdy
+  lemming.dx = -lemming.dx
+  call lemming.SetToWalking()
+end if
+
+The "correction" I'm making is:
+ 
+HEAD_MIN_Y = -5
+ 
+The if...end above in the walking code will instead be a call to a new function, and also slightly modified:
+ 
+lemming.CheckForLevelTopBoundary()
+  if (lemming.y + lemming.frameTopdy < HEAD_MIN_Y)
+    lemming.y = HEAD_MIN_Y - 2 - lemming.frameTopdy
+    lemming.dx = -lemming.dx
+    if (lemming.currentAction == JUMPING)
+      call lemming.SetToWalking()
+    end if
+  end if
+end lemming.CheckForLevelTopBoundary
+
+(This function will also be called in a few other places, including in the code I added for this e-mail.)
+ 
+===================
+ 
+One thing I forgot to mention in the previous e-mail is that, all the DoCurrentAction functions for the various lemming actions all returns TRUE/FALSE.  If you recall, the UpdateLemmings() function use that boolean return value to determine whether to call CheckForInteractiveObjects().
+ 
+The code for climbing and hoisting might seem a bit weird but it really is the way the actual DOS game handles those actions.
+ 
+Again, e-mail me back if you have questions.

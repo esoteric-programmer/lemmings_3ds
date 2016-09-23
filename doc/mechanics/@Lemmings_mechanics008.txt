@@ -1,0 +1,11 @@
+This installment adds code for basically handling explosion-related matters, which also means nuking can now be properly handled.
+ 
+It has taken this long to get here because I need to first introduce the code for restoring the map, since the blocker field can also be removed when the lemming is EXPLODING, in addition to the blocker being freed in the manner handled by DoCurrentAction(BLOCKING).
+ 
+The code is pretty straightforward and should require little to no explanation.
+ 
+The function ApplyExplosionMask is not given code but there should be enough information to handle it.  The mask is from main.dat, of dimensions 16x22, and when drawn the upper left corner is at (lemming.x - 8, lemming.y - 14) as specified in the code given.
+ 
+One other thing to note is that although DoCurrentAction(EXPLODING) increments lemming.animationFrameIndex like almost all the other actions, it's clear that in the actual game there is just one animation frame, the explosion graphic (not the confetti particles part), and that graphics is displayed exactly for one frame only.  I believe it is displayed exactly only when lemming.animationFrameIndex = 0, which happens on the frame where lemming.SetToExploding() is called.  This means as soon as you call lemming.DoCurrentAction(EXPLODING) for a lemming (which observe from the code can never be called on the same frame where lemming.SetToExploding() is called), the lemming should become invisible and you should start the confetti particles.  These aspects are not shown in the code given.
+ 
+DoCurrentAction(EXPLODING) waits for lemming.animationFrameIndex to reach 52 post-increment before the lemming is removed, despite as explained above that the lemming is invisible after the explosion started.  The reason of course is to stall the game from fading out of the level too soon when nuking.  It means for example that even after the last lemming explodes, there are 52 frames before the number of lemmings remaining finally drop to 0, giving time for the confetti display to continue for that long.

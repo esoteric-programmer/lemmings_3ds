@@ -1,0 +1,16 @@
+This installment adds code for blocking.
+ 
+It is very straightforward and you should have no problem understanding it, especially since I already explained the jist of how blocker fields are set up in the object map, and how blockers save the map and restore it back when the blocker is freed.
+ 
+As can be seen in the code, the blocker field is a 3 by 3 area in the object map, which due to the 4-pixel resolution means a 12x12 pixels area:
+ 
+x range is lemming.x - 4, lemming.x, lemming.x + 4
+y range is lemming.y - 6, lemming.y - 2, lemming.y + 2
+ 
+Given that (lemming.x,lemming.y) is a position that at the horizontal center and vertical bottom of the lemming, the numbers given basically means the blocker field is centered around the blocker itself, ignoring the alignment aspect imposed by the object map.
+ 
+So there are 9 object map locations to be saved and restored.  I named these lemming fields based on the offset coordinates, so that the map location at (lemming.x - 4, lemming.y - 6) is saved to and restored from lemming.savedMap_xm4ym6 (standing for "x minus 4 y minus 6") for example.
+ 
+DoCurrentAction(BLOCKING) only needs lemming.RestoreMap(), but since it's mostly cut-and-paste, the code added this time also includes lemming.SaveMap(), lemming.SetBlockerField(), and lemming.CheckForOverlappingField().  And also lemming.SetToBlocking().  Obviously those functions will get used when we get to ProcessSkillAssignments in the case of assigning a lemming a blocker.
+ 
+Also note that I introduce here lemming.isBlocking.  The reason I need that is because the blocker field is active not only when the lemming is BLOCKING, but if the blocker is assigned an exploder, it would go through OHNOING and the field is removed only after reaching EXPLODING.  So in order to remember that the lemming has set up a blocker field, you can't rely on lemming.currentAction, so I introduced boolean field variable lemming.isBlocking.  It should be initialized to FALSE, and I have it set to TRUE inside SetToBlocking, and it is set back to FALSE anytime you want to call lemming.RestoreMap() to remove the field [indeed, I probably could've put "lemming.isBlocking = FALSE" inside lemming.RestoreMap()].

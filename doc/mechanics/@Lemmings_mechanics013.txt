@@ -1,0 +1,23 @@
+This is the final installment of code, for handling skill assignment the way it is done in DOS Lemmings.
+ 
+The code added this time consists of function ProcessSkillAssignment() and its 8 helper functions, an AssignSkill() function for each of 8 possible skills.
+ 
+ProcessSkillAssignment() references the global variables mousex and mousey.  Unfortunately, it's really tough at this point from the disassembly to tell which pixel of the cursor it is considering "mousex" and "mousey" to be located at, and in fact in the actual disassembly mousex and mousey reads more like "var1 + var2 - 4" etc.
+ 
+So instead, I'm just using mousex and mousey in the code, but also attached in this e-mail a picture of the blocker animation frame, and the mouse being at the upper-left-most and lower-right-most positions that still causes the blocker to be highlighted.  With those pictures and my given code, I worked out the pixel location of the cursor that corresponds to (mousex, mousey) and mark it red in the picture.
+ 
+AssignSkill<Climber> has some code that checks if lemming.currentAction is SHRUGGING and if so, changes it to WALKING.  This is to emulate a bug in original DOS Lemmings (which only holds for original DOS Lemmings and not any later versions).  Note that it only changes the currentAction, but *not* the animation frame graphics or the animationFrameIndex.  The net effect is that the lemming acts in "WALKING" mode but the graphics stills show him shrugging, until the game mechanics transitions him out of WALKING into something else (eg. FALLING, JUMPING, etc.).
+ 
+------------------------
+ 
+Phew!  That's it in terms of coding for now.  However, there will probably be one last e-mail after this, on miscellaneous stuff that isn't quite code.  Things like:
+ 
+1) other glitches that needs emulating, such as the "nuke glitch" causing percentage saved to be incorrectly calculated
+
+2) what I believe the frame rate is, and how many frames per one game second
+ 
+3) comparison of game mechanics across different versions of DOS lemming games
+ 
+etc.
+ 
+How's your vacation?

@@ -1,0 +1,466 @@
+UpdateLemmings()
+
+  for each lemming
+
+    if NOT lemming.removed then
+      if (lemming.explosionTimer != 0)
+         CountdownReached0 = call lemming.UpdateExplosionTimer()
+         if (CountdownReached0)
+            skip to next lemming
+         end if
+      end if
+
+      HandleInteractiveObjects = call lemming.DoCurrentAction()
+  
+      if (HandleInteractiveObjects)
+         call lemming.CheckForInteractiveObjects()
+      end if
+    end if
+
+  next lemming
+
+  if (UserSetNuking AND ExploderAssignInProgress)
+    while (Index_LemmingToBeNuked <= NumberOfLemmingsOut AND
+           lemming[Index_LemmingToBeNuked].removed)
+      Index_LemmingToBeNuked = Index_LemmingToBeNuked + 1
+    end while
+
+    if (Index_LemmingToBeNuked > NumberOfLemmingsOut)
+      ExploderAssignInProgress = FALSE
+    else
+      if (lemming[Index_LemmingToBeNuked].explosionTimer == 0 AND
+          lemming[Index_LemmingToBeNuked].currentAction != SPLATTERING AND
+          lemming[Index_LemmingToBeNuked].currentAction != EXPLODING)
+        lemming[Index_LemmingToBeNuked].explosionTimer = 79
+      end if
+    end if
+  end if
+
+end UpdateLemmings
+
+HEAD_MIN_Y = -5
+LEMMING_MIN_X = 0
+LEMMING_MAX_X = 1647
+LEMMING_MAX_Y = 163
+
+MAX_FALLDISTANCECOUNT = 60
+
+lemming.DoCurrentAction(when action=WALKING)
+
+  lemming.animationFrameIndex = lemming.animationFrameIndex + 1
+  if (lemming.animationFrameIndex >= 8)
+    lemming.animationFrameIndex = lemming.animationFrameIndex - 8
+  end if
+
+  lemming.x = lemming.x + lemming.dx
+  if (lemming.x >= LEMMING_MIN_X AND lemming.x <= LEMMING_MAX_X)
+    if (call HasPixelAt(lemming.x,lemming.y) == TRUE)
+      // walk, jump, climb, or turn around
+      dy = 0
+      newy = lemming.y
+      while (dy <= 6 and call HasPixelAt(lemming.x,newy - 1) == TRUE)
+        dy = dy + 1
+        newy = newy - 1
+      end while
+
+      if (dy > 6)
+        if (lemming.isClimber)
+          call lemming.SetToClimbing()
+        else
+          lemming.dx = -lemming.dx
+        end if
+        return TRUE
+      else 
+        if (dy >= 3)
+          call lemming.SetToJumping()
+          newy = lemming.y - 2
+        end if
+
+        lemming.y = newy
+        call lemming.CheckForLevelTopBoundary()
+        return TRUE
+      end if
+      
+    else
+      // walk or fall downwards
+      dy = 1
+      while (dy <= 3)
+        lemming.y = lemming.y + 1
+        if (call HasPixelAt(lemming.x,lemming.y) == TRUE)
+          exit while loop
+        end if
+        dy = dy + 1
+      end while
+
+      if (dy > 3)
+        // in this case, lemming becomes a faller
+        lemming.y = lemming.y + 1
+        call lemming.SetToFalling()
+      end if
+
+      if (lemming.y > LEMMING_MAX_Y)
+        lemming.removed = TRUE
+        return FALSE
+      else
+        return TRUE
+      end if      
+    end if
+  else
+    lemming.dx = -lemming.dx
+    return TRUE
+  end if
+
+end lemming.DoCurrentAction(WALKING)
+
+
+lemming.DoCurrentAction(when action=FALLING)
+
+  lemming.animationFrameIndex = lemming.animationFrameIndex + 1
+  if (lemming.animationFrameIndex >= 4)
+    lemming.animationFrameIndex = lemming.animationFrameIndex - 4
+  end if
+
+  if (lemming.fallDistanceCount > 16 AND lemming.isFloater)
+    call lemming.SetToFloating()
+    return TRUE
+  else
+    dy = 0
+    while (dy < 3 AND call HasPixelAt(lemming.x,lemming.y) == FALSE)
+      dy = dy + 1
+      lemming.y = lemming.y + 1
+      if (lemming.y > LEMMING_MAX_Y)
+        lemming.removed = TRUE
+        return false
+      end if
+    end while
+
+    if (dy == 3)
+      lemming.fallDistanceCount = lemming.fallDistanceCount + 3
+      return true
+    else
+      if (lemming.fallDistanceCount > MAX_FALLDISTANCECOUNT)
+        call lemming.SetToSplattering()
+        return true
+      else
+        call lemming.SetToWalking()
+        return true
+      end if
+    end if
+  end
+  
+end lemming.DoCurrentAction(FALLING)
+
+
+lemming.DoCurrentAction(when action=SPLATTERING)
+  lemming.animationFrameIndex = lemming.animationFrameIndex + 1
+  if (lemming.animationFrameIndex == 16)
+    lemming.removed = TRUE
+  end if
+  return false  
+end lemming.DoCurrentAction(SPLATTERING)
+
+
+lemming.SetToWalking()
+  lemming.currentAction = WALKING
+  lemming.animationGraphics = <walking animation>
+  lemming.animationFrameIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -10
+end lemming.SetToWalking
+
+lemming.SetToFalling()
+  lemming.currentAction = FALLING
+  lemming.animationGraphics = <falling animation>
+  lemming.animationFrameIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -10
+  lemming.fallDistanceCount = 3
+end lemming.SetToFalling
+
+lemming.SetToClimbing()
+  lemming.currentAction = CLIMBING
+  lemming.animationGraphics = <climbing animation>
+  lemming.animationFrameIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -12
+end lemming.SetToClimbing
+
+lemming.SetToJumping()
+  lemming.currentAction = JUMPING
+  lemming.animationGraphics = <jumping animation>
+  lemming.animationFrameIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -10
+end lemming.SetToJumping
+
+lemming.SetToFloating()
+  lemming.currentAction = FLOATING
+  lemming.animationGraphics = <floating animation>
+  lemming.animationFrameIndex = 0
+  lemming.floatParametersTableIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -16
+end lemming.SetToFloating
+
+lemming.SetToSplattering()
+  lemming.currentAction = SPLATTERING
+  lemming.animationGraphics = <splattering animation>
+  lemming.animationFrameIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -10
+
+  lemming.dx = 0
+  lemming.explosionTimer = 0
+  
+  call CueSoundEffect(SFX_SPLAT)
+end lemming.SetToSplattering
+
+
+lemming.CheckForLevelTopBoundary()
+  if (lemming.y + lemming.frameTopdy < HEAD_MIN_Y)
+    lemming.y = HEAD_MIN_Y - 2 - lemming.frameTopdy
+    lemming.dx = -lemming.dx
+    if (lemming.currentAction == JUMPING)
+      call lemming.SetToWalking()
+    end if
+  end if
+end lemming.CheckForLevelTopBoundary
+
+lemming.DoCurrentAction(when action=JUMPING)
+  dy = 0
+  while (dy < 2 AND call HasPixelAt(lemming.x, lemming.y - 1) == TRUE)
+    dy = dy + 1
+    lemming.y = lemming.y - 1
+  end while
+
+  if (dy < 2)
+    call lemming.SetToWalking()
+  end if
+
+  call lemming.CheckForLevelTopBoundary()
+  return TRUE
+end lemming.DoCurrentAction(JUMPING)
+
+lemming.DoCurrentAction(when action=CLIMBING)
+  lemming.animationFrameIndex = lemming.animationFrameIndex + 1
+  if (lemming.animationFrameIndex >= 8)
+    lemming.animationFrameIndex = lemming.animationFrameIndex - 8
+  end if
+
+  if (lemming.animationFrameIndex <= 3)
+    // check if we approached the top
+    if (call HasPixelAt(lemming.x, lemming.y - 7 - lemming.animationFrameIndex) == FALSE)
+      lemming.y = lemming.y - lemming.animationFrameIndex + 2
+      call lemming.SetToHoisting()
+      call lemming.CheckForLevelTopBoundary()
+    end if
+    return TRUE
+  else
+    lemming.y = lemming.y - 1
+    // check for overhang or level top boundary 
+    if (lemming.y + lemming.frameTopdy < HEAD_MIN_Y
+        OR call HasPixelAt(lemming.x - lemming.dx, lemming.y - 8) == TRUE)
+      call lemming.SetToFalling()
+      lemming.dx = -lemming.dx
+      lemming.x = lemming.x + lemming.dx + lemming.dx
+    end if
+    return TRUE
+  end if  
+end lemming.DoCurrentAction(CLIMBING)
+
+lemming.DoCurrentAction(when action=HOISTING)
+  lemming.animationFrameIndex = lemming.animationFrameIndex + 1
+  if (lemming.animationFrameIndex <= 4)
+    lemming.y = lemming.y - 2
+    call lemming.CheckForLevelTopBoundary()
+    return TRUE
+  else if (lemming.animationFrameIndex == 8)
+    call lemming.SetToWalking()
+    call lemming.CheckForLevelTopBoundary()
+    return TRUE
+  else
+    return FALSE
+  end if
+end lemming.DoCurrentAction(HOISTING)
+
+lemming.SetToHoisting()
+  lemming.currentAction = HOISTING
+  lemming.animationGraphics = <hoisting animation>
+  lemming.animationFrameIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -12
+end lemming.SetToHoisting
+
+
+floatParametersTable:
+
+   dy   animationFrameIndex
+0   3      1
+1   3      2
+2   3      3
+3   3      5
+4  -1      5
+5   0      5
+6   1      5
+7   1      5
+8   2      5
+9   2      6
+10  2      7
+11  2      7
+12  2      6
+13  2      5
+14  2      4
+15  2      4
+
+lemming.DoCurrentAction(when action=FLOATING)
+  lemming.animationFrameIndex = floatParametersTable[lemming.floatParametersTableIndex].animationFrameIndex
+  dy = floatParametersTable[lemming.floatParametersTableIndex].dy
+
+  lemming.floatParametersTableIndex = lemming.floatParametersTableIndex + 1
+  if (lemming.floatParametersTableIndex == 16)
+    lemming.floatParametersTableIndex = 8
+  end if
+
+  if (dy <= 0)
+    lemming.y = lemming.y + dy
+  else
+    while (dy > 0)
+      if (call HasPixelAt(lemming.x,lemming.y) == TRUE)
+        call lemming.SetToWalking()
+        return TRUE
+      else
+        lemming.y = lemming.y + 1
+        dy = dy - 1
+      end if
+    end while
+  end if
+
+  if (lemming.y > LEMMING_MAX_Y)
+    lemming.removed = TRUE
+    return FALSE
+  else
+    return TRUE
+  end if      
+end lemming.DoCurrentAction(FLOATING)
+
+lemming.DoCurrentAction(when action=BUILDING)
+  lemming.animationFrameIndex = lemming.animationFrameIndex + 1
+  if (lemming.animationFrameIndex >= 16)
+    lemming.animationFrameIndex = lemming.animationFrameIndex - 16
+  end if
+
+  if (lemming.animationFrameIndex == 10 AND
+      lemming.numberOfBricksLeft <= 3)
+    call CueSoundEffect(BUILDER_WARNING)
+  end if
+
+  if (lemming.animationFrameIndex == 9 OR
+      (lemming.animationFrameIndex == 10 AND lemming.numberOfBricksLeft == 9))
+    call lemming.LayBrick()
+    return FALSE
+  else if (lemming.animationFrameIndex == 0)
+    lemming.x = lemming.x + lemming.dx
+    lemming.y = lemming.y - 1
+    if (lemming.x <= LEMMING_MIN_X OR lemming.x > LEMMING_MAX_X
+        OR call HasPixelAt(lemming.x,lemming.y - 1) == TRUE)
+      lemming.dx = -lemming.dx
+      call lemming.SetToWalking()
+      call lemming.CheckForLevelTopBoundary()
+      return TRUE
+    end if
+
+    lemming.x = lemming.x + lemming.dx
+    if (call HasPixelAt(lemming.x,lemming.y - 1) == TRUE)
+      lemming.dx = -lemming.dx
+      call lemming.SetToWalking()
+      call lemming.CheckForLevelTopBoundary()
+      return TRUE
+    end if
+
+    lemming.numberOfBricksLeft = lemming.numberOfBricksLeft - 1
+    if (lemming.numberOfBricksLeft == 0)
+      call lemming.SetToShrugging()
+      call lemming.CheckForLevelTopBoundary()
+      return TRUE
+    end if
+
+    if (call HasPixelAt(lemming.x + lemming.dx + lemming.dx, lemming.y - 9) == TRUE OR
+        lemming.x <= LEMMING_MIN_X OR lemming.x > LEMMING_MAX_X)
+      lemming.dx = -lemming.dx
+      call lemming.SetToWalking()
+      call lemming.CheckForLevelTopBoundary()
+      return TRUE
+    end if
+
+    if (lemming.y + lemming.frameTopdy < HEAD_MIN_Y)
+      call lemming.SetToWalking()
+      call lemming.CheckForLevelTopBoundary()
+    end if
+    return TRUE
+  else
+    return TRUE
+  end if
+end lemming.DoCurrentAction(BUILDING)
+
+lemming.SetToShrugging()
+  lemming.currentAction = SHRUGGING
+  lemming.animationGraphics = <shrugging animation>
+  lemming.animationFrameIndex = 0
+  lemming.frameLeftdx = -8
+  lemming.frameTopdy = -10
+end lemming.SetToShrugging
+
+lemming.DoCurrentAction(when action=SHRUGGING)
+  lemming.animationFrameIndex = lemming.animationFrameIndex + 1
+  if (lemming.animationFrameIndex == 8)
+    call lemming.SetToWalking()
+    return TRUE
+  else
+    return FALSE
+  end if
+end lemming.DoCurrentAction(SHRUGGING)
+
+lemming.LayBrick()
+  numPixelsFilled = 0
+
+  if (lemming.dx == 1)
+    x = lemming.x
+  else
+    x = lemming.x - 4
+  end if
+
+  repeat
+    call SetPixelAt(x, lemming.y - 1)
+    numPixelsFilled = numPixelsFilled + 1
+    x = x + 1
+  until (numPixelsFilled == 6)
+end lemming.LayBrick
+
+
+EnterNewLemming()
+  if (EntrancesHaveOpened == FALSE)
+    return
+  end if
+  // nextLemmingCountdown is initialized to 20 before start of a level
+  nextLemmingCountdown = nextLemmingCountdown - 1
+  if (nextLemmingCountdown == 0)
+    nextLemmingCountdown = CalculateNextLemmingCountdown()
+    if (numLemmingsReleased < numLemmingsTotal)
+      entranceIndex = numLemmingsReleased MOD 4
+      call lemming[numLemmingsReleased].Initialize()
+      lemming[numLemmingsReleased].x = entrance[entranceIndex].lemmingx
+      lemming[numLemmingsReleased].y = entrance[entranceIndex].lemmingy
+      lemming[numLemmingsReleased].dx = 1
+      call lemming[numLemmingsReleased].SetToFalling()
+      numLemmingsReleased = numLemmingsReleased + 1
+    end if
+  end if    
+end EnterNewLemming
+
+CalculateNextLemmingCountdown()
+  n = 99 - ReleaseRate
+  if (n < 0)
+    n = n + 256
+  end if
+  return n / 2 + 4
+end CalculateNextLemmingCountdown

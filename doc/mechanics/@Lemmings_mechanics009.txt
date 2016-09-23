@@ -1,0 +1,5 @@
+The new code introduced this time should be pretty straightforward.
+ 
+Note that although the digger's animation frame in DOS Lemmings is 16x14, in SetToDigging lemming.frameTopdy is set to -12 rather than -14.  If you look at the actual graphics for digging you'll find -12 to be correct since the lemming's feet is not at the bottom of the bounding box, unlike other animation graphics.
+ 
+There is a boolean field variable lemming.isNewDigger, assigned TRUE in SetToDigging.  This is used so that on the very first call to DoCurrentAction(DIGGING) for the newly assigned digger, it goes through a few more calls to remove terrain pixels, as seen in the code.  Just following the DOS behavior.

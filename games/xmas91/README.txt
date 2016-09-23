@@ -1,0 +1,7 @@
+Copy these files from Xmas Lemmings 1991 here:
+GROUND0O.DAT
+GROUND2O.DAT
+LEVEL000.DAT
+MAIN.DAT
+VGAGR0.DAT
+VGAGR2.DAT

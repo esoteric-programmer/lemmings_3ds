@@ -1,0 +1,48 @@
+This e-mail updates the code to handle walking, falling, and splattering.
+ 
+Concepts introduced:
+ 
+lemming.x, lemming.y, lemming.frameLeftdx, lemming.frameTopdy:
+ 
+First of all, note that in PC computer graphics, (x,y) = (0,0) means top-left corner, with increasing x going to the right, and increasing y going down.
+ 
+(lemming.x,lemming.y) is the pixel position the game mechanics consider the lemming to be "at".  Although a more precise definition is really that it is the pixel of floor that the lemming is standing on.  That's right, it's actually outside the graphics of the lemmings.
+ 
+lemming.frameLeftdx and lemming.frameTopdy helps you figure out where to actually display the animation graphics for the lemming based on its (lemming.x,lemming.y) position.  Namely, the top-left of the animation frame's bounding box should be located at (lemming.x + lemming.frameLeftdx, lemming.y + lemming.frameTopdy).  For this reason lemming.frameLeftdx and lemming.frameTopdy are always negative.  Values for lemming.frameLeftdx and lemming.frameTopdy obviously depends on the current action, and are reassigned whenever the lemming switches actions.
+ 
+------------
+ 
+lemming.animationGraphics
+lemming.animationFrameIndex
+ 
+The first field basically points to the set of animation frames to be used for the lemming's current action.  lemming.animationFrameIndex ranges from 0 to one less than the total number of frames available in lemming.animationGraphics, and points to the animation frame to use for the current frame-refresh.
+ 
+lemming.animationGraphics might seem a little redundant since one would expect a one-to-one correspondence between lemming.currentAction and lemming.animationGraphics, but in original Lemmings, there is a bug that leads to a mismatch situation where the animationGraphics is for shrugging and currentAction is walking.  This bug is not present in any later versions of game mechanics (eg. ONML, or even CustLemm).  [It will be discuss in a future e-mail when I get to skill assignments.]
+ 
+----------------------------------------
+ 
+lemming.fallDistanceCount
+ 
+It was intended to represent how many pixels the lemming has fallen, but as you see in the actual code, it doesn't do so accurately.  In any case, the value of this field determines when falling transitions to floating (for floaters), and whether a landing is fatal.
+ 
+----------------------------
+ 
+lemming.dx
+ 
+This represents the facing direction of the lemming, with +1being right and -1 being left.  In some rare cases the game code sets it to 0 to represent "no facing direction" such as with splattering.
+ 
+-------------------------
+ 
+HEAD_MIN_Y = -6
+LEMMING_MIN_X = 0
+LEMMING_MAX_X = 1647
+LEMMING_MAX_Y = 163
+MAX_FALLDISTANCECOUNT = 60
+ 
+Some constants used throughout the game.  The minx, max and maxy should be self-explanatory.  The values might not be what you expected (for example with maxy being 163 even though in DOS Lemmings the last row of pixels is at y=159), but I'm simply taking them from the disassembly.  I don't remember how far right a level can extend to in DOS Lemmings, but it's definitely not 1647; this is partly why a lemming will turn around at the level's left boundary, but will simply fall off its right boundary, in DOS Lemmings.  HEAD_MIN_Y effectively describes the highest the "head" of the lemming can get to before the lemming is turned around for bumping into the level's top boundary (you'll see this in action in the code for DoCurrentAction(walking) for example).
+ 
+MAX_FALLDISTANCECOUNT is 60 for most known versions of DOS Lemmings and its variants; 63 for CustLemm and a version of Lemmings that came with Mark Tsai's solution book.
+ 
+-----------------------
+ 
+I believe that should be enough for you to understand the attached code.  Feel free to e-mail me if you have questions.

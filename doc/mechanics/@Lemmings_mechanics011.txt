@@ -1,0 +1,26 @@
+Minor but important correction (with modified code attached).
+ 
+You'd notice from the code for DoCurrentAction(BASHING) that while lemming.animationFrameIndex ranges from 0 to 31, two bash strokes actually occur during that cycle, once from 0 to 15 and again from 16-31.
+ 
+With that in mind, I mentioned in the previous e-mail to index the bashing mask via lemming.animationFrameIndex - 2.  This isn't correct however since it doesn't work when lemming.animationFrameIndex in the 16-31 range.
+ 
+So I modified the code to pass to lemming.ApplyBashingMask() the correctly computed index.
+ 
+I also want to point out that in DoCurrentAction(BASHING), there's a line that checks
+ 
+if (lemming.animationFrameIndex == 5)
+ 
+This is *correct* (or rather, it is what DOS Lemmings do); it checks the real animationFrameIndex rather than the "normalized" local variable "index".  The implication of this is that the game only checks for "is there anything more in front to bash?" every other bash stroke.  This is why in DOS Lemmings (and Amiga, SNES, Genesis/Megadrive, though not the Mac), a basher whose bashing is not terminated prematurely by steel, falling etc., will always make an odd number of bash strokes.
+
+ccexplore <ccexplore@yahoo.com> wrote:
+After this, just one more skill to go!
+ 
+The code omitted definition for lemming.ApplyBashingMask().  The mask graphics in DOS Lemmings have the same dimensions (16x10) as the animation frames for bashing, and there are 4 masks, with left/right versions.
+ 
+So:
+ 
+1) upper-left of the 16x10 mask graphics should be located at (lemming.x + lemming.frameLeftdx, lemming.y + lemming.frameTopdy)
+ 
+2) if we index the 4 masks as 0 - 3, use the mask indexed lemming.animationFrameIndex - 2
+ 
+3) don't forget to check lemming.dx to pick the left/right version

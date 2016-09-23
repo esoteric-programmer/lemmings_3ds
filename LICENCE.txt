@@ -1,0 +1,26 @@
+Copyrighted third-party content:
+demos/*
+doc/*
+banner.png
+banner.wav
+icon.png
+src/data/particles.c
+src/data/cursor.c
+as well as ctrulib, sf2dlib, buildtools
+
+Note that things of the Lemmings series that are imitated by this software,
+e.g. game mechanics (e.g. src/lemming.c),
+compression method of .DAT files (src/import/decode.c),
+colors and game messages (src/import/gamespecific.c),
+and so on,
+may be protected, too.
+
+
+Licence of OTHER content NOT mentioned above:
+
+To the extent possible under law, the author has dedicated all copyright
+and related and neighboring rights to this software to the public domain 
+worldwide.
+This does NOT concern the third-party content listed above.
+This software is distributed without any warranty.
+

@@ -1,0 +1,92 @@
+The new code this time is CheckForInteractiveObjects().  Since exiting, drowning and fried states are triggered from that function, I also included the SetToXXX functions and DocurrentAction functions for those three actions.
+ 
+The reason I need to talk about interactive objects is that to continue on with the remaining lemmings mechanics, I need to talk about the object map.  So again you'll have an e-mail longer than the code I added.
+ 
+This reminds me:  it could be useful to add to your level editor a menu option (or some way you can turn on/off) the ability to show each interactive object's trigger area, when in editor mode.  I imagine it can be displayed as a dotted red rectangle area, somewhat like how steel areas are shown in LemEdit (when you set LemEdit's options to show steel area).
+ 
+=============
+ 
+Object Map
+-----------------
+ 
+The object map is a 2D array used by the game to track the following things:
+
+  1) trigger areas of interactive objects
+  2) steel areas
+  3) blocker fields
+ 
+Although you can think of other ways to keep track of these things, for accurate emulation of DOS Lemmings including some of its more obscure tricks/bugs, it is best to stick with the way DOS Lemmings does this.
+ 
+To start with a simplified description, imagine the level is only 6x6 pixels.  A possible object map setup would be a 6 by 6 2D array map[x][y].  A rectangular trigger area with upper-left corner being (0,1), lower-right corner being (3,4), and effect value 3, can be represented in the map as follows:
+ 
+y\x| 0 1 2 3 4 5
+---+------------
+0  | 0 0 0 0 0 0
+1  | 3 3 3 3 0 0
+2  | 3 3 3 3 0 0
+3  | 3 3 3 3 0 0
+4  | 3 3 3 3 0 0
+5  | 0 0 0 0 0 0
+ 
+Where an effect of value of 0 means "no effect" (ie. no trigger area in that location).  With such a map, if the game needs to know what effect any particular location (x,y) has, it can just look it up from the map.
+ 
+The object map in DOS Lemmings is similar to what I just described, with the following differences:
+ 
+1) It's obviously much bigger, since the level area is far more than 6x6
+ 
+2) More importantly, probably to save memory, the map only as a resolution of 4 pixels both for x and y.  In other words, each element of the map, rather than representing one pixel location, actually corresponds to a 4x4 block of pixels.  For example, if the above 6 by 6 map uses a 4-pixel resolution, instead of x being 0,1,2,3,4,5, you would in effect have x being the 6 ranges 0-3,4-7,8-11,12-15,16-19,20-23, and similarly for y.  This is the main reason why steel areas have to line up to a multiple of 4 in their x and y coordinates, and that their widths and heights are also multiples of 4.  Another interesting effect is that the field of a blocker is not positioned at a fixed offset from the blocker's own position, because the blocker's own position can be at any arbitrary pixel location, but the field, as represented in the map, has to align to multiples of 4 pixels.
+ 
+3) Each element of the map not only has to hold the effect type, it also needs to identify which of the 32 interactive objects of the level data is associated with the trigger area.  This is mainly for traps.  Traps are different from other objects in that they are not active until activated by some lemming, and then while the trap is active, other lemmings can safely pass through it until the trap finishes animating.  So it is necessary to figure out from the map not only that the effect type is "trap", but also which of the up to 32 traps it is.
+ 
+I'm not 100% sure of the exact size of the map, but I believe it covers an x range of 
+-16 to 1647 and a y range of 0 to 159 (possibly higher).  The DOS game doesn't really check for trigger areas that are outside the map range which is why the game may behave funny or downright crash/freeze when an out-of-range trigger area is encountered.
+ 
+DOS Lemmings uses the following values for effect types (the values for each object type is taken from the groundXo.dat file if you recall)
+ 
+0: no effect (all map elements are initialized to this value before loading and processing the level data)
+1: exit
+2: force left [the "left arm" of a blocker, so to speak]
+3: force right [the "right arm" of a blocker, so to speak]
+4: trap
+5: water (causes lemming to drown)
+6: fire (causes lemming to fry; includes objects like the coal pit, the fire shooter, the spinner, etc.)
+7: one-way, left
+8: one-way, right
+9: steel
+10: blocker [the middle "body" part of a blocker, so to speak]
+ 
+The "blocker" effect does not directly affect a lemming's movement.  It is used however by the game mechanics to prevent you from assigning blockers whose fields overlap.  More on that later.
+ 
+There is no "entrance" effect since entrances don't work like that:  new lemmings simply come out of the entrance, rather than an existing lemming being affected by the entrance.
+ 
+To store the index to the interactive object associated with each trigger area, DOS Lemmings uses a byte-size element with 4 bits reserved to hold the effect type and the other 4 bits for holding the index.  This is why only the 0th - 15th objects defined in the level data have any effects in DOS Lemmings.
+ 
+This is a rather wasteful way to encode however, especially since traps (effect #4) are the only types of object that actually needs the index.  So in Lemmix, I suggest a more efficient encoding:
+ 
+* use 0 to 15 to represent effect #4.  The value is then the index itself.
+* use 16+DOS_effect_number to represent the corresponding effect (so "no effect" is 16, "exit" is 17, etc.)
+ 
+Or if you like to keep 0 to mean "no effect", you can make 1 to 16 instead be used to represent effect #4 with object index 0 thru 15.  The point is that you can reserve a range of numbers to represent the effect #4 + index combination, and then use other numbers outside the range to represent the other effects that don't need the index.  Notice that this representation, suitably adjusted, does not suffer from the limitation that only objects 0th-15th can be handled by the map, even when sticking to using a byte-size value for map elements.
+ 
+Another thing to note is that when trigger areas are kept track of through a map in the above manner, you cannot represent trigger areas that overlap, since each element in the map can only represent one effect.  This is why in DOS Lemmings, when the trigger areas of two interactive objects overlap, the later object's effect is used in the overlapping area.  Basically what happens is that when processing the level data, the game goes through the objects one by one in the order given in the level data, and so if object #1 and #2 are overlapping, first object #1 writes its trigger area to the map, and then object #2 writes its trigger area (and thereby overwriting part of #1's).  The game happens to process steel area before interactive objects when processing level data, so object trigger areas always overwrite steel areas.
+ 
+This is also why blockers (or more precisely, blocker fields) are not allowed to overlap.  In fact, when a blocker sets up its field, it essentially has to ovewrite the existing effect values in the map, so that the field itself can be represented in the map.  This is why you can for example use a blocker's field to "disable" the effects of steel nearby, a glitch that for example allows Tricky 9 to be solved by digging thru the steel floor.  The game is smart enough that when a lemming becomes a blocker, it records within the lemming object the existing effect values from the map before overwriting, so that later when the blocker is freed, it is able to restore the map back to the way it was before the blocker.  This save-and-restore scheme will no longer work though if blockers can overlap, since unless you free the blockers in the reverse order in which they were assigned, the map will not be properly restored.  So the game disallows overlapping blocker fields.
+ 
+ReadObjectMap() and WriteObjectMap() functions
+----------------------------------------------
+When writing code for these functions, remember that sometimes the (x,y) passed in to those functions might be out of range.  Rather than imitating the DOS Lemming behavior of reading/writing whatever value happens to be outside the array (pretty much impossible to match exactly), just return the "no effect" effect type when reading, and don't write anything when writing.
+ 
+The (x,y) passed into those functions may be arbitrary pixel positions.  Due to the 4-pixel resolution though, this means for example ReadObjectMap(1,3) is always equivalent to ReadObjectMap(0,0), and that WriteObjectMap will write to the same map element given those two locations.
+ 
+Trigger areas and lemmings
+--------------------------
+lemming.CheckForInteractiveObjects() checks for the effect at (lemming.x,lemming.y).  But recall that this location basically corresponds to the ground that the lemming is walking on (ie. underneath the lemming's feet!), so in effect, it is really checking what trigger area the lemming is standing on.  For example, the trigger area for exits, when the exit is properly located, the trigger area is actually buried just under the ground, rather than above ground.
+ 
+The first two lines in the code given for lemming.CheckForInteractiveObjects() are
+
+  lemming.objectBelow = ReadObjectMap(lemming.x,lemming.y)
+  lemming.objectInFront = ReadObjectMap(lemming.x + 8*lemming.dx, lemming.y - 8)
+ 
+You might wonder about lemming.objectInFront, since the value isn't even used inside the function, or why lemming.objectBelow needs to be stored with the lemming since it is already acted upon in lemming.CheckForInteractiveObjects.
+ 
+The reason is that there are other parts of lemmings mechanics which uses these stored values, rather than reading from the object map again.  Skills assignment for example.  For more accurate emulation with DOS Lemmings you would need to do the same thing as in the given code.

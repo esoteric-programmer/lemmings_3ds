@@ -1,0 +1,52 @@
+Sadly, another problem with game mechanics in Lemmix:
+I was trying out the "across the ceiling" solution for Mayhem 12 ("The Far Side").
+Turns out this is my fault as well.  Essentially, I never bothered to disassemble DOS Lemming's "HasPixelAt" function since I figured it is obvious from the way the function is used what it does.
+ 
+But seeing this discrepency and after some testing with DOS Lemmings, I decided to disassemble the respective functions in DOS Lemmings.  As it turns out, there is a minor thing tugged into that function which has an effect on levels like this.
+ 
+The full story is unfortunately somewhat complicated so bear with me......
+ 
+DOS Lemmings actually have two versions of "HasPixelAt", and they behave differently with respect to this minor thing.
+ 
+1) Call this version "HasPixelAtA(x,y)".  This version really does check whether there's a pixel at (x,y) no matter what x and y are.  Due to clipping of graphics, this means for pixels outside the visible level area, HasPixelAtA(x,y) should always return FALSE.  (Although, this reminds me, I guess I should disassemble further to firmly establish DOS Lemming's clipping boundaries for graphics......)
+ 
+2) Call the second version "HasPixelAtB(x,y)".  This version is similar to the A version, except it checks the value of y.  If y is less than 0 then it proceeds pretending y equals 0.  In other words, this B version is effectively equivalent to the following:
+ 
+if (y < 0)
+  return call HasPixelAtA(x,0)
+else
+  return call HasPixelAtA(x,y)
+end if
+ 
+that is, y is "clipped" to be 0 or above.
+ 
+ccexplorecode so far pretends every call is HasPixelAtA, but this is incorrect.
+ 
+------------------
+ 
+It gets worse.  In the actual DOS Lemmings game mechanics, the HasPixelAt functions ultimately returns pointers (memory addresses) to video memory, and it is outside the call where the game does the actual checking of pixels through the pointer.  One effect is that because it is just pointers, sometimes the game will just add or subtract to the pointer after a HasPixelAt call, in order to read the pixel information at a related location without calling HasPixelAt again.  But notice that only the real call to HasPixelAt is clipped in y.  The pointer calculations afterwards basically does no further clipping.
+ 
+So for example, say the program did something along the lines of:
+ 
+pointerXY = GetPixelAtB(x,y)
+check pointerXY - 9 * pixelsperline
+ 
+In ccexplorecode I had been simplifying stuff like this to "call HasPixelAtB(x,y - 9)".  However, given that we now know GetPixelAtB(x,y) "clips" y to 0, the two lines of code above is really equivalent to another version of HasPixelAtB where instead of clipping y values to be >= 0, we are effectively clipping to >= -9:  the first call does clip y to >= 0, but then pointer calculation means we are ultimately checking a video memory location whose y may be as low as 0 - 9 = -9.
+ 
+So, to be perfectly compatible taking account of all this, this is how I will modify ccexplorecode:
+ 
+1) HasPixelAt_NoClipY is now the name of the "raw", no-clipping version of HasPixelAt.  (That is, "HasPixelAtA" in the above discussion, and effectively the version of HasPixelAt we have in the current version of Lemmix.)
+ 
+2) I add a new function, HasPixelAt_ClipY(x,y,miny), defined as follows:
+ 
+if (y < miny)
+  return call HasPixelAt_NoClipY(x, miny)
+else
+  return call HasPixelAt_NoClipY(x, y)
+end if
+ 
+So for example, HasPixelAt_ClipY(x,y,0) is equivalent to the "HasPixelAtB" in the above discussion.
+ 
+I then change all occurrences of HasPixelAt in ccexplorecode to one of the two versions, with different values for miny, to match the behavior to the actual game.  The result is attached.
+ 
+Actually, since I still want to go through your DelphiCode, I'm thinking that maybe I will do the changes for you as I go.  So for now please feel free to work on other areas of Lemmix.

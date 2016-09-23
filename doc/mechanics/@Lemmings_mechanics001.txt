@@ -1,0 +1,75 @@
+ 
+----- Original Message ----- 
+From: ccexplore 
+To: Eric en Zwaan HCCNET 
+Sent: Wednesday, June 28, 2006 10:11 AM
+Subject: game mechanics of original Lemmings
+
+
+There are of course a lot involved in handling the movement and behavior of lemmings, so each e-mail will contain the same attached file but with more code added.  Each e-mail also have more elaborate explanation of the code that was added to the file.  Now for today:
+ 
+First, a note on notation:
+ 
+Since you aren't 100% familiar with C and I'm not 100% familiar with Delphi, I write the code in a pseudo-language that uses mostly English keywords (as opposed to C's rich set of operators like ! && || and what not).  For convenience I will still use == to mean "equals" and != for "not equals".  In the condition expression for things like IF and looping statements, sometimes you may see an expression being the value of some variable, like this:
+ 
+IF (HandleInteractiveObjects)
+ 
+This means HandleInteractiveObjects is a boolean (true/false) variable, and that the condition being checked for is "HandleInteractiveObjects equals TRUE".
+ 
+You will also see expressions like lemming.XXXX.  I hope Delphi has concept of either structures or classes, if so then this should be familiar.
+ 
+------------------------
+ 
+Today's code is the lemmings update procedure.  It is just a loop that goes through all lemmings that have been released, and handle the movement they should make for the current frame.  It also assigns exploder to the next lemming if you're in the phase where the player nuked the level and there are still lemmings not being assigned an exploder.  It does not handle skill assignments from the user, nor does it handle the entrance of new lemmings (they happen elsewhere, more on that some other day).
+ 
+The function is pretty straightforward and indeed the code is practically obvious.  Of course for the procedure to work, I still need to define other procedure/functions like "DoCurrentAction" and "CheckForInteractiveObjects".  They will be dealt with another day.  DoCurrentAction in particular is really a shorthand for calling a set of up to 17 different procedure/functions, depending on what the lemming's currentAction is.
+ 
+You will see from the code that a lemming has 3 properties:
+ 
+1) lemming.removed.  This is a boolean variable, indicating whether the lemming is dead (TRUE) or alive (FALSE).  As the field name implies, dead lemmings mean the lemming is totally gone from the level, basically doesn't exist anymore if you will.  
+ 
+There are two ways you can choose to handle a dead lemming in your code:
+ 
+  a) keep a list of alive lemmings, and when a lemming dies, actually remove it from the list
+  b) use an array.  Always add newly out lemmings to end of array, and when a lemming dies, simply mark the lemming as "removed".  This is the approached used in the original code.
+ 
+Although method a) seems more natural, in terms of programming you need to be a little careful, because when nuking, you need to remember "the next lemming to be assigned exploder" across frames.  You may recall that in one of the alpha versions of Oth's Lemmini, there was a bug where not all lemmings get assigned exploders if some lemming died while exploder assignment is in progress.  Using method b) would help avoid this problem.  (Sorry if the explanation is inadequate.)  The code I present will implicit use method b)
+ 
+2) lemming.currentAction
+ 
+This indicates the action the lemming should perform in the upcoming frame.  It can have one of 18 values:
+ 
+WALKING
+SPLATTERING  (the deadly landing from falling too high w/o floater skill)
+EXPLODING  (when the lemming actually explodes and becomes confetti)
+FALLING
+JUMPING
+DIGGING
+CLIMBING
+HOISTING  (the transition from climber to walker when climber reaches the top)
+BUILDING
+BLOCKING
+BASHING
+FLOATING
+MINING
+DROWNING
+EXITING
+FRIED  (the death animation when killed by the flameblower, coal pit, etc. object)
+OHNOING  (when the explosion countdown already reached 0, but before the actual explosion)
+SHRUGGING (the shrug when a builder finishes building)
+ 
+Again, for programming purposes, there are a number of ways you can represent the current action.  Obvious the easiest is with an integer variable from 1 to 18 representing the 18 possible actions.  Or an enumeration or "named constants" if your language supports it.  Another possibility is bitmasking.  This sounds ludicrous at first since the lemming cannot perform two actions at the same time.  However, using bitmasks does help simplify certain checks like:
+ 
+IF lemming.currentAction not one of {FALLING,FLOATING,DROWNING,SPLATTERING,FRIED}
+ 
+Using a bitmask, you can use a single number to represent a set of actions, and use bitwise operators to check whether one of several bits are set or not, simplifying the way you would code, for example, the above condition.
+ 
+3) lemming.explosionTimer
+ 
+This is a numeric value that should range from 0 to 79.  0 means either the lemming hasn't been assigned exploder yet, or has and the countdown already reached 0.  Nonzero means the lemming is undergoing the explosion countdown (ie. you'd see a number of top of it).  When a lemming is assigned an exploder the initial value of lemming.explosionTimer is 79.  Note that this is a frame-based timer and not the number you show on top of the lemming's head, although of course the two are related.  More on that another day when I get to the "UpdateExplosionTimer" function.
+ 
+===================
+ 
+That's it for today.  Sorry it isn't much, a day at a time.
+ 
+The next e-mail will probably talk about the code for DoCurrentAction when currentAction is WALKING.
