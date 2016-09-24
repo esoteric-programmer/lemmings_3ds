@@ -18,6 +18,15 @@
 #include "savegame.h"
 #include "ingame.h"
 
+#define MENU_ERROR                              0
+#define MENU_ACTION_EXIT                        1
+#define MENU_ACTION_START_SINGLE_PLAYER         2
+#define MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER  3
+#define MENU_ACTION_SETTINGS                    4 // not implemented yet
+#define MENU_ACTION_LEVEL_SELECTED              5
+#define RESULT_ACTION_NEXT                      6
+#define RESULT_ACTION_CANCEL                    7
+
 const char* PATH_ROOT = LEMMINGS_DIR;
 
 // TODO:
@@ -44,7 +53,7 @@ void tile_menu_background(struct RGB_Image* im_bottom, struct MainMenuData* menu
 						menu_data->static_pictures[0]->width,
 						menu_data->static_pictures[0]->height);
 			}
-	}	
+	}
 }
 
 
@@ -193,21 +202,11 @@ int read_gamespecific_data(u8 game, struct MainMenuData* menu, struct MainInGame
 }
 
 
-
-#define MENU_ERROR                              0
-#define MENU_ACTION_EXIT                        1
-#define MENU_ACTION_START_SINGLE_PLAYER         2
-#define MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER  3
-#define MENU_ACTION_SETTINGS                    4 // not implemented yet
-#define MENU_ACTION_LEVEL_SELECTED              5
-#define RESULT_ACTION_NEXT                      6
-#define RESULT_ACTION_CANCEL                    7
-
 int main_menu(u8 games[], u8* game, int* lvl,
 		struct MainMenuData* menu_data, struct MainInGameData* main_data,
 		struct RGB_Image* im_top, struct RGB_Image* logo_scaled,
 		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen) {
-	
+
 	sf2d_texture* texture_bot_screen = 0;
 	struct RGB_Image* im_bottom = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*320*240);
 	if (!im_bottom) {
@@ -215,7 +214,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 	}
 	im_bottom->width = 320;
 	im_bottom->height = 240;
-	
+
 	if (!draw_main_menu(*game,
 			*lvl/import[*game].num_of_level_per_difficulty,
 			menu_data,im_bottom,&texture_bot_screen, 0)) {
@@ -231,7 +230,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 	u32 kDown;
 	u32 kHeld;
 	touchPosition stylus;
-	
+
 	while (aptMainLoop()) {
 
 		hidScanInput();
@@ -282,7 +281,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 			im_bottom = 0;
 			return MENU_ACTION_START_SINGLE_PLAYER;
 		}
-		
+
 		if (kDown & (KEY_B | KEY_SELECT | KEY_X)) {
 			if (texture_bot_screen) {
 				sf2d_free_texture(texture_bot_screen);
@@ -292,7 +291,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 			im_bottom = 0;
 			return MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER;
 		}
-		
+
 		if (kDown & KEY_UP) {
 			if (*lvl/import[*game].num_of_level_per_difficulty < import[*game].num_of_difficulties-1) {
 				*lvl = import[*game].num_of_level_per_difficulty*(*lvl/import[*game].num_of_level_per_difficulty) + import[*game].num_of_level_per_difficulty;
@@ -313,7 +312,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 					im_bottom = 0;
 					return MENU_ERROR; // error
 				}
-					
+
 			}else{
 				// select next game
 				if (*game < LEMMING_GAMES-1) {
@@ -463,7 +462,7 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 		level_names_offset += import[i].num_of_difficulties * import[i].num_of_level_per_difficulty;
 	}
 	u8 old_game = *game;
-				
+
 	u32 kDown;
 	u32 kHeld;
 	while (aptMainLoop()) {
@@ -838,7 +837,7 @@ int main() {
 	}
 
 
-	// test whether PATH_ROOT is a directory, otherwise set it to "."	
+	// test whether PATH_ROOT is a directory, otherwise set it to "."
 	struct stat s;
 	int err = stat(PATH_ROOT, &s);
 	if(err == -1) {
@@ -921,7 +920,7 @@ int main() {
 	if (!main_data) {
 		return 1; // error
 	}
-	memset(main_data,0,sizeof(struct MainInGameData));	
+	memset(main_data,0,sizeof(struct MainInGameData));
 
 	// initialize sf2d, create textures
 	sf2d_init();
@@ -959,7 +958,7 @@ int main() {
 					return 1; // error
 			}
 		}
-		
+
 		if (menu_selection == MENU_ACTION_EXIT) {
 			break;
 		}
@@ -974,7 +973,7 @@ int main() {
 			while(1) {
 				struct LevelResult lev_result = run_level(game, lvl, main_data,
 						texture_top_screen, texture_logo);
-	
+
 				// process result
 				// find out whether level has been solved successful
 				if (lev_result.percentage_rescued >= lev_result.percentage_needed) {
@@ -985,7 +984,7 @@ int main() {
 						progress_offset += import[i].num_of_difficulties;
 					}
 					progress_offset += lvl/import[game].num_of_level_per_difficulty;
-			
+
 					if (progress[progress_offset] < lvl%import[game].num_of_level_per_difficulty+1) {
 						progress[progress_offset] = lvl%import[game].num_of_level_per_difficulty+1;
 						write_savegame(progress);
@@ -996,7 +995,7 @@ int main() {
 						// TODO: increase game variable?
 					}
 				}
-	
+
 				int result_screen = show_result(game,
 						lev_result,
 						menu_data, &texture_logo, &texture_top_screen);
