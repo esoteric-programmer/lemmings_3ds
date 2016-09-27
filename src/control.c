@@ -87,4 +87,3 @@ circlePosition cpad_to_movement(circlePosition circle_pos) {
 	ret.dy = -circle_pos.dy/20;
 	return ret;
 }
-

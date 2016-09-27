@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -40,6 +41,72 @@ const char* PATH_ROOT = LEMMINGS_DIR;
 	update_lemmings
 */
 
+void die(int sf2d_initialied) {
+	if (sf2d_initialied) {
+		// clear screen
+		sf2d_start_frame(GFX_TOP, GFX_LEFT);
+		sf2d_end_frame();
+		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
+		sf2d_end_frame();
+		sf2d_swapbuffers();
+		sf2d_start_frame(GFX_TOP, GFX_LEFT);
+		sf2d_end_frame();
+		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
+		sf2d_end_frame();
+		sf2d_swapbuffers();
+		sf2d_start_frame(GFX_TOP, GFX_LEFT);
+		sf2d_end_frame();
+		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
+		sf2d_end_frame();
+		sf2d_swapbuffers();
+		aptMainLoop();
+		sf2d_fini();
+		// init console to display message
+		gfxInitDefault();
+	}
+	consoleInit(GFX_TOP, NULL);
+	consoleClear();
+	printf(CONSOLE_RED);
+	printf("\n                An error occured.\n\n");
+	printf(CONSOLE_RESET);
+	printf("Maybe some file of the original Lemmings game you\n");
+	printf("tried to load is missing.\n");
+	printf("Please make sure that ");
+	printf(CONSOLE_RED);
+	printf("all");
+	printf(CONSOLE_RESET);
+	printf(" files are in the\n");
+	printf("correct directory and that no file is corrupted.\n\n\n");
+	printf("Directories for DOS Lemmings games:\n\n");
+	printf("Original Lemmings           /lemmings/orig\n");
+	printf("Original Lemmings Demo      /lemmings/orig_demo\n");
+	printf("Oh No! More Lemmings        /lemmings/ohno\n");
+	printf("Oh No! More Lemmings Demo   /lemmings/ohno_demo\n");
+	printf("Xmas Lemmings 1991          /lemmings/xmas91\n");
+	printf("Xmas Lemmings 1992          /lemmings/xmas91\n");
+	printf("Holiday Lemmings 1993       /lemmings/holi93\n");
+	printf("Holiday Lemmings 1993 Demo  /lemmings/holi93_demo\n");
+	printf("Holiday Lemmings 1994       /lemmings/holi94\n");
+	printf("Holiday Lemmings 1994 Demo  /lemmings/holi94_demo\n\n\n");
+	printf(CONSOLE_RED);
+	printf("Besides that, this error may occur when the game\n");
+	printf("runs out of memory.\n\n");
+	printf(CONSOLE_RESET);
+	printf("Press any button to exit.");
+	gfxFlushBuffers();
+	gfxSwapBuffers();
+	while (aptMainLoop()) {
+
+		hidScanInput();
+		u32 kDown = hidKeysDown();
+		if (kDown & (~KEY_TOUCH)) {
+			break;
+		}
+	}
+	// exit game
+	gfxExit();
+	exit(1);
+}
 
 void tile_menu_background(struct RGB_Image* im_bottom, struct MainMenuData* menu_data) {
 	memset(im_bottom->data,0,sizeof(u32)*im_bottom->width*im_bottom->height);
@@ -326,6 +393,9 @@ int main_menu(u8 games[], u8* game, int* lvl,
 						*game = next_game;
 						if (!read_gamespecific_data(*game, menu_data, main_data, im_top, texture_top_screen, logo_scaled, texture_logo)) {
 							// error!
+							free(im_bottom);
+							im_bottom = 0;
+							return MENU_ERROR; // error
 						}
 						*lvl = 0;
 						if (texture_bot_screen) {
@@ -629,7 +699,9 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 						// LOAD IT!
 						*game = next_game;
 						if (!read_gamespecific_data(*game, menu_data, main_data, im_top, texture_top_screen, logo_scaled, texture_logo)) {
-							// error!
+							free(im_bottom);
+							im_bottom = 0;
+							return MENU_ERROR; // error!
 						}
 						cur_lev = 0;
 						top = cur_lev;
@@ -820,7 +892,6 @@ int main() {
 	printf("        ---------- Please Wait -----------  \n");
 	gfxFlushBuffers();
 	gfxSwapBuffers();
-	gfxExit();
 
 	u8 games[LEMMING_GAMES];
 	memset(games,0,LEMMING_GAMES);
@@ -851,6 +922,7 @@ int main() {
 	// read level names
 	char* level_names = (char*)malloc(33*overall_num_of_levels);
 	if (!level_names) {
+		die(0);
 		return 1; // error
 	}
 	u16 offset = 0;
@@ -869,9 +941,44 @@ int main() {
 	if (game == LEMMING_GAMES) {
 		// no game data has been found
 		// TODO: display error message
+		printf(CONSOLE_RED);
+		printf("\nTo run this game, you need to copy the files of\n");
+		printf("at least one DOS Lemmings game to your SD card.\n");
+		printf("Please make sure to copy the data into the\n");
+		printf("correct directory corresponding to the game.\n\n\n");
+		printf(CONSOLE_RESET);
+		printf("Directories for DOS Lemmings games:\n\n");
+		printf("Original Lemmings           /lemmings/orig\n");
+		printf("Original Lemmings Demo      /lemmings/orig_demo\n");
+		printf("Oh No! More Lemmings        /lemmings/ohno\n");
+		printf("Oh No! More Lemmings Demo   /lemmings/ohno_demo\n");
+		printf("Xmas Lemmings 1991          /lemmings/xmas91\n");
+		printf("Xmas Lemmings 1992          /lemmings/xmas91\n");
+		printf("Holiday Lemmings 1993       /lemmings/holi93\n");
+		printf("Holiday Lemmings 1993 Demo  /lemmings/holi93_demo\n");
+		printf("Holiday Lemmings 1994       /lemmings/holi94\n");
+		printf("Holiday Lemmings 1994 Demo  /lemmings/holi94_demo\n\n\n");
+		printf("You may check out the \"demos\" folder at\n");
+		printf(CONSOLE_GREEN);
+		printf("http://github.com/esoteric-programmer/lemmings_3ds");
+		printf(CONSOLE_RESET);
+		printf("to download free demo versions of Lemmings.\n\n");
+		printf("Press any button to exit.");
+
+		gfxFlushBuffers();
+		gfxSwapBuffers();
+		while (aptMainLoop()) {
+
+			hidScanInput();
+			u32 kDown = hidKeysDown();
+			if (kDown & (~KEY_TOUCH)) {
+				break;
+			}
+		}
+		gfxExit();
 		return 1; // error
 	}
-
+	
 	// TODO: read configuration file
 	// LEFTHANDED.DAT hack; TODO: remove once configuration file is implemented
 	char lh_fn[64];
@@ -889,6 +996,7 @@ int main() {
 	// read save file
 	u8* progress = (u8*)malloc(overall_num_of_difficulties);
 	if (!progress) {
+		die(0);
 		return 1; // error
 	}
 	read_savegame(progress);
@@ -898,12 +1006,14 @@ int main() {
 
 	struct MainMenuData* menu_data = (struct MainMenuData*)malloc(sizeof(struct MainMenuData));
 	if (!menu_data) {
+		die(0);
 		return 1; // error
 	}
 	memset(menu_data,0,sizeof(struct MainMenuData));
 
 	struct RGB_Image* logo_scaled = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*380*57);
 	if (!logo_scaled) {
+		die(0);
 		return 1; // error
 	}
 	logo_scaled->width = 380;
@@ -911,6 +1021,7 @@ int main() {
 
 	struct RGB_Image* im_top = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*400*320);
 	if (!im_top) {
+		die(0);
 		return 1; // error
 	}
 	im_top->width = 400;
@@ -918,16 +1029,19 @@ int main() {
 
 	struct MainInGameData* main_data = (struct MainInGameData*)malloc(sizeof(struct MainInGameData));
 	if (!main_data) {
+		die(0);
 		return 1; // error
 	}
 	memset(main_data,0,sizeof(struct MainInGameData));
 
 	// initialize sf2d, create textures
+	gfxExit();
 	sf2d_init();
 	sf2d_texture* texture_logo = 0;
 	sf2d_texture* texture_top_screen = 0;
 
 	if (!read_gamespecific_data(game, menu_data, main_data, im_top, &texture_top_screen, logo_scaled, &texture_logo)) {
+		die(1);
 		return 1; // error
 	}
 
@@ -955,6 +1069,7 @@ int main() {
 					break;
 				case MENU_ERROR:
 				default:
+					die(1);
 					return 1; // error
 			}
 		}
@@ -964,6 +1079,7 @@ int main() {
 		}
 
 		if (menu_selection == MENU_ERROR) {
+			die(1);
 			return 1; // error
 		}
 
@@ -973,6 +1089,11 @@ int main() {
 			while(1) {
 				struct LevelResult lev_result = run_level(game, lvl, main_data,
 						texture_top_screen, texture_logo);
+				if (lev_result.percentage_needed > 100) {
+					// an error occured
+					die(1);
+					break;
+				}
 
 				// process result
 				// find out whether level has been solved successful
@@ -1005,7 +1126,6 @@ int main() {
 				if (result_screen == RESULT_ACTION_CANCEL) {
 					break;
 				}
-				return 1; // error
 			}
 		}
 	}

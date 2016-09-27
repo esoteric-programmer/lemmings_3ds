@@ -76,7 +76,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	}
 	im_above_level->width = SCREEN_WIDTH;
 	im_above_level->height = BOTTOM_SCREEN_Y_OFFSET;
-	
+
 	if (!read_level(game, lvl, level)) {
 		free(im);
 		free(im_above_level);
@@ -85,7 +85,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	}
 	init_level_state(&state,level);
 	init_lemmings(lemmings);
-	
+
 	struct RGB_Image* cursor_palette = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*14*14);
 	if (!cursor_palette) {
 		free(im);
@@ -97,7 +97,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	cursor_palette->height = 14;
 	memset(cursor_palette->data,0,sizeof(u32)*14*14);
 	draw(cursor_palette, level->palette.vga, cursor_data, 0, 0, 14, 14);
-	
+
 	// load cursor (with palette colors)
 	// minimum size is 64x64; however, sf2d has imolemented minimum size of 8x8.
 	// this is an ugly workaround: initiale as 64x64, change size to 14x14 manually.
@@ -145,8 +145,8 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	cursor_active->height = 14;
 	sf2d_fill_texture_from_RGBA8(cursor_active, cursor_active_palette->data, 14, 14);
 	sf2d_texture_tile32(cursor_active);
-	
-	
+
+
 	if (level->info.x_pos >= (SCREEN_WIDTH-320)/2) {
 		level->info.x_pos -= (SCREEN_WIDTH-320)/2;
 	}else{

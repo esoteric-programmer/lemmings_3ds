@@ -813,8 +813,6 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 		return 0;
 	}
 	if (lem->frame_offset == 2) {
-		// TODO: call lemming.ApplyMinerMask(lemming.x + lemming.dx + lemming.frameLeftdx, lemming.y + 1 + lemming.frameTopdy); MASK: 1
-
 		if (masks) {
 			apply_mask(masks[lem->look_right?9:11], level, lem->x+(lem->look_right?1:-1)+lem->x_draw_offset, lem->y+1+lem->y_draw_offset);
 		}
@@ -925,8 +923,8 @@ int foo(struct Lemming* lem, struct Level* level, struct Image* masks[]) {
 
 void set_lemaction(struct Lemming* lem, u8 action) {
 	lem->current_action = action;
-	lem->draw_action = action; // TODO: everytime?
-	lem->frame_offset = 0; // TODO: always?
+	lem->draw_action = action;
+	lem->frame_offset = 0;
 	lem->x_draw_offset = action_draw_offsets[action].x;
 	lem->y_draw_offset = action_draw_offsets[action].y;
 	(*lemming_switch_action[action])(lem);

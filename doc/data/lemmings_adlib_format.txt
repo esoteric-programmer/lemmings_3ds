@@ -1,0 +1,43 @@
+adlib.dat file format
+
+To read adlib.dat, you first have to decompress it using the .dat file decompression.
+You should end up with just one decompressed section.
+
+The decompressed adlib.dat section begins with x86 machine code to handle an interrupt.
+Therefore, in order to play sound from adlib.dat, DOS Lemmings decompresses adlib.dat
+into memory and adds an interrupt handler pointing to position 0x0000 of the
+decompressed data. Then the sound is played by calling this interrupt with
+parameter in the ax register.
+The parameter handling works as follows:
+
+switch (ah) {
+	case 0x00:
+		continue playing current sound;
+		return;
+	case 0x01:
+		initialize adlib;
+		return;
+	case 0x02:
+		stop playing current sound;
+		return;
+	case 0x03:
+		load music title specified in al register;
+		return;
+	case 0x04:
+		load sound specified in al register;
+		return;
+	case 0x05:
+		some unknown action;
+		return;
+	default:
+		return;
+}
+
+Because 16it DOS Lemmings cannot use multitasking,
+the action "continue playing current sound" has to be called
+constantly while sound or music plays.
+This action triggers some adlib hardware interrupts corresponding
+to the current position inside the sound or music and returns.
+It cannot play the whole song, because the control flow must
+return to the game in order to do all the other things like
+animating lemmings.
