@@ -13,6 +13,4 @@ because they are protected by copyright law.
 
 For game control, see CONTROL.txt.
 
-Sound is not supported yet.
-The source code is not released yet, because it needs to be cleaned before.
-Sorry for these limitations.
+Sound is not supported yet. Sorry for this limitation.

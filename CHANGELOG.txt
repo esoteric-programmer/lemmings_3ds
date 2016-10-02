@@ -1,3 +1,7 @@
+Version 0.2.3
+- Added error screens
+- Bugfixes
+
 Version 0.2.2
 - Support demo versions:
   - Original Lemmings Demo

@@ -28,9 +28,9 @@
 #define PATH_DATA_HOLIDAY94  "holi94"
 
 struct GameSpecific {
-	const char ABBA_order;
-	const unsigned char num_of_difficulties;
-	const unsigned char num_of_level_per_difficulty;
+	const u8 ABBA_order;
+	const u8 num_of_difficulties;
+	const u8 num_of_level_per_difficulty;
 	const char* path;
 	const char* level_dat_prefix;
 	const char* const* difficulties;

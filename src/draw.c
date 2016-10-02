@@ -5,7 +5,7 @@
 #include "lemming.h"
 #include "particles.h"
 
-void draw_lemmings_minimap(struct Lemming[MAX_NUM_OF_LEMMINGS], u32 palette[16], struct RGB_Image* image);
+void draw_lemmings_minimap(struct Lemming[MAX_NUM_OF_LEMMINGS], struct MainInGameData* data, struct RGB_Image* image);
 
 void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], struct Image* masks[23], u32 palette[16], struct RGB_Image* image, u16 x_offset);
 
@@ -182,7 +182,7 @@ int draw_level(struct RGB_Image* image, struct Level* level) {
 	if (!image || !level) {
 		return 0;
 	}
-	
+
 	if (level->info.x_pos + image->width > 1584) {
 		if (image->width >= 1584) {
 			level->info.x_pos = 0;
@@ -190,7 +190,7 @@ int draw_level(struct RGB_Image* image, struct Level* level) {
 			level->info.x_pos = 1584 - image->width;
 		}
 	}
-	
+
 	for (y=0;y<160 && y<image->height;y++) {
 		for (x=0;x<image->width;x++) {
 			s16 level_x = x + (s16)level->info.x_pos;
@@ -204,7 +204,7 @@ int draw_level(struct RGB_Image* image, struct Level* level) {
 			}
 		}
 	}
-	
+
 
 	// draw objects into level graphic
 	for (i=0;i<32;i++) {
@@ -215,7 +215,7 @@ int draw_level(struct RGB_Image* image, struct Level* level) {
 		struct Object* o = level->o[level->obj[i].type];
 		if (!o) {
 			continue;
-		}		
+		}
 
 		// copy image
 		s16 x,y;
@@ -501,7 +501,7 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 	if (!image || !data || !level || !state) {
 		return 0;
 	}
-	
+
 	s16 x,y,i;
 	data->high_perf_palette[7] = level->palette.vga[8];
 	for (y=0;y<40 && y+160<image->height;y++) {
@@ -514,9 +514,9 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 			}
 		}
 	}
-	
+
 	draw_highperf_text(image, data, 160, text);
-	
+
 	// DRAW SKILLZ
 	u8 nums[10];
 	nums[0] = level->info.rate;
@@ -550,7 +550,7 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 			}
 		}
 	}
-	
+
 	// draw active_skill
 	if (state->selected_skill >= 8) {
 		state->selected_skill = 0;
@@ -572,7 +572,7 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 			}
 		}
 	}
-	
+
 	// draw mini-map
 	for (y=16;y<160;y+=8) {
 		for (x=0;x<1584;x+=16) {
@@ -590,11 +590,11 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 			image->data[minimap_x+minimap_y*image->width] = data->high_perf_palette[solid]  | 0xFF000000;
 		}
 	}
-	
+
 	// draw lemmings
-	draw_lemmings_minimap(lemmings,data->high_perf_palette,image);
-	
-	
+	draw_lemmings_minimap(lemmings,data,image);
+
+
 	// draw current view into minimap
 	s16 view_rect_width = 103 - (1584-image->width) / 16;
 	if (view_rect_width < 3) {
@@ -620,11 +620,11 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 
 		}
 	}
-	
+
 	return 1; // all fine
 }
 
-void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], u32 palette[16], struct RGB_Image* image) {
+void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct MainInGameData* data, struct RGB_Image* image) {
 	int i;
 	if (!lemmings || !image) {
 		return; // error
@@ -636,10 +636,10 @@ void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], u32 pal
 		if (lemmings[i].y >= 160 || lemmings[i].x >= 1664) { // or: 1584?
 			continue;
 		}
-		
+
 		s16 minimap_x = 209 + (lemmings[i].x>=0?lemmings[i].x:0)/16;
 		s16 minimap_y = 177 + (lemmings[i].y>=16?lemmings[i].y:16)/8;
-		image->data[minimap_x+minimap_y*image->width] = palette[2]; // TODO: green?
+		image->data[minimap_x+minimap_y*image->width] = data->high_perf_palette[2] | 0xFF000000; // green
 	}
 }
 
