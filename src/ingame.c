@@ -9,6 +9,7 @@
 #include "gamespecific.h"
 #include "import_level.h"
 #include "cursor.h"
+#include "audio.h"
 
 #define BOTTOM_SCREEN_Y_OFFSET 32
 
@@ -167,7 +168,10 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	touchPosition stylus;
 	circlePosition circle_pos;
 
+	start_audio();
+
 	while (aptMainLoop()) {
+		update_audio();
 		hidScanInput();
 		kDown = hidKeysDown();
 		kHeld = hidKeysHeld();
@@ -327,6 +331,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		}
 		if (action & ACTION_NEXT_SKILL) {
 			state.selected_skill = (state.selected_skill+1)%8;
+			play_sound(0x01);
 		}
 		if (action & ACTION_PREV_SKILL) {
 			if (state.selected_skill > 0) {
@@ -334,30 +339,39 @@ struct LevelResult run_level(u8 game, u8 lvl,
 			}else{
 				state.selected_skill = 7;
 			}
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_CIMBER) {
 			state.selected_skill = 0;
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_FLOATER) {
 			state.selected_skill = 1;
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_BOMBER) {
 			state.selected_skill = 2;
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_BLOCKER) {
 			state.selected_skill = 3;
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_BUILDER) {
 			state.selected_skill = 4;
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_BASHER) {
 			state.selected_skill = 5;
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_MINER) {
 			state.selected_skill = 6;
+			play_sound(0x01);
 		}
 		if (action & ACTION_SELECT_SKILL_DIGGER) {
 			state.selected_skill = 7;
+			play_sound(0x01);
 		}
 		if (action & ACTION_INC_RATE) {
 			s8 inc = 0;
@@ -605,13 +619,24 @@ struct LevelResult run_level(u8 game, u8 lvl,
 				if (_new != _old) {
 					// do action depending on _new:
 					if (_new == 15) {
-						// TODO: play sound: lets go
+						// play sound: lets go
+						play_sound(0x03);
 					}else if (_new == 35) {
-						// TODO: play sound: opening entrance
+						// play sound: opening entrance
+						play_sound(0x02);
 						// start opening of entrances;
 						state.entrances_open = 1;
 					}else if (_new == 55) {
-						// TODO: start background music
+						// start background music
+						int i;
+						u8 song = import[game].song_ids[cur_song];
+						for (i=0;i<import[game].num_special_songs;i++) {
+							if (import[game].special_songs[i].level == lvl) {
+								song = import[game].special_songs[i].song;
+								break;
+							}
+						}
+						start_music(song);
 					}
 				}
 			}
@@ -686,6 +711,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 			}
 		}
 	}
+	stop_audio();
 
 	if ((u16)level->info.lemmings > 0) {
 		result.percentage_rescued = ((u16)level->rescued)*100 / (u16)level->info.lemmings;
@@ -693,6 +719,11 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		result.percentage_rescued = 0;
 	}
 	result.percentage_needed = level->info.percentage_needed;
+	
+	if (result.percentage_rescued >= result.percentage_needed) {
+		cur_song = (cur_song + 1) % import[game].num_of_songs;
+	}
+	
 	if (!state.frames_left) {
 		result.timeout = 1;
 	}else{

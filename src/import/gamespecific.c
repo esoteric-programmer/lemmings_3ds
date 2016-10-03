@@ -2,9 +2,9 @@
 #include "settings.h"
 #define LEVEL(file, section, modified) ((file)<<3|(section)|((modified)?0x80:0x00))
 
-extern const unsigned char position_of_classic_level[];
-extern const unsigned char position_of_ohnomore_level[];
-extern const unsigned char ascending_numbers_0_to_63[];
+extern const u8 position_of_classic_level[];
+extern const u8 position_of_ohnomore_level[];
+extern const u8 ascending_numbers_0_to_63[];
 extern const char* msgs_orig[];
 extern const char* msgs_ohno[];
 extern const char* msgs_holi93[];
@@ -24,67 +24,80 @@ const char* difficulties_holi93[] = {"Flurry", "Blitz"};
 const char* difficulties_holi94[] = {"Frost", "Hail", "Flurry", "Blitz"};
 const char* difficulties_holi_demo[] = {"Demo"};
 
+const u8 orig_song_order[] = {6, 7, 8, 10, 11, 4, 12, 13, 14, 15, 5, 16, 17, 18, 19, 20, 21};
+
+const struct SpecialSongs special_songs[] = {{21,2}, {43,9}, {74,1}, {111,3} };
 
 const struct GameSpecific import[LEMMING_GAMES] = {
 		// original Lemmings DEMO
 		{
 			1, 4, 1, PATH_DATA_DEMO, "LEVEL",
 			difficulties_classic,  ascending_numbers_0_to_63, msgs_orig, 4, // TODO: level positions?
-			main_palette, ingame_palette, highperf_palette
+			main_palette, ingame_palette, highperf_palette,
+			17, orig_song_order, 0, 0
 		},
 		// original Lemmings
 		{
 			1, 4, 30, PATH_DATA_ORIGINAL, "LEVEL",
 			difficulties_classic,  position_of_classic_level, msgs_orig, 4,
-			main_palette, ingame_palette, highperf_palette
+			main_palette, ingame_palette, highperf_palette,
+			17, orig_song_order, 4, special_songs
 		},
 		// Oh No! More Lemmings DEMO
 		{
 			0, 5, 1, PATH_DATA_OHNODEMO, "DLVEL",
 			difficulties_ohnomore, ascending_numbers_0_to_63, msgs_ohno, 5,
-			main_palette, ingame_palette, highperf_palette
+			main_palette, ingame_palette, highperf_palette,
+			6, ascending_numbers_0_to_63+1, 0, 0
 		},
 		// Oh No! More Lemmings
 		{
 			0, 5, 20, PATH_DATA_OHNOMORE, "DLVEL",
 			difficulties_ohnomore, position_of_ohnomore_level, msgs_ohno, 5,
-			main_palette, ingame_palette, highperf_palette
+			main_palette, ingame_palette, highperf_palette,
+			6, ascending_numbers_0_to_63+1, 0, 0
 		},
 		// Xmas Lemmings 1991
 		{
 			0, 1,  4, PATH_DATA_XMAS91, "LEVEL",
 			difficulties_xmas91, ascending_numbers_0_to_63, msgs_ohno, 4,
-			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas
+			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
+			3, ascending_numbers_0_to_63+1, 0, 0
 		},
 		// Xmas Lemmings 1992
 		{
 			0, 1,  4, PATH_DATA_XMAS92, "LEVEL",
 			difficulties_xmas92, ascending_numbers_0_to_63, msgs_ohno, 4,
-			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas
+			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
+			3, ascending_numbers_0_to_63+1, 0, 0
 		},
 		// Holiday Lemmings 1993 DEMO
 		{
 			0, 1, 4, PATH_DATA_HOLI93DEMO, "LEVEL",
 			difficulties_holi_demo, ascending_numbers_0_to_63, msgs_holi93, 4,
-			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas
+			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
+			3, ascending_numbers_0_to_63+1, 0, 0
 		},
 		// Holiday Lemmings 1993
 		{
 			0, 2, 16, PATH_DATA_HOLIDAY93, "LEVEL",
 			difficulties_holi93, ascending_numbers_0_to_63, msgs_holi93, 4,
-			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas
+			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
+			3, ascending_numbers_0_to_63+1, 0, 0
 		},
 		// Holiday Lemmings 1994 DEMO
 		{
 			0, 1, 4, PATH_DATA_HOLI94DEMO, "LEVEL",
 			difficulties_holi_demo, ascending_numbers_0_to_63, msgs_holi94, 4,
-			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas
+			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
+			6, ascending_numbers_0_to_63+1, 0, 0
 		},
 		// Holiday Lemmings 1994
 		{
 			0, 4, 16, PATH_DATA_HOLIDAY94, "LEVEL",
 			difficulties_holi94, ascending_numbers_0_to_63, msgs_holi94, 4,
-			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas
+			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
+			6, ascending_numbers_0_to_63+1, 0, 0
 		}
 };
 

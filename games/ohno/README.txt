@@ -1,4 +1,5 @@
 Copy these files from Oh no! More Lemmings for DOS here:
+ADLIB.DAT
 DLVEL000.DAT
 DLVEL001.DAT
 DLVEL002.DAT

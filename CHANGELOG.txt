@@ -1,3 +1,6 @@
+Version 0.3
+- Added audio
+
 Version 0.2.3
 - Added error screens
 - Bugfixes

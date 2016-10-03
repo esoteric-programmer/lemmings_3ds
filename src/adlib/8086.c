@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "8086.h"
+#include "adlib.dat.h"
 
 struct Registers {
 	u16 ax;
@@ -104,6 +104,13 @@ const u8 parity[] = {
 };
 
 int x86_step();
+unsigned long (*port_read)(unsigned long,unsigned long) = 0;
+void (*port_write)(unsigned long,unsigned long,unsigned long) = 0;
+
+void install_port_handler(unsigned long (*OPL_Read)(unsigned long,unsigned long), void (*OPL_Write)(unsigned long port,unsigned long val,unsigned long iolen)) {
+	port_read = OPL_Read;
+	port_write = OPL_Write;
+}
 
 int load_adlib_data(struct Data* decoded_adlib_dat) {
 	if (sizeof(struct Registers) != 14*2) {
@@ -121,7 +128,6 @@ int load_adlib_data(struct Data* decoded_adlib_dat) {
 		return 0; // error
 	}
 	memcpy(memory, decoded_adlib_dat->data, adlib_size);
-	
 	if (!call_adlib(0x0100)) {
 		free(memory);
 		memory = 0;
@@ -138,8 +144,11 @@ void free_adlib_data() {
 }
 
 int call_adlib(u16 ax) {
+	if (!memory) {
+		return 0;
+	}
 	memset(&registers,0,sizeof(struct Registers));
-	SP = 2*STACK_SIZE;
+	SP = sizeof(u16)*STACK_SIZE;
 /*	BX = 0x8000; // only for debugging
 	DX = 0x0388; // only for debugging
 	SI = 0x0002; // only for debugging
@@ -158,19 +167,33 @@ int call_adlib(u16 ax) {
 int in_out(u8 direction, u8 width) {
 	// communication with ADLIB
 	if (direction) {
-		// TODO: send instruction to adlib emulator!
+		// send instruction to adlib emulator!
 		if (width) {
 			// OUT DX, AX
+			if (port_write) {
+				port_write(DX, AX, 16);
+			}
 		}else{
 			// OUT DX, AL
+			if (port_write) {
+				port_write(DX, AL, 8);
+			}
 		}
 		return 1;
 	}else{
 		// IN: simulate read of adlib
-		if (DX == 0x389) {
-			AL = 255;
+		if (width) {
+			if (port_read) {
+				AX = port_read(DX, 16);
+			}else{
+				AX = 255;
+			}
 		}else{
-			AL = 0xC0; // seems to indicate success?
+			if (port_read) {
+				AL = port_read(DX, 8);
+			} else {
+				AL = 255;
+			}
 		}
 		return 1;
 	}
@@ -247,8 +270,8 @@ int push(u16 val) {
 	if (SP == 0) {
 		return 0; // error
 	}
-	SP-=2;
-	*((u16*)(stack+SP)) = val;
+	SP-=sizeof(u16);
+	*((u16*)((u8*)stack+SP)) = val;
 	return 1;
 }
 
@@ -256,8 +279,8 @@ int pop(u16* val) {
 	if (SP >= 2*STACK_SIZE) {
 		return 0; // error
 	}
-	*val = *((u16*)(stack+SP));
-	SP+=2;
+	*val = *((u16*)((u8*)stack+SP));
+	SP+=sizeof(u16);
 	return 1;
 }
 
@@ -291,7 +314,7 @@ static inline void add(void* dest, void* source, int width) {
 	}
 }
 
-static inline void and(void* dest, void* source, int width) {
+static inline void _and(void* dest, void* source, int width) {
 	// clear flags
 	SR &= ~(FLAG_C | FLAG_Z | FLAG_S | FLAG_O | FLAG_P);
 	// execute operation
@@ -305,7 +328,7 @@ static inline void and(void* dest, void* source, int width) {
 }
 
 
-static inline void xor(void* dest, void* source, int width) {
+static inline void _xor(void* dest, void* source, int width) {
 	// clear flags
 	SR &= ~(FLAG_C | FLAG_Z | FLAG_S | FLAG_O | FLAG_P);
 	// execute operation
@@ -318,7 +341,7 @@ static inline void xor(void* dest, void* source, int width) {
 	}
 }
 
-static inline void or(void* dest, void* source, int width) {
+static inline void _or(void* dest, void* source, int width) {
 	// clear flags
 	SR &= ~(FLAG_C | FLAG_Z | FLAG_S | FLAG_O | FLAG_P);
 	// execute operation
@@ -402,7 +425,7 @@ int and1(u8 direction, u8 width) {
 	void* source;
 	// get operands
 	parse_mod_reg_rm(direction?&dest:&source, direction?&source:&dest, width);
-	and(dest,source,width);
+	_and(dest,source,width);
 	return 1;
 }
 
@@ -411,7 +434,7 @@ int xor1(u8 direction, u8 width) {
 	void* source;
 	// get operands
 	parse_mod_reg_rm(direction?&dest:&source, direction?&source:&dest, width);
-	xor(dest,source,width);
+	_xor(dest,source,width);
 	return 1;
 }
 
@@ -430,7 +453,7 @@ int xor2(u8 direction, u8 width) {
 	}
 	void* dest = &registers;
 	
-	xor(dest,source,width);
+	_xor(dest,source,width);
 	return 1;
 }
 
@@ -447,7 +470,7 @@ int and2(u8 direction, u8 width) {
 			IP++;
 		}
 		void* dest = &registers;
-		and(dest,source,width);
+		_and(dest,source,width);
 		return 1;
 	}
 }
@@ -457,7 +480,7 @@ int or1(u8 direction, u8 width) {
 	void* source;
 	// get operands
 	parse_mod_reg_rm(direction?&dest:&source, direction?&source:&dest, width);
-	or(dest,source,width);
+	_or(dest,source,width);
 	return 1;
 }
 
@@ -824,10 +847,10 @@ int grp1(u8 direction, u8 width) {
 			add(reg, &data, width);
 			return 1;
 		case 1: // OR
-			or(reg, &data, width);
+			_or(reg, &data, width);
 			return 1;
 		case 4: // AND
-			and(reg, &data, width);
+			_and(reg, &data, width);
 			return 1;
 		case 5: // SUB
 			sub(reg, &data, width);
@@ -922,6 +945,7 @@ int grp2(u8 direction, u8 width) {
 			return 1;
 		}
 		case 5:
+		{
 			// SHR
 			SR &= ~(FLAG_O | FLAG_C | FLAG_S | FLAG_Z | FLAG_P);
 			u16 result = 0;
@@ -948,6 +972,7 @@ int grp2(u8 direction, u8 width) {
 			}
 			SR |= ((result?0:FLAG_Z) | (parity[result&0xFF]?FLAG_P:0));
 			return 1;
+		}
 		case 7:
 		{
 			// SAR
@@ -1148,7 +1173,6 @@ int (*const execute_opcode[64])(u8 direction, u8 width) = {
 
 int x86_step() {
 	// memory[IP]: current instruction
-
 	// check for prefix
 	switch (memory[IP]) {
 		case 0x26:

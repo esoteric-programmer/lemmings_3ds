@@ -6,6 +6,8 @@ orig\_demo, orig, ohno\_demo, ohno, xmas91, xmas92, holi93\_demo, holi93, holi94
 To avoid duplicates, you may only fill these folders if you own all Lemmings games:
 orig, ohno, xmas91, xmas92, holi94
 
+The game uses the NDSP service to play audio. Thus you need a DSP firm dump to have audio.
+
 \* See README.txt in these folders.
 
 These files are not included (and will never be included),

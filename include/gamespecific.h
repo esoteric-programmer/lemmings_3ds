@@ -40,6 +40,13 @@ struct GameSpecific {
 	const u32* main_palette;
 	const u32* ingame_palette;
 	const u32* highperf_palette;
+	const u8 num_of_songs;
+	const u8* song_ids;
+	const u8 num_special_songs;
+	const struct SpecialSongs{
+		u8 level;
+		u8 song;
+	}* special_songs;
 };
 extern const struct GameSpecific import[LEMMING_GAMES];
 

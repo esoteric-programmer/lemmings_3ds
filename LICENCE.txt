@@ -6,6 +6,10 @@ banner.wav
 icon.png
 src/data/particles.c
 src/data/cursor.c
+/src/adlib/adlib.cpp (GPL)
+/src/adlib/adlib.h (GPL)
+/src/adlib/dbopl.cpp (GPL)
+/src/adlib/dbopl.h (GPL)
 as well as ctrulib, sf2dlib, buildtools
 
 Note that all parts of the Lemmings series that are imitated by this software,
@@ -13,7 +17,6 @@ e.g. game mechanics (e.g. src/lemming.c),
 compression method of .DAT files (src/import/decode.c),
 colors and game messages (src/import/gamespecific.c),
 and so on, may be protected by law, too.
-
 
 Licence of OTHER content NOT mentioned above:
 

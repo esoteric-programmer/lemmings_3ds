@@ -1,5 +1,6 @@
-#include "lemming.h"
 #include <string.h>
+#include "lemming.h"
+#include "audio.h"
 
 void process_interactive_objects(struct Lemming* lem, struct Level* level);
 
@@ -358,11 +359,13 @@ void update_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Level*
 					case LEMACTION_FLOAT:
 					case LEMACTION_FALL:
 						set_lemaction(lemmings+i,LEMACTION_EXPLODE);
-						// TODO: play sound: explosion
+						// play sound: explosion
+						play_sound(0x0C);
 						break;
 					default:
 						set_lemaction(lemmings+i,LEMACTION_OHNO);
-						// TODO: play sound: Oh no!
+						// play sound: Oh no!
+						play_sound(0x05);
 						break;
 				}
 				continue;
@@ -593,7 +596,8 @@ int lemming_build(struct Lemming* lem, struct Level* level, struct Image* masks[
 	}
 	lem->frame_offset = (lem->frame_offset + 1)%16;
 	if (lem->frame_offset == 10 && lem->bricks_left <= 3) {
-		// TODO: play sound: builder warning
+		// play sound: builder warning
+		play_sound(0x12);
 	}
 	if (lem->frame_offset == 9 ||
 			(lem->frame_offset == 10 && lem->bricks_left == 9)) {
@@ -742,7 +746,8 @@ int lemming_ohno(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	lem->frame_offset++;
 	if (lem->frame_offset == 16) {
 		set_lemaction(lem,LEMACTION_EXPLODE);
-		// TODO: play sound: explosion
+		// play sound: explosion
+		play_sound(0x0C);
 		return 0;
 	}
 	int i;
@@ -793,7 +798,8 @@ int lemming_dig(struct Lemming* lem, struct Level* level, struct Image* masks[23
             return 1;
         }
         if (read_object_map(level,lem->x, lem->y) == OBJECT_STEEL) {
-            // TODO: play sound effect: hitting steel
+            // play sound effect: hitting steel
+            play_sound(0x0A);
             set_lemaction(lem,LEMACTION_WALK);
         }
         return 1;
@@ -844,7 +850,8 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 				(below == OBJECT_ONEWAY_LEFT && lem->look_right) ||
 				(below == OBJECT_ONEWAY_RIGHT && (ENABLE_MINING_ONEWAY_BUG || !lem->look_right))) {
 			if (below == OBJECT_STEEL) {
-				// TODO: play sound: hit steel
+				// play sound: hit steel
+				play_sound(0x0A);
 			}
 			lem->look_right = !lem->look_right;
 			set_lemaction(lem,LEMACTION_WALK);
@@ -890,7 +897,8 @@ int lemming_bash(struct Lemming* lem, struct Level* level, struct Image* masks[2
 				(in_front == OBJECT_ONEWAY_LEFT && lem->look_right) ||
 				(in_front == OBJECT_ONEWAY_RIGHT && !lem->look_right)) {
 			if (in_front == OBJECT_STEEL) {
-				// TODO: play sound: hit steel
+				// play sound: hit steel
+				play_sound(0x0A);
 			}
 			lem->look_right = !lem->look_right;
 			set_lemaction(lem,LEMACTION_WALK);
@@ -935,7 +943,8 @@ void switch_action_dummy(struct Lemming* lem) {
 
 void lemming_start_splatter(struct Lemming* lem) {
 	lem->timer = 0;
-	// TODO: play sound: splatter
+	// play sound: splatter
+	play_sound(0x08);
 }
 void lemming_start_fall(struct Lemming* lem) {
 	lem->fall_distance = 3;
@@ -968,7 +977,8 @@ void process_interactive_objects(struct Lemming* lem, struct Level* level) {
 		case OBJECT_EXIT:
 			if (lem->current_action != LEMACTION_FALL) {
 				set_lemaction(lem, LEMACTION_EXIT);
-				// TODO: play sound: yippieh
+				// play sound: yippieh
+				play_sound(0x10);
 			}
 			break;
 		case OBJECT_FORCE_LEFT:
@@ -990,13 +1000,15 @@ void process_interactive_objects(struct Lemming* lem, struct Level* level) {
 		case OBJECT_WATER:
 			if (lem->current_action != LEMACTION_DROWN) {
 				set_lemaction(lem, LEMACTION_DROWN);
-				// TODO: play sound: drowning
+				// play sound: drowning
+				play_sound(0x11);
 			}
 			break;
 		case OBJECT_FIRE:
 			if (lem->current_action != LEMACTION_FRY) {
 				set_lemaction(lem, LEMACTION_FRY);
-				// TODO: play sound: fried
+				// play sound: fried
+				play_sound(0x0D);
 			}
 			break;
 	}
@@ -1105,7 +1117,8 @@ u8 assign_skill(u8 skill, struct Lemming* lem1, struct Lemming* lem2, struct Lev
 		}
 		u8 success = (*lemming_assign[skill])(lem1,lem2,level);
 		if (success) {
-			// TODO: play assignment sound
+			// play assignment sound
+			play_sound(0x04);
 		}
 		return success;
 	}
@@ -1250,7 +1263,8 @@ int assign_mine(struct Lemming* lem1, struct Lemming* lem2, struct Level* level)
 		return 0;
 	}
 	if (lem->object_in_front == OBJECT_STEEL) {
-		// TODO: play sound effect: hit steel
+		// play sound effect: hit steel
+		play_sound(0x0A);
 		return 0;
 	}
 	if (lem->object_below == OBJECT_STEEL ||
@@ -1327,7 +1341,8 @@ int assign_bash(struct Lemming* lem1, struct Lemming* lem2, struct Level* level)
 			(lem->object_in_front == OBJECT_ONEWAY_LEFT && lem->look_right) ||
 			(lem->object_in_front == OBJECT_ONEWAY_RIGHT && !lem->look_right)) {
 		if (lem->object_in_front == OBJECT_STEEL) {
-			// TODO: play sound effect: hit steel
+			// play sound effect: hit steel
+			play_sound(0x0A);
 		}
 		return 0;
 	}

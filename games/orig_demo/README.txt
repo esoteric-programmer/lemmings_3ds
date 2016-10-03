@@ -1,4 +1,5 @@
 Copy these files from original DOS Lemmings Demo here:
+ADLIB.DAT
 GROUND0O.DAT
 GROUND3O.DAT
 LEVEL000.DAT

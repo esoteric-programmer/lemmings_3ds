@@ -1,4 +1,5 @@
 Copy these files from Holiday Lemmings 1994 here:
+ADLIB.DAT
 GROUND1O.DAT
 GROUND2O.DAT
 LEVEL000.DAT

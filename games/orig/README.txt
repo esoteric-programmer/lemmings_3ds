@@ -1,4 +1,5 @@
 Copy these files from original DOS Lemmings here:
+ADLIB.DAT
 GROUND0O.DAT
 GROUND1O.DAT
 GROUND2O.DAT

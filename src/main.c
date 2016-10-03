@@ -18,6 +18,8 @@
 #include "gamespecific.h"
 #include "savegame.h"
 #include "ingame.h"
+#include "audio.h"
+#include "adlib.dat.h"
 
 #define MENU_ERROR                              0
 #define MENU_ACTION_EXIT                        1
@@ -29,6 +31,7 @@
 #define RESULT_ACTION_CANCEL                    7
 
 const char* PATH_ROOT = LEMMINGS_DIR;
+
 
 // TODO:
 // make xmas91 and xmas92 distinguishable in main menu (maybe add info to top screen)
@@ -162,12 +165,12 @@ void select_level(u8 game, struct RGB_Image* im_bottom, struct MainMenuData* men
 
 
 // draw main menu into im_bottom and texture_bot_screen.
-int draw_main_menu(u8 game, u8 difficulty, struct MainMenuData* menu_data, struct RGB_Image* im_bottom, sf2d_texture** texture_bot_screen, int only_redraw_difficulty) {
+int draw_main_menu(u8 game, u8 difficulty, struct MainMenuData* menu_data, struct RGB_Image* im_bottom, sf2d_texture** texture_bot_screen, int only_redraw_difficulty, int only_redraw_music) {
 	if (*texture_bot_screen) {
 		sf2d_free_texture(*texture_bot_screen);
 		*texture_bot_screen = 0;
 	}
-	if (!only_redraw_difficulty) {
+	if (!only_redraw_difficulty && !only_redraw_music) {
 		tile_menu_background(im_bottom, menu_data);
 
 		draw(im_bottom,menu_data->palette,menu_data->static_pictures[2]->data,27,40,menu_data->static_pictures[2]->width,menu_data->static_pictures[2]->height);
@@ -185,6 +188,15 @@ int draw_main_menu(u8 game, u8 difficulty, struct MainMenuData* menu_data, struc
 			]->width,menu_data->static_pictures[
 				10+import[game].num_of_difficulty_graphics-difficulty
 			]->height); // x-position: 33; y-position: 25
+	}
+	
+	if (!only_redraw_difficulty) {
+		draw(im_bottom,menu_data->palette,menu_data->static_pictures[4]->data,27,140,menu_data->static_pictures[4]->width,menu_data->static_pictures[4]->height);
+		if (audio_active == AUDIO_ENABLED) {
+			draw(im_bottom,menu_data->palette,menu_data->static_pictures[8]->data,27+27,140+26,menu_data->static_pictures[8]->width,menu_data->static_pictures[8]->height);
+		}else if (audio_active == AUDIO_ONLY_FX) {
+			draw(im_bottom,menu_data->palette,menu_data->static_pictures[9]->data,27+27,140+26,menu_data->static_pictures[9]->width,menu_data->static_pictures[9]->height);
+		}
 	}
 
 	*texture_bot_screen = sf2d_create_texture(im_bottom->width, im_bottom->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
@@ -284,7 +296,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 
 	if (!draw_main_menu(*game,
 			*lvl/import[*game].num_of_level_per_difficulty,
-			menu_data,im_bottom,&texture_bot_screen, 0)) {
+			menu_data,im_bottom,&texture_bot_screen, 0,0)) {
 		if (texture_bot_screen) {
 			sf2d_free_texture(texture_bot_screen);
 			texture_bot_screen = 0;
@@ -297,6 +309,8 @@ int main_menu(u8 games[], u8* game, int* lvl,
 	u32 kDown;
 	u32 kHeld;
 	touchPosition stylus;
+
+
 
 	while (aptMainLoop()) {
 
@@ -318,6 +332,40 @@ int main_menu(u8 games[], u8* game, int* lvl,
 				}
 			}else if (stylus.py >= 140 && stylus.py < 140+61) {
 				// touched at bottom row
+				if (stylus.px >= 27 && stylus.px < 27+120) {
+					// touhed at left lemming (audio)
+					u8 update = 0;
+					switch (audio_active) {
+						case AUDIO_DISABLED:
+							audio_active = AUDIO_ONLY_FX;
+							update = 1;
+							break;
+						case AUDIO_ONLY_FX:
+							audio_active = AUDIO_ENABLED;
+							update = 1;
+							break;
+						case AUDIO_ENABLED:
+							audio_active = AUDIO_DISABLED;
+							update = 1;
+							break;
+						default:
+							break;
+					}
+					if (update) {
+						if (!draw_main_menu(*game,
+								*lvl/import[*game].num_of_level_per_difficulty,
+								menu_data,im_bottom,&texture_bot_screen,0,1)) {
+							if (texture_bot_screen) {
+								sf2d_free_texture(texture_bot_screen);
+								texture_bot_screen = 0;
+							}
+							free(im_bottom);
+							im_bottom = 0;
+							return MENU_ERROR; // error
+						}
+					}
+					
+				}
 				if (stylus.px >= 174 && stylus.px < 174+120) {
 					// touhed at right lemming (difficulty)
 					if (stylus.py < 140+35) {
@@ -370,7 +418,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
-						menu_data,im_bottom,&texture_bot_screen,1)) {
+						menu_data,im_bottom,&texture_bot_screen,1,0)) {
 					if (texture_bot_screen) {
 						sf2d_free_texture(texture_bot_screen);
 						texture_bot_screen = 0;
@@ -404,7 +452,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 						}
 						if (!draw_main_menu(*game,
 								*lvl/import[*game].num_of_level_per_difficulty,
-								menu_data,im_bottom,&texture_bot_screen,0)) {
+								menu_data,im_bottom,&texture_bot_screen,0,0)) {
 							if (texture_bot_screen) {
 								sf2d_free_texture(texture_bot_screen);
 								texture_bot_screen = 0;
@@ -429,7 +477,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
-						menu_data,im_bottom,&texture_bot_screen,1)) {
+						menu_data,im_bottom,&texture_bot_screen,1,0)) {
 					if (texture_bot_screen) {
 						sf2d_free_texture(texture_bot_screen);
 						texture_bot_screen = 0;
@@ -464,7 +512,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 						}
 						if (!draw_main_menu(*game,
 								*lvl/import[*game].num_of_level_per_difficulty,
-								menu_data,im_bottom,&texture_bot_screen,0)) {
+								menu_data,im_bottom,&texture_bot_screen,0,0)) {
 							if (texture_bot_screen) {
 								sf2d_free_texture(texture_bot_screen);
 								texture_bot_screen = 0;
@@ -978,7 +1026,8 @@ int main() {
 		gfxExit();
 		return 1; // error
 	}
-	
+
+
 	// TODO: read configuration file
 	// LEFTHANDED.DAT hack; TODO: remove once configuration file is implemented
 	char lh_fn[64];
@@ -1040,6 +1089,7 @@ int main() {
 	sf2d_texture* texture_logo = 0;
 	sf2d_texture* texture_top_screen = 0;
 
+	init_audio();
 	if (!read_gamespecific_data(game, menu_data, main_data, im_top, &texture_top_screen, logo_scaled, &texture_logo)) {
 		die(1);
 		return 1; // error
@@ -1130,6 +1180,7 @@ int main() {
 		}
 	}
 
+	deinit_audio();
 	sf2d_fini();
 	return 0;
 }
