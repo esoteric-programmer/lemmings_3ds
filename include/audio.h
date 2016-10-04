@@ -11,7 +11,7 @@ extern u8 cur_song;
 extern u8 audio_active;
 
 void init_audio();
-void start_audio();
+int read_adlib_dat(u8 game);
 void start_music(u8 track);
 void stop_audio();
 void play_sound(u8 sound);

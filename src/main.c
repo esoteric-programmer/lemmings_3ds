@@ -19,7 +19,6 @@
 #include "savegame.h"
 #include "ingame.h"
 #include "audio.h"
-#include "adlib.dat.h"
 
 #define MENU_ERROR                              0
 #define MENU_ACTION_EXIT                        1
@@ -62,7 +61,12 @@ void die(int sf2d_initialied) {
 		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
 		sf2d_end_frame();
 		sf2d_swapbuffers();
-		aptMainLoop();
+		if (!aptMainLoop()) {
+			deinit_audio();
+			sf2d_fini();
+			exit(1);
+		}
+		deinit_audio();
 		sf2d_fini();
 		// init console to display message
 		gfxInitDefault();
@@ -333,38 +337,8 @@ int main_menu(u8 games[], u8* game, int* lvl,
 			}else if (stylus.py >= 140 && stylus.py < 140+61) {
 				// touched at bottom row
 				if (stylus.px >= 27 && stylus.px < 27+120) {
-					// touhed at left lemming (audio)
-					u8 update = 0;
-					switch (audio_active) {
-						case AUDIO_DISABLED:
-							audio_active = AUDIO_ONLY_FX;
-							update = 1;
-							break;
-						case AUDIO_ONLY_FX:
-							audio_active = AUDIO_ENABLED;
-							update = 1;
-							break;
-						case AUDIO_ENABLED:
-							audio_active = AUDIO_DISABLED;
-							update = 1;
-							break;
-						default:
-							break;
-					}
-					if (update) {
-						if (!draw_main_menu(*game,
-								*lvl/import[*game].num_of_level_per_difficulty,
-								menu_data,im_bottom,&texture_bot_screen,0,1)) {
-							if (texture_bot_screen) {
-								sf2d_free_texture(texture_bot_screen);
-								texture_bot_screen = 0;
-							}
-							free(im_bottom);
-							im_bottom = 0;
-							return MENU_ERROR; // error
-						}
-					}
-					
+					// touched at left lemming (audio)
+					kDown |= KEY_Y;					
 				}
 				if (stylus.px >= 174 && stylus.px < 174+120) {
 					// touhed at right lemming (difficulty)
@@ -405,6 +379,39 @@ int main_menu(u8 games[], u8* game, int* lvl,
 			free(im_bottom);
 			im_bottom = 0;
 			return MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER;
+		}
+		
+		if (kDown & KEY_Y) {
+			u8 update = 0;
+			switch (audio_active) {
+				case AUDIO_DISABLED:
+					audio_active = AUDIO_ONLY_FX;
+					update = 1;
+					break;
+				case AUDIO_ONLY_FX:
+					audio_active = AUDIO_ENABLED;
+					update = 1;
+					break;
+				case AUDIO_ENABLED:
+					audio_active = AUDIO_DISABLED;
+					update = 1;
+					break;
+				default:
+					break;
+			}
+			if (update) {
+				if (!draw_main_menu(*game,
+						*lvl/import[*game].num_of_level_per_difficulty,
+						menu_data,im_bottom,&texture_bot_screen,0,1)) {
+					if (texture_bot_screen) {
+						sf2d_free_texture(texture_bot_screen);
+						texture_bot_screen = 0;
+					}
+					free(im_bottom);
+					im_bottom = 0;
+					return MENU_ERROR; // error
+				}
+			}
 		}
 
 		if (kDown & KEY_UP) {
@@ -971,7 +978,7 @@ int main() {
 	char* level_names = (char*)malloc(33*overall_num_of_levels);
 	if (!level_names) {
 		die(0);
-		return 1; // error
+		return 0; // error
 	}
 	u16 offset = 0;
 	for (i=0;i<LEMMING_GAMES;i++) {
@@ -1024,7 +1031,7 @@ int main() {
 			}
 		}
 		gfxExit();
-		return 1; // error
+		return 0; // error
 	}
 
 
@@ -1045,8 +1052,7 @@ int main() {
 	// read save file
 	u8* progress = (u8*)malloc(overall_num_of_difficulties);
 	if (!progress) {
-		die(0);
-		return 1; // error
+		die(0); // error
 	}
 	read_savegame(progress);
 
@@ -1055,31 +1061,27 @@ int main() {
 
 	struct MainMenuData* menu_data = (struct MainMenuData*)malloc(sizeof(struct MainMenuData));
 	if (!menu_data) {
-		die(0);
-		return 1; // error
+		die(0); // error
 	}
 	memset(menu_data,0,sizeof(struct MainMenuData));
 
 	struct RGB_Image* logo_scaled = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*380*57);
 	if (!logo_scaled) {
-		die(0);
-		return 1; // error
+		die(0); // error
 	}
 	logo_scaled->width = 380;
 	logo_scaled->height = 57;
 
 	struct RGB_Image* im_top = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*400*320);
 	if (!im_top) {
-		die(0);
-		return 1; // error
+		die(0); // error
 	}
 	im_top->width = 400;
 	im_top->height = 320;
 
 	struct MainInGameData* main_data = (struct MainInGameData*)malloc(sizeof(struct MainInGameData));
 	if (!main_data) {
-		die(0);
-		return 1; // error
+		die(0); // error
 	}
 	memset(main_data,0,sizeof(struct MainInGameData));
 
@@ -1091,8 +1093,7 @@ int main() {
 
 	init_audio();
 	if (!read_gamespecific_data(game, menu_data, main_data, im_top, &texture_top_screen, logo_scaled, &texture_logo)) {
-		die(1);
-		return 1; // error
+		die(1); // error
 	}
 
 	// begin with first level
@@ -1119,8 +1120,7 @@ int main() {
 					break;
 				case MENU_ERROR:
 				default:
-					die(1);
-					return 1; // error
+					die(1); // error
 			}
 		}
 
@@ -1129,8 +1129,7 @@ int main() {
 		}
 
 		if (menu_selection == MENU_ERROR) {
-			die(1);
-			return 1; // error
+			die(1); // error
 		}
 
 

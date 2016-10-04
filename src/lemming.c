@@ -993,7 +993,8 @@ void process_interactive_objects(struct Lemming* lem, struct Level* level) {
 			if (trap->current_frame == 0) {
 				trap->current_frame++;
 				lem->removed = 1;
-				// TODO: play sound effect depending on trap->type
+				// play sound effect depending on trap->type
+				play_sound(level->o[trap->type]->sound);
 			}
 			break;
 		}

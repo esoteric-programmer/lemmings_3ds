@@ -5,8 +5,7 @@
 #include "decode.h"
 #include "gamespecific.h"
 #include "settings.h"
-#include "adlib.dat.h"
-#include "audio.h" // cur_song variable
+#include "audio.h"
 
 const struct {
 	int w;
@@ -381,8 +380,6 @@ const struct {
 	{8, 8}
 };
 
-struct Data* adlib = 0;
-
 int read_main_ingame(u8 game, struct MainInGameData* data){
 	if (!data) {
 		return 0;
@@ -488,22 +485,8 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 	}
 	free(dec);
 	fclose(main_dat);
-	
-	
-	// additionally: read ADLIB
-	if (adlib) {
-		free_adlib_data();
-		free(adlib);
-	}
-	char adlib_fn[64];
-	sprintf(adlib_fn,"%s/%s/ADLIB.DAT", PATH_ROOT, import[game].path);
-	FILE* adlib_file = fopen(adlib_fn,"rb");
-	if (!adlib_file) {
-		return 1; // success (of import main)
-	}
-	struct Data* adlib = decompress_cur_section(adlib_file);
-	load_adlib_data(adlib);
-	cur_song = 0;
+
+	read_adlib_dat(game);
 
 	return 1; // success
 }

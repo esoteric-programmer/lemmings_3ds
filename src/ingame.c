@@ -168,9 +168,8 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	touchPosition stylus;
 	circlePosition circle_pos;
 
-	start_audio();
-
-	while (aptMainLoop()) {
+	int apt_result;
+	while ((apt_result = aptMainLoop())) {
 		update_audio();
 		hidScanInput();
 		kDown = hidKeysDown();
@@ -712,6 +711,9 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		}
 	}
 	stop_audio();
+	if (!apt_result) {
+		return result;
+	}
 
 	if ((u16)level->info.lemmings > 0) {
 		result.percentage_rescued = ((u16)level->rescued)*100 / (u16)level->info.lemmings;

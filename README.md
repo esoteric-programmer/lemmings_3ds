@@ -14,5 +14,3 @@ These files are not included (and will never be included),
 because they are protected by copyright law.
 
 For game control, see CONTROL.txt.
-
-Sound is not supported yet. Sorry for this limitation.
