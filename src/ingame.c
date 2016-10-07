@@ -45,7 +45,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		struct MainInGameData* main_data,
 		sf2d_texture* texture_top_screen, sf2d_texture* texture_logo) {
 
-	struct LevelResult result = { 0, 0xFF, 0 };
+	struct LevelResult result = { 0, 0xFF, 0, 255 };
 
 	struct Level* level = (struct Level*)malloc(sizeof(struct Level));
 	if (!level){
@@ -64,7 +64,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 
 	struct RGB_Image* im = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*200*SCREEN_WIDTH);
 	if (!im) {
-		return result;
+		return result; // error
 	}
 	im->width = SCREEN_WIDTH;
 	im->height = 200;
@@ -181,7 +181,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 
 		u32 action = get_action(kDown, kHeld);
 		if (action & ACTION_QUIT_GAME) {
-			break; // QUIT GAME
+			break; // TODO: QUIT GAME
 		}
 		if (action & ACTION_MOVE_CURSOR_RIGHT) {
 			state.cursor.x += 2;
@@ -712,20 +712,21 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	}
 	stop_audio();
 	if (!apt_result) {
-		return result;
+		return result; // error
 	}
 
+	result.lvl = lvl;
 	if ((u16)level->info.lemmings > 0) {
 		result.percentage_rescued = ((u16)level->rescued)*100 / (u16)level->info.lemmings;
 	}else{
 		result.percentage_rescued = 0;
 	}
 	result.percentage_needed = level->info.percentage_needed;
-	
+
 	if (result.percentage_rescued >= result.percentage_needed) {
 		cur_song = (cur_song + 1) % import[game].num_of_songs;
 	}
-	
+
 	if (!state.frames_left) {
 		result.timeout = 1;
 	}else{

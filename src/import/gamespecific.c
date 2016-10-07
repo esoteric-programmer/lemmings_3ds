@@ -24,80 +24,148 @@ const char* difficulties_holi93[] = {"Flurry", "Blitz"};
 const char* difficulties_holi94[] = {"Frost", "Hail", "Flurry", "Blitz"};
 const char* difficulties_holi_demo[] = {"Demo"};
 
-const u8 orig_song_order[] = {6, 7, 8, 10, 11, 4, 12, 13, 14, 15, 5, 16, 17, 18, 19, 20, 21};
+#define orig_victory_message \
+		"  Congratulations!  \n"\
+		"Not many people will\n"\
+		"complete the Mayhem \n"\
+		"  levels, you are   \n"\
+		" definitely one of  \n"\
+		"     the elite.     \n"
 
-const struct SpecialSongs special_songs[] = {{21,2}, {43,9}, {74,1}, {111,3} };
+#define ohno_victory_message \
+		"  Congratulations!  \n"\
+		"  You are truly an  \n"\
+		" Excellent Lemmings \n"\
+		"       player       \n"
+
+#define demo_victory_message \
+		"  CONGRATULATIONS!  \n"\
+		" You have completed \n"\
+		"all the levels, now \n"\
+		" back to the start. \n"
+
+#define holi94_victory_message \
+		"  Congratulations!  \n"\
+		" You have completed \n"\
+		"   all of the new   \n"\
+		"1994 Holiday Levels.\n"\
+		"   Now, enjoy the   \n"\
+		" bonus levels from  \n"\
+		"the 1993 edition of \n"\
+		" Holiday Lemmings!  \n"
+
+const struct SpecialMessages orig_messages =
+		{119, 6, orig_victory_message};
+
+const struct SpecialMessages ohno_messages =
+		{99, 4, ohno_victory_message};
+
+const struct SpecialMessages demo_messages =
+		{3, 4, demo_victory_message};
+
+const struct SpecialMessages ohno_demo_messages =
+		{4, 4, demo_victory_message};
+
+const struct SpecialMessages holi93_messages =
+		{31, 4, demo_victory_message};
+
+const struct SpecialMessages holi94_messages[] =
+		{
+			{31, 8, holi94_victory_message},
+			{63, 4, demo_victory_message},
+		};
+
+const u8 orig_song_order[] =
+		{6, 7, 8, 10, 11, 4, 12, 13, 14, 15, 5, 16, 17, 18, 19, 20, 21};
+
+const struct SpecialSongs special_songs[] =
+		{
+			{21,2},
+			{43,9},
+			{74,1},
+			{111,3}
+		};
 
 const struct GameSpecific import[LEMMING_GAMES] = {
 		// original Lemmings DEMO
 		{
 			1, 4, 1, PATH_DATA_DEMO, "LEVEL",
-			difficulties_classic,  ascending_numbers_0_to_63, msgs_orig, 4, // TODO: level positions?
+			difficulties_classic,  ascending_numbers_0_to_63, msgs_orig, 4,
 			main_palette, ingame_palette, highperf_palette,
-			17, orig_song_order, 0, 0
+			17, orig_song_order, 0, 0,
+			1, &demo_messages
 		},
 		// original Lemmings
 		{
 			1, 4, 30, PATH_DATA_ORIGINAL, "LEVEL",
 			difficulties_classic,  position_of_classic_level, msgs_orig, 4,
 			main_palette, ingame_palette, highperf_palette,
-			17, orig_song_order, 4, special_songs
+			17, orig_song_order, 4, special_songs,
+			1, &orig_messages
 		},
 		// Oh No! More Lemmings DEMO
 		{
 			0, 5, 1, PATH_DATA_OHNODEMO, "DLVEL",
 			difficulties_ohnomore, ascending_numbers_0_to_63, msgs_ohno, 5,
 			main_palette, ingame_palette, highperf_palette,
-			6, ascending_numbers_0_to_63+1, 0, 0
+			6, ascending_numbers_0_to_63+1, 0, 0,
+			1, &ohno_demo_messages
 		},
 		// Oh No! More Lemmings
 		{
 			0, 5, 20, PATH_DATA_OHNOMORE, "DLVEL",
 			difficulties_ohnomore, position_of_ohnomore_level, msgs_ohno, 5,
 			main_palette, ingame_palette, highperf_palette,
-			6, ascending_numbers_0_to_63+1, 0, 0
+			6, ascending_numbers_0_to_63+1, 0, 0,
+			1, &ohno_messages
 		},
 		// Xmas Lemmings 1991
 		{
 			0, 1,  4, PATH_DATA_XMAS91, "LEVEL",
 			difficulties_xmas91, ascending_numbers_0_to_63, msgs_ohno, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
-			3, ascending_numbers_0_to_63+1, 0, 0
+			3, ascending_numbers_0_to_63+1, 0, 0,
+			1, &demo_messages
 		},
 		// Xmas Lemmings 1992
 		{
 			0, 1,  4, PATH_DATA_XMAS92, "LEVEL",
 			difficulties_xmas92, ascending_numbers_0_to_63, msgs_ohno, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
-			3, ascending_numbers_0_to_63+1, 0, 0
+			3, ascending_numbers_0_to_63+1, 0, 0,
+			1, &demo_messages
 		},
 		// Holiday Lemmings 1993 DEMO
 		{
 			0, 1, 4, PATH_DATA_HOLI93DEMO, "LEVEL",
 			difficulties_holi_demo, ascending_numbers_0_to_63, msgs_holi93, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
-			3, ascending_numbers_0_to_63+1, 0, 0
+			3, ascending_numbers_0_to_63+1, 0, 0,
+			1, &demo_messages
 		},
 		// Holiday Lemmings 1993
 		{
 			0, 2, 16, PATH_DATA_HOLIDAY93, "LEVEL",
 			difficulties_holi93, ascending_numbers_0_to_63, msgs_holi93, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
-			3, ascending_numbers_0_to_63+1, 0, 0
+			3, ascending_numbers_0_to_63+1, 0, 0,
+			1, &holi93_messages
 		},
 		// Holiday Lemmings 1994 DEMO
 		{
 			0, 1, 4, PATH_DATA_HOLI94DEMO, "LEVEL",
 			difficulties_holi_demo, ascending_numbers_0_to_63, msgs_holi94, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
-			6, ascending_numbers_0_to_63+1, 0, 0
+			6, ascending_numbers_0_to_63+1, 0, 0,
+			1, &demo_messages
 		},
 		// Holiday Lemmings 1994
 		{
 			0, 4, 16, PATH_DATA_HOLIDAY94, "LEVEL",
 			difficulties_holi94, ascending_numbers_0_to_63, msgs_holi94, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
-			6, ascending_numbers_0_to_63+1, 0, 0
+			6, ascending_numbers_0_to_63+1, 0, 0,
+			2, holi94_messages
 		}
 };
 
@@ -133,7 +201,7 @@ const unsigned char position_of_classic_level[] = {
 		LEVEL(6,1,1),
 		LEVEL(6,5,1),
 		LEVEL(8,2,1),
-		
+
 		/* Tricky */
 		LEVEL(0,0,0),
 		LEVEL(1,6,1),
@@ -228,14 +296,14 @@ const unsigned char position_of_classic_level[] = {
 		LEVEL(8,5,0),
 		LEVEL(8,6,0),
 		LEVEL(8,7,0),
-		LEVEL(9,0,0)	
+		LEVEL(9,0,0)
 };
 
 const unsigned char position_of_ohnomore_level[] = {
 		/* Tame */
 		80, 81, 82, 83, 84, 85, 86, 87, 88, 89,
 		90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
-		
+
 		/* Crazy */
 		 1,  8, 12, 16, 17, 24, 25, 29, 41, 44,
 		47, 55,  4, 13, 14, 22, 28, 31, 35, 52,
@@ -247,10 +315,10 @@ const unsigned char position_of_ohnomore_level[] = {
 		/* Wicked */
 		78, 38, 72, 73,  5, 76, 49,  6, 10, 71,
 		33, 45, 48, 50, 63, 65, 79, 75, 64, 62,
-		
+
 		/* Havoc */
 		60, 43, 26, 23, 20, 19, 42, 15,  9,  3,
-		 2,  0, 37, 69, 11, 66, 67, 46, 68, 77	
+		 2,  0, 37, 69, 11, 66, 67, 46, 68, 77
 };
 
 const unsigned char ascending_numbers_0_to_63[] = {

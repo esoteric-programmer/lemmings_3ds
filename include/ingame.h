@@ -7,6 +7,7 @@
 #include "draw.h"
 
 struct LevelResult {
+	u8 lvl;
 	u8 percentage_rescued;
 	u8 percentage_needed;
 	u8 timeout;

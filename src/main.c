@@ -193,7 +193,7 @@ int draw_main_menu(u8 game, u8 difficulty, struct MainMenuData* menu_data, struc
 				10+import[game].num_of_difficulty_graphics-difficulty
 			]->height); // x-position: 33; y-position: 25
 	}
-	
+
 	if (!only_redraw_difficulty) {
 		draw(im_bottom,menu_data->palette,menu_data->static_pictures[4]->data,27,140,menu_data->static_pictures[4]->width,menu_data->static_pictures[4]->height);
 		if (audio_active == AUDIO_ENABLED) {
@@ -338,7 +338,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 				// touched at bottom row
 				if (stylus.px >= 27 && stylus.px < 27+120) {
 					// touched at left lemming (audio)
-					kDown |= KEY_Y;					
+					kDown |= KEY_Y;
 				}
 				if (stylus.px >= 174 && stylus.px < 174+120) {
 					// touhed at right lemming (difficulty)
@@ -380,7 +380,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 			im_bottom = 0;
 			return MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER;
 		}
-		
+
 		if (kDown & KEY_Y) {
 			u8 update = 0;
 			switch (audio_active) {
@@ -848,23 +848,52 @@ int show_result(u8 game, struct LevelResult result,
 	}else{
 		msg_id = 7;
 	}
+	// result message (like: "oh dear, not even one poor lemming")
+	const char* msg = import[game].messages[msg_id];
+	int msg_lines = 4;
 
+	// whole screen text (like "all lemmings accounted for. you rescued 0% oh dear...")
 	char message[20*(15+1)+1];
+
+	// find out whether a special message has to be shown
+	int i;
+	for (i=0;i<import[game].num_of_special_messages;i++) {
+		if (import[game].special_messages[i].level == result.lvl) {
+			// we need to show a special message
+			msg = import[game].special_messages[i].message;
+			msg_lines = import[game].special_messages[i].lines_of_message;
+			break;
+		}
+	}
+
 	sprintf(message,
-			"%s\n"
+			"%s%s"
 			"  You rescued %3u%%  \n"
 			"  You needed  %3u%%  \n"
-			"\n%s\n"
+			"%s%s%s"
 			"  Press A or touch  \n"
 			"%s"
 			"  Press B for menu  \n",
-			(result.timeout?"  Your time is up!   \n":"    All lemmings    \n   accounted for.   \n"),
+			(result.timeout?
+					"  Your time is up!   \n":
+					"    All lemmings    \n   accounted for.   \n"),
+			msg_lines<=4?"\n":"",
 			result.percentage_rescued,
-			result.percentage_needed<0?0:(result.percentage_needed>100?101:result.percentage_needed),
-			import[game].messages[msg_id],
-			(result.percentage_rescued >= result.percentage_needed?"   for next level   \n":"   to retry level   \n")
+			result.percentage_needed<0?
+					0:
+					(result.percentage_needed>100?
+							101:
+							result.percentage_needed),
+			msg_lines<=7?"\n":"",
+			msg,
+			msg_lines<=6?"\n":"",
+			(result.percentage_rescued >= result.percentage_needed?
+					"   for next level   \n":
+					"   to retry level   \n")
 	);
-	draw_menu_text(im_bottom,menu_data,0,result.timeout?16:8,message);
+	draw_menu_text(im_bottom,menu_data,0,
+		(result.timeout?8:0) + (msg_lines<=5?8:0),
+		message);
 
 	texture_bot_screen = sf2d_create_texture(im_bottom->width, im_bottom->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
 	if (!texture_bot_screen) {
@@ -1138,8 +1167,9 @@ int main() {
 			while(1) {
 				struct LevelResult lev_result = run_level(game, lvl, main_data,
 						texture_top_screen, texture_logo);
-				if (lev_result.percentage_needed > 100) {
+				if (lev_result.percentage_needed > 100 || lev_result.lvl != lvl) {
 					// an error occured
+					// error code may be coded in lev_result.lvl
 					die(1);
 					break;
 				}

@@ -1,3 +1,7 @@
+Version 0.3.1
+- Added sound effects of traps
+- Added congratulation messages for finishing all levels of a game
+
 Version 0.3
 - Added audio
 

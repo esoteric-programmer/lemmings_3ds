@@ -31,22 +31,28 @@ struct GameSpecific {
 	const u8 ABBA_order;
 	const u8 num_of_difficulties;
 	const u8 num_of_level_per_difficulty;
-	const char* path;
-	const char* level_dat_prefix;
-	const char* const* difficulties;
-	const unsigned char* level_position;
-	const char* const* messages;
+	const char* const path;
+	const char* const level_dat_prefix;
+	const char* const* const difficulties;
+	const unsigned char* const level_position;
+	const char* const* const messages;
 	const unsigned char num_of_difficulty_graphics;
-	const u32* main_palette;
-	const u32* ingame_palette;
-	const u32* highperf_palette;
+	const u32* const main_palette;
+	const u32* const ingame_palette;
+	const u32* const highperf_palette;
 	const u8 num_of_songs;
-	const u8* song_ids;
+	const u8* const song_ids;
 	const u8 num_special_songs;
 	const struct SpecialSongs{
-		u8 level;
-		u8 song;
-	}* special_songs;
+		const u8 level;
+		const u8 song;
+	}* const special_songs;
+	const u8 num_of_special_messages;
+	const struct SpecialMessages{
+		const u8 level;
+		const u8 lines_of_message;
+		const char* const message;
+	}* const special_messages;
 };
 extern const struct GameSpecific import[LEMMING_GAMES];
 
