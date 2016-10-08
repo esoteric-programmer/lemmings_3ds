@@ -103,7 +103,7 @@ struct Data* decompress_cur_section(FILE* input) {
 	}
 	s8* in_ptr = in->data + header.size_enc - 1;
 	s8 in_mask = 1;
-	
+
 	s8 checksum = 0;
 	u16 i;
 	for (i=0;i<in->size;i++) {
@@ -112,7 +112,7 @@ struct Data* decompress_cur_section(FILE* input) {
 	if (checksum != header.checksum) {
 		printf("Header checksum: %02X, Computed checksum: %02X\n",header.checksum,checksum);
 	}
-	
+
 	struct Data* data = (struct Data*)malloc(sizeof(struct Data) + header.size_dec);
 	if (data == 0) {
 		free(in);
@@ -250,8 +250,7 @@ struct Data* decompress_cur_section(FILE* input) {
 				return 0; // ERROR while decoding
 		}
 	}
-	
+
 	free(in);
 	return data;
 }
-

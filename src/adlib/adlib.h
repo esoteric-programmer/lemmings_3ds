@@ -43,7 +43,7 @@ struct Timer {
 	}
 	//Call update before making any further changes
 	void Update( double time ) {
-		if ( !enabled || !delay ) 
+		if ( !enabled || !delay )
 			return;
 		double deltaStart = time - start;
 		//Only set the overflow flag when not masked
@@ -59,7 +59,7 @@ struct Timer {
 		double delta = (time - start);
 		double rem = fmod( delta, delay );
 		double next = delay - rem;
-		start = time + next;		
+		start = time + next;
 	}
 	void Stop( ) {
 		enabled = false;
@@ -124,7 +124,7 @@ public:
 	unsigned long PortRead( unsigned long port, unsigned long iolen );
 	void Init();
 
-	Module(unsigned long sample_rate); // Section* configuration); 
+	Module(unsigned long sample_rate); // Section* configuration);
 	~Module();
 };
 

@@ -1,6 +1,6 @@
 /**
  * Incomplete 8086 CPU Emulator
- * 
+ *
  * Only instructions actual used in ADLIB.DAT of supported lemmings games
  * are implemented. So, many opcodes are not implemented.
  *
@@ -41,7 +41,7 @@ struct Registers {
 	u16 ds; // data segment
 	u16 ss; // stack segment
 	u16 es; // extra segment
-	
+
 	u16 ip; // instruction pointer
 	u16 sr; // status register (flags)
 } registers;
@@ -205,7 +205,7 @@ static inline void parse_mod_rm(void** other, u8 mod_rm, u8 width) {
 	u8 mod = mod_rm>>6;
 	u8 rm = mod_rm&0x7;
 	s16 displacement;
-	
+
 	switch (rm) {
 		case 0:
 			displacement = (s16)BX + (s16)SI;
@@ -452,7 +452,7 @@ int xor2(u8 direction, u8 width) {
 		IP++;
 	}
 	void* dest = &registers;
-	
+
 	_xor(dest,source,width);
 	return 1;
 }
@@ -498,7 +498,7 @@ int add1(u8 direction, u8 width) {
 	void* source;
 	// get operands
 	parse_mod_reg_rm(direction?&dest:&source, direction?&source:&dest, width);
-	add(dest,source,width);		
+	add(dest,source,width);
 	return 1;
 }
 

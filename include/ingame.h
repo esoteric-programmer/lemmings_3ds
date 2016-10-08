@@ -18,4 +18,8 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		struct MainInGameData* main_data,
 		sf2d_texture* texture_top_screen, sf2d_texture* texture_logo);
 
+int show_result(u8 game, struct LevelResult result,
+		struct MainMenuData* menu_data,
+		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen);
+
 #endif

@@ -8,4 +8,7 @@ void free_ingame_data_arrays(struct MainInGameData* data); // free memory pointe
 
 int read_main_menu(u8 game, struct MainMenuData* data);
 void free_menu_data_arrays(struct MainMenuData* data); // free memory pointed to by static_pictures
+
+int read_gamespecific_data(u8 game, struct MainMenuData* menu, struct MainInGameData* ingame);
+void clean_gamedata(struct MainMenuData* menu_data, struct MainInGameData* main_data);
 #endif

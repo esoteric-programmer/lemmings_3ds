@@ -391,7 +391,7 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 	if (!main_dat) {
 		return 0; // error
 	}
-	
+
 	struct Data* dec = decompress_cur_section(main_dat);
 	if (!dec) {
 		fclose(main_dat);
@@ -402,11 +402,11 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 		fclose(main_dat);
 		return 0; // error
 	}
-	
+
 	// temporary variables
 	char tmp[512];
 	//unsigned char img[1024];
-	
+
 	int i;
 	int frame;
 	int offset = 0;
@@ -430,9 +430,9 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 		offset += size;
 	}
 	free(dec);
-	
-	
-	
+
+
+
 	// read section 1
 	dec = decompress_cur_section(main_dat);
 	offset = 0;
@@ -456,9 +456,9 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 		offset += size;
 	}
 	free(dec);
-	
-	
-	
+
+
+
 	// read section 2
 	dec = decompress_cur_section(main_dat);
 	if (!dec) {
@@ -474,7 +474,6 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 		memcpy(tmp,dec->data+0x1900+8*i,8);
 		memset(tmp+8,0,8*3);
 		read_image(8*8, 0, tmp, data->skill_numbers+i*8*8);
-		
 	}
 	for (i=0;i<38;i++) {
 		memcpy(tmp,dec->data+0x19A0+48*i,48);
@@ -486,7 +485,7 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 	free(dec);
 	fclose(main_dat);
 
-	read_adlib_dat(game);
+	import_audio(game);
 
 	return 1; // success
 }
@@ -613,11 +612,11 @@ int read_main_menu(u8 game, struct MainMenuData* data) {
 	for (i=0;i<7*8;i++) {
 		read_image(32*12, 0, dec->data+192*i, data->blinking_eyes+i*32*12);
 	}
-	
+
 	for (i=0;i<2*16;i++) {
 		read_image(48*16, 0, dec->data+0x2A00+384*i, data->scroller+i*48*16);
 	}
-	
+
 	// read reel and difficulty signs
 	offset = 0x5A00;
 	for (i=10;i<11+import[game].num_of_difficulty_graphics;i++) {
@@ -673,3 +672,29 @@ void free_menu_data_arrays(struct MainMenuData* data) {
 	}
 }
 
+// (re)initialize gamespecific data (top screen, palettes, menu screen, toolbar, ...)
+int read_gamespecific_data(u8 game, struct MainMenuData* menu, struct MainInGameData* ingame) {
+	clean_gamedata(menu, ingame);
+	if (!read_main_menu(game, menu)) {
+		memset(menu,0,sizeof(struct MainMenuData));
+		return 0;
+	}
+	if (!read_main_ingame(game, ingame)) {
+		free_menu_data_arrays(menu);
+		memset(ingame,0,sizeof(struct MainInGameData));
+		memset(menu,0,sizeof(struct MainMenuData));
+		return 0;
+	}
+	return 1;
+}
+
+void clean_gamedata(struct MainMenuData* menu_data, struct MainInGameData* main_data) {
+	if (main_data) {
+		free_ingame_data_arrays(main_data);
+		memset(main_data,0,sizeof(struct MainInGameData));
+	}
+	if (menu_data) {
+		free_menu_data_arrays(menu_data);
+		memset(menu_data,0,sizeof(struct MainMenuData));
+	}
+}

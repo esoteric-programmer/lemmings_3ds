@@ -10,6 +10,7 @@
 #include "import_level.h"
 #include "cursor.h"
 #include "audio.h"
+#include "menu.h"
 
 #define BOTTOM_SCREEN_Y_OFFSET 32
 
@@ -627,15 +628,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 						state.entrances_open = 1;
 					}else if (_new == 55) {
 						// start background music
-						int i;
-						u8 song = import[game].song_ids[cur_song];
-						for (i=0;i<import[game].num_special_songs;i++) {
-							if (import[game].special_songs[i].level == lvl) {
-								song = import[game].special_songs[i].song;
-								break;
-							}
-						}
-						start_music(song);
+						play_music(game, lvl);
 					}
 				}
 			}
@@ -724,7 +717,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	result.percentage_needed = level->info.percentage_needed;
 
 	if (result.percentage_rescued >= result.percentage_needed) {
-		cur_song = (cur_song + 1) % import[game].num_of_songs;
+		next_music(game);
 	}
 
 	if (!state.frames_left) {
@@ -743,4 +736,149 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	sf2d_free_texture(cursor_active);
 	free_objects(level->o);
 	return result;
+}
+
+int show_result(u8 game, struct LevelResult result,
+		struct MainMenuData* menu_data,
+		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen) {
+
+	sf2d_texture* texture_bot_screen = 0;
+	struct RGB_Image* im_bottom = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*320*240);
+	if (!im_bottom) {
+		return MENU_ERROR; // error
+	}
+	im_bottom->width = 320;
+	im_bottom->height = 240;
+
+	tile_menu_background(im_bottom, menu_data);
+
+	int msg_id;
+	if (result.percentage_rescued >= 100) {
+		msg_id = 0;
+	}else if (result.percentage_rescued <= 0) {
+		msg_id = 8;
+	}else if (result.percentage_rescued > result.percentage_needed+20) {
+		msg_id = 1;
+	}else if (result.percentage_rescued > result.percentage_needed) {
+		msg_id = 2;
+	}else if (result.percentage_rescued == result.percentage_needed) {
+		msg_id = 3;
+	}else if (result.percentage_rescued == result.percentage_needed-1) {
+		msg_id = 4;
+	}else if (result.percentage_rescued >= result.percentage_needed-5) {
+		msg_id = 5;
+	}else if (result.percentage_rescued >= result.percentage_needed/2) {
+		msg_id = 6;
+	}else{
+		msg_id = 7;
+	}
+	// result message (like: "oh dear, not even one poor lemming")
+	const char* msg = import[game].messages[msg_id];
+	int msg_lines = 4;
+
+	// whole screen text (like "all lemmings accounted for. you rescued 0% oh dear...")
+	char message[20*(15+1)+1];
+
+	// find out whether a special message has to be shown
+	int i;
+	for (i=0;i<import[game].num_of_special_messages;i++) {
+		if (import[game].special_messages[i].level == result.lvl) {
+			// we need to show a special message
+			msg = import[game].special_messages[i].message;
+			msg_lines = import[game].special_messages[i].lines_of_message;
+			break;
+		}
+	}
+
+	sprintf(message,
+			"%s%s"
+			"  You rescued %3u%%  \n"
+			"  You needed  %3u%%  \n"
+			"%s%s%s"
+			"  Press A or touch  \n"
+			"%s"
+			"  Press B for menu  \n",
+			(result.timeout?
+					"  Your time is up!   \n":
+					"    All lemmings    \n   accounted for.   \n"),
+			msg_lines<=4?"\n":"",
+			result.percentage_rescued,
+			result.percentage_needed<0?
+					0:
+					(result.percentage_needed>100?
+							101:
+							result.percentage_needed),
+			msg_lines<=7?"\n":"",
+			msg,
+			msg_lines<=6?"\n":"",
+			(result.percentage_rescued >= result.percentage_needed?
+					"   for next level   \n":
+					"   to retry level   \n")
+	);
+	draw_menu_text(im_bottom,menu_data,0,
+		(result.timeout?8:0) + (msg_lines<=5?8:0),
+		message);
+
+	texture_bot_screen = sf2d_create_texture(im_bottom->width, im_bottom->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
+	if (!texture_bot_screen) {
+		free(im_bottom);
+		im_bottom = 0;
+		return MENU_ERROR;
+	}
+
+	sf2d_fill_texture_from_RGBA8(texture_bot_screen, im_bottom->data, im_bottom->width, im_bottom->height);
+	sf2d_texture_tile32(texture_bot_screen);
+
+	u32 kDown;
+	// u32 kHeld;
+	//touchPosition stylus;
+	while (aptMainLoop()) {
+
+		hidScanInput();
+		kDown = hidKeysDown();
+		// kHeld = hidKeysHeld();
+		//kUp = hidKeysUp();
+
+		if (kDown & (KEY_A | KEY_START | KEY_X | KEY_TOUCH)) {
+			// load next level!
+			if (texture_bot_screen) {
+				sf2d_free_texture(texture_bot_screen);
+				texture_bot_screen = 0;
+			}
+			free(im_bottom);
+			im_bottom = 0;
+			return RESULT_ACTION_NEXT;
+		}
+		if (kDown & KEY_B) {
+			if (texture_bot_screen) {
+				sf2d_free_texture(texture_bot_screen);
+				texture_bot_screen = 0;
+			}
+			free(im_bottom);
+			im_bottom = 0;
+			return RESULT_ACTION_CANCEL;
+		}
+
+
+		sf2d_start_frame(GFX_TOP, GFX_LEFT);
+		if (*texture_top_screen) {
+			sf2d_draw_texture(*texture_top_screen, 0, 0);
+		}
+		if (*texture_logo) {
+			sf2d_draw_texture(*texture_logo, 10, 20);
+		}
+		sf2d_end_frame();
+
+		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
+		sf2d_draw_texture(texture_bot_screen, 0, 0);
+		sf2d_end_frame();
+		sf2d_swapbuffers();
+	}
+	if (texture_bot_screen) {
+		sf2d_free_texture(texture_bot_screen);
+		texture_bot_screen = 0;
+	}
+	free(im_bottom);
+	im_bottom = 0;
+	return MENU_ERROR;
 }

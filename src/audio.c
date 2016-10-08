@@ -13,6 +13,11 @@
 // each time it is called
 #define SAMPLES_PER_DSP_BUFFER 255
 
+#define AUDIO_ERROR 0
+#define AUDIO_DISABLED 1
+#define AUDIO_ONLY_FX 2
+#define AUDIO_ENABLED 3
+
 u8 cur_song = 0;
 u8 audio_active = AUDIO_ENABLED;
 struct Data* adlib = 0;
@@ -73,7 +78,31 @@ void init_audio() {
 	millis_since_update_adlib_gone = 0.0;
 }
 
-int read_adlib_dat(u8 game) {
+int toggle_audio() {
+	switch (audio_active) {
+		case AUDIO_DISABLED:
+			audio_active = AUDIO_ONLY_FX;
+			return 1;
+		case AUDIO_ONLY_FX:
+			audio_active = AUDIO_ENABLED;
+			return 1;
+		case AUDIO_ENABLED:
+			audio_active = AUDIO_DISABLED;
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+int is_audio_enabled() {
+	return (audio_active == AUDIO_ENABLED);
+}
+
+int is_audio_only_fx() {
+	return (audio_active == AUDIO_ONLY_FX);
+}
+
+int import_audio(u8 game) {
 	// additionally: read ADLIB
 	if (adlib) {
 		free_adlib_data();
@@ -92,9 +121,23 @@ int read_adlib_dat(u8 game) {
 	return 1; // success
 }
 
-void start_music(u8 track){
+
+void next_music(u8 game) {
+	cur_song = (cur_song + 1) % import[game].num_of_songs;
+}
+
+void play_music(u8 game, u8 lvl) {
+	u8 track;
+	int i;
 	if (audio_active != AUDIO_ENABLED) {
 		return;
+	}
+	track = import[game].song_ids[cur_song];
+	for (i=0;i<import[game].num_special_songs;i++) {
+		if (import[game].special_songs[i].level == lvl) {
+			track = import[game].special_songs[i].song;
+			break;
+		}
 	}
 	call_adlib(0x0300+(u16)track);
 }
@@ -137,4 +180,3 @@ void deinit_audio() {
 	ndspChnReset(0);
 	ndspExit();
 }
-

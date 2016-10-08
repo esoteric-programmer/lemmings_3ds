@@ -66,7 +66,7 @@ int read_ground_data(struct GroundInfo* ret, FILE* in) {
 		read_terrain_info(ret->terrain_info+i,in);
 	}
 	read_palette(&(ret->palette),in);
-	
+
 	if (feof(in)) {
 		return 0; // TODO: add better checks for success (also in subroutines)
 	}

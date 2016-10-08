@@ -89,7 +89,7 @@ public:
 	VolumeHandler volHandler;
 
 #if (DBOPL_WAVE == WAVE_HANDLER)
-	WaveHandler waveHandler;	//Routine that generate a wave 
+	WaveHandler waveHandler;	//Routine that generate a wave
 #else
 	s16* waveBase;
 	u32 waveMask;
@@ -106,7 +106,7 @@ public:
 	s32 totalLevel;			//totalLevel is added to every generated volume
 	u32 currentLevel;		//totalLevel + tremolo
 	s32 volume;				//The currently active volume
-	
+
 	u32 attackAdd;			//Timers for the different states of the envelope
 	u32 decayAdd;
 	u32 releaseAdd;
@@ -199,7 +199,7 @@ struct Chip {
 	//This is used as the base counter for vibrato and tremolo
 	u32 lfoCounter;
 	u32 lfoAdd;
-	
+
 
 	u32 noiseCounter;
 	u32 noiseAdd;

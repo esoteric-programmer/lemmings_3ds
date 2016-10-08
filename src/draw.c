@@ -768,4 +768,62 @@ void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], 
 	}
 }
 
+void tile_menu_background(struct RGB_Image* im_bottom, struct MainMenuData* menu_data) {
+	memset(im_bottom->data,0,sizeof(u32)*im_bottom->width*im_bottom->height);
+	s16 i,j;
+	for (i=0;i<im_bottom->width;i+=320) {
+			for (j=0;j<im_bottom->height;j+=104) {
+				draw(im_bottom,
+						menu_data->palette,
+						menu_data->static_pictures[0]->data,
+						i,j,
+						menu_data->static_pictures[0]->width,
+						menu_data->static_pictures[0]->height);
+			}
+	}
+}
 
+int draw_topscreen(struct MainMenuData* menu, struct RGB_Image* im_top, sf2d_texture** texture_top_screen, struct RGB_Image* logo_scaled, sf2d_texture** texture_logo) {
+	if (*texture_logo) {
+		sf2d_free_texture(*texture_logo);
+		*texture_logo = 0;
+	}
+	if (*texture_top_screen) {
+		sf2d_free_texture(*texture_top_screen);
+		*texture_top_screen = 0;
+	}
+	*texture_top_screen = sf2d_create_texture(im_top->width, im_top->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
+	if (!(*texture_top_screen)) {
+		return 0;
+	}
+	tile_menu_background(im_top, menu);
+
+	sf2d_fill_texture_from_RGBA8(*texture_top_screen, im_top->data, im_top->width, im_top->height);
+	sf2d_texture_tile32(*texture_top_screen);
+
+
+	struct RGB_Image* logo = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*632*94);
+	if (!logo) {
+		sf2d_free_texture(*texture_top_screen);
+		*texture_top_screen = 0;
+		return 0;
+	}
+	logo->width = 632;
+	logo->height = 94;
+	memset(logo->data,0,sizeof(u32)*logo->width*logo->height);
+	draw(logo,menu->palette,menu->static_pictures[1]->data,0,0,menu->static_pictures[1]->width,menu->static_pictures[1]->height);
+	scale(logo_scaled, 0.6, logo);
+	free(logo);
+	logo = 0;
+
+	*texture_logo = sf2d_create_texture(logo_scaled->width, logo_scaled->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
+	if (!*texture_logo) {
+		sf2d_free_texture(*texture_top_screen);
+		*texture_top_screen = 0;
+		return 0;
+	}
+
+	sf2d_fill_texture_from_RGBA8(*texture_logo, logo_scaled->data, logo_scaled->width, logo_scaled->height);
+	sf2d_texture_tile32(*texture_logo);
+	return 1;
+}

@@ -1,7 +1,7 @@
 /*
  * OPL implementation from DOSBox. Slightly modified for Lemmings for 3DS.
  */
- 
+
  /*
  *  Copyright (C) 2002-2010  The DOSBox Team
  *
@@ -113,16 +113,16 @@ void Module::CacheWrite( u32 reg, u8 val ) {
 
 void Module::DualWrite( u8 index, u8 reg, u8 val ) {
 	//Make sure you don't use opl3 features
-	//Don't allow write to disable opl3		
+	//Don't allow write to disable opl3
 	if ( reg == 5 ) {
 		return;
 	}
 	//Only allow 4 waveforms
 	if ( reg >= 0xE0 ) {
 		val &= 3;
-	} 
+	}
 	//Write to the timer?
-	if ( chip[index].Write( reg, val ) ) 
+	if ( chip[index].Write( reg, val ) )
 		return;
 	//Enabling panning
 	if ( reg >= 0xc0 && reg <=0xc8 ) {

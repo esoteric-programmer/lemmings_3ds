@@ -196,7 +196,7 @@ static inline u8 read_object_map(struct Level* level, s16 x, s16 y) {
 		return 0;
 	}
 	x /= 4;
-	y /= 4;	
+	y /= 4;
 	return level->object_map[x+y*(1584/4)];
 }
 
@@ -205,7 +205,7 @@ static inline void write_object_map(struct Level* level, s16 x, s16 y, u8 value)
 		return;
 	}
 	x /= 4;
-	y /= 4;	
+	y /= 4;
 	level->object_map[x+y*(1584/4)] = value;
 }
 
@@ -274,7 +274,7 @@ void init_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]) {
 	timer_assign = 0;
 	next_lemming_id = 0;
 	next_lemming_countdown = 20;
-	
+
 	if (lemmings) {
 		int i;
 		for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
@@ -321,7 +321,7 @@ void add_lemming(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Entrances*
 	memset(lemmings[next_lemming_id].saved_object_map,0,9);
 	set_lemaction(lemmings+next_lemming_id, LEMACTION_FALL);
 	next_lemming_id++;
-	
+
 	s16 n = 99 - (s16)release_rate;
 	if (n<0) {
 		n += 256;
@@ -351,7 +351,7 @@ void update_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Level*
 		if (lemmings[i].timer) {
 			// update timer
 			lemmings[i].timer--;
-			
+
 			if (!lemmings[i].timer) {
 				switch (lemmings[i].current_action) {
 					case LEMACTION_FRY:
@@ -375,7 +375,7 @@ void update_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Level*
 			process_interactive_objects(lemmings+i,level);
 		}
 	}
-	
+
 	if (nuking && timer_assign) {
 		while(timer_assign<=MAX_NUM_OF_LEMMINGS && lemmings[timer_assign-1].removed) {
 			timer_assign++;
@@ -398,12 +398,12 @@ int lemming_walk(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	}
 	lem->frame_offset = (lem->frame_offset + 1)%8;
 	lem->x+=(lem->look_right?1:-1);
-	
+
 	if (lem->x < 0){
 		lem->look_right = 1;
 		return 1;
 	}
-	
+
 	if (has_pixel_at(level,lem->x,lem->y)) {
 		// walk, jump, climb, or turn
 		int i;
@@ -431,7 +431,7 @@ int lemming_walk(struct Lemming* lem, struct Level* level, struct Image* masks[2
 			// just walk
 			lem->y -= i-1;
 		}
-		
+
 		// test for collision with top of level
 		check_top_collision(lem);
 		return 1;
@@ -613,7 +613,7 @@ int lemming_build(struct Lemming* lem, struct Level* level, struct Image* masks[
 			if (!(level->terrain[x+i+(lem->y-1)*1584] & 0xF0)) {
 				level->terrain[x+i+(lem->y-1)*1584] = 0xF7;
 			}
-		}	
+		}
 		return 0;
 	}
 	if (lem->frame_offset == 0) {

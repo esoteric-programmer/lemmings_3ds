@@ -1,6 +1,7 @@
 #ifndef DRAW_H
 #define DRAW_H
 #include <3ds.h>
+#include <sf2d.h>
 #include "settings.h"
 #include "main_data.h"
 #include "level.h"
@@ -42,4 +43,9 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 
 // return number of lemmings drawn
 u8 draw_lemmings(struct Lemming[MAX_NUM_OF_LEMMINGS], struct Image* lemmings_anim[337], struct Image* masks[23], u32 palette[16], struct RGB_Image* image, u16 x_offset);
+
+// draw menu background into im_bottom (tiled)
+void tile_menu_background(struct RGB_Image* im_bottom, struct MainMenuData* menu_data);
+
+int draw_topscreen(struct MainMenuData* menu, struct RGB_Image* im_top, sf2d_texture** texture_top_screen, struct RGB_Image* logo_scaled, sf2d_texture** texture_logo);
 #endif

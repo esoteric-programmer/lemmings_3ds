@@ -82,11 +82,11 @@ int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* pal
 	int ter;
 	int obj;
 	int i;
-	
+
 	if (!ground_file || !vgagr_file || !palette || ! terrain_img || !objects) {
 		return 0; // error
 	}
-	
+
 	memset(terrain_img,0,64*sizeof(void*));
 	memset(objects, 0,16*sizeof(void*));
 	for (i=0;i<7;i++) {
@@ -103,13 +103,13 @@ int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* pal
 	for (i=0;i<7;i++) {
 		palette->ega_preview[i] = palette->ega[i]; // TODO: correct?
 	}
-	
+
 	read_ground_data(&info, ground_file);
 	struct Data* dec = decompress_cur_section(vgagr_file);
 	if (!dec) {
 		return 0; // error
 	}
-	
+
 	for (i=0;i<8;i++) {
 		palette->vga[i+8] = info.palette.vga_custom[i];
 	}
@@ -145,7 +145,7 @@ int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* pal
 		// TODO: test whether data->size is large enough
 		read_image(img_length, info.terrain_info[ter].mask_loc - info.terrain_info[ter].image_loc,dec->data + info.terrain_info[ter].image_loc, terrain_img[ter]->data);
 	}
-	
+
 	free(dec);
 	dec = decompress_cur_section(vgagr_file);
 	if (!dec) {
@@ -327,7 +327,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 		return 0; // error
 	}
 	memset(level,0,sizeof(struct Level));
-	
+
 	u8* terrain = level->terrain;
 	struct Object** terrain_obj = level->o;
 	struct ObjectInstance* objects = level->obj;
@@ -365,8 +365,8 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			return 0;
 		}
 	}
-	
-	
+
+
 	if (dec->data[26] != 0 || (u8)dec->data[27] > 4) {
 		// invalid graphic set
 		free(dec);
@@ -392,7 +392,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 	}else{
 		level->info.x_pos -= level->info.x_pos%8;
 	}
-	
+
 	level->info.rate = dec->data[1];
 	level->info.lemmings = dec->data[3];
 	level->info.to_rescue = dec->data[5];
@@ -515,7 +515,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			}
 		}
 		free(chunk_img);
-		free(chunk);		
+		free(chunk);
 		free(extended);
 		extended = 0;
 	} else {
@@ -566,7 +566,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 		}
 	}
 	free_terrain(terrain_img);
-	
+
 	// read STEEL - TODO: also for VGASPEC levels? TODO: break after empty object (4 times 0x00)?
 	for (i=0;i<32;i++) {
 		s16 x_pos = (s16)((u8)dec->data[0x760+4*i]) * 2 + ((dec->data[0x760+4*i+1]&0x80)?1:0) - 4;
@@ -586,7 +586,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			}
 		}
 	}
-	
+
 	int num_entrances = 0;
 	for (i=0;i<32;i++) {
 		// read object
@@ -594,7 +594,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 		u16 modifier = (u8)dec->data[0x20+8*i+6];
 		modifier <<= 8;
 		modifier |= (u8)dec->data[0x20+8*i+7];
-		
+
 		if ((modifier & 0xF) != 0xF) {
 			//break;
 			continue; // unset
@@ -603,7 +603,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			// error!
 			continue;
 		}
-		
+
 		objects[i].modifier =
 				OBJECT_USED |
 				((modifier & 0x80)?OBJECT_UPSIDE_DOWN:0) | 
@@ -615,8 +615,8 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			// TODO: use start_frame instead?
 			objects[i].current_frame = terrain_obj[objects[i].type]->preview_frame;
 		}
-		
-		
+
+
 		s16 x_pos = dec->data[0x20+8*i];
 		x_pos <<= 8;
 		x_pos |= (u8)dec->data[0x20+8*i+1];
@@ -627,12 +627,12 @@ int read_level(u8 game, u8 id, struct Level* level) {
 		s16 y_pos = dec->data[0x20+8*i+2];
 		y_pos <<= 8;
 		y_pos |= (u8)dec->data[0x20+8*i+3];
-		
+
 		x_pos -= x_pos%8 - 8*((x_pos / 4)%2);
-		
+
 		objects[i].x = x_pos;
 		objects[i].y = y_pos;
-		
+
 		if (objects[i].type == 1) {
 			// handle entrance
 			switch (num_entrances) {
