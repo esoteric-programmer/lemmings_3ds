@@ -12,6 +12,7 @@
 #define MENU_ACTION_LEVEL_SELECTED              5
 #define RESULT_ACTION_NEXT                      6
 #define RESULT_ACTION_CANCEL                    7
+#define MENU_EXIT_GAME                        127
 
 int main_menu(u8 games[], u8* game, int* lvl,
 		struct MainMenuData* menu_data, struct MainInGameData* main_data,

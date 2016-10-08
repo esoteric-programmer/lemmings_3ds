@@ -46,7 +46,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		struct MainInGameData* main_data,
 		sf2d_texture* texture_top_screen, sf2d_texture* texture_logo) {
 
-	struct LevelResult result = { 0, 0xFF, 0, 255 };
+	struct LevelResult result = { 0xFF, 0, 0xFF, LEVEL_ERROR };
 
 	struct Level* level = (struct Level*)malloc(sizeof(struct Level));
 	if (!level){
@@ -182,7 +182,8 @@ struct LevelResult run_level(u8 game, u8 lvl,
 
 		u32 action = get_action(kDown, kHeld);
 		if (action & ACTION_QUIT_GAME) {
-			break; // TODO: QUIT GAME
+			result.exit_reason = LEVEL_EXIT_GAME;
+			return result;
 		}
 		if (action & ACTION_MOVE_CURSOR_RIGHT) {
 			state.cursor.x += 2;
@@ -705,7 +706,8 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	}
 	stop_audio();
 	if (!apt_result) {
-		return result; // error
+		result.exit_reason = LEVEL_EXIT_GAME;
+		return result;
 	}
 
 	result.lvl = lvl;
@@ -721,9 +723,9 @@ struct LevelResult run_level(u8 game, u8 lvl,
 	}
 
 	if (!state.frames_left) {
-		result.timeout = 1;
+		result.exit_reason = LEVEL_TIMEOUT;
 	}else{
-		result.timeout = 0;
+		result.exit_reason = LEVEL_NO_LEMMINGS_LEFT;
 	}
 	if (texture_above) {
 		sf2d_free_texture(texture_above);
@@ -742,6 +744,12 @@ int show_result(u8 game, struct LevelResult result,
 		struct MainMenuData* menu_data,
 		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen) {
 
+	if (result.exit_reason == LEVEL_ERROR) {
+		return MENU_ERROR;
+	}
+	if (result.exit_reason == LEVEL_EXIT_GAME) {
+		return MENU_EXIT_GAME;
+	}
 	sf2d_texture* texture_bot_screen = 0;
 	struct RGB_Image* im_bottom = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*320*240);
 	if (!im_bottom) {
@@ -798,7 +806,7 @@ int show_result(u8 game, struct LevelResult result,
 			"  Press A or touch  \n"
 			"%s"
 			"  Press B for menu  \n",
-			(result.timeout?
+			(result.exit_reason == LEVEL_TIMEOUT?
 					"  Your time is up!   \n":
 					"    All lemmings    \n   accounted for.   \n"),
 			msg_lines<=4?"\n":"",
@@ -816,7 +824,7 @@ int show_result(u8 game, struct LevelResult result,
 					"   to retry level   \n")
 	);
 	draw_menu_text(im_bottom,menu_data,0,
-		(result.timeout?8:0) + (msg_lines<=5?8:0),
+		(result.exit_reason == LEVEL_TIMEOUT?8:0) + (msg_lines<=5?8:0),
 		message);
 
 	texture_bot_screen = sf2d_create_texture(im_bottom->width, im_bottom->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
@@ -880,5 +888,5 @@ int show_result(u8 game, struct LevelResult result,
 	}
 	free(im_bottom);
 	im_bottom = 0;
-	return MENU_ERROR;
+	return MENU_EXIT_GAME;
 }

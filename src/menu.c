@@ -307,7 +307,7 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 		sf2d_swapbuffers();
 	}
 	clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
-	return MENU_ERROR;
+	return MENU_EXIT_GAME;
 }
 
 
@@ -564,5 +564,5 @@ int main_menu(u8 games[], u8* game, int* lvl,
 		sf2d_free_texture(texture_bot_screen);
 		texture_bot_screen = 0;
 	}
-	return MENU_ERROR;
+	return MENU_EXIT_GAME;
 }

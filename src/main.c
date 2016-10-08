@@ -92,8 +92,6 @@ void die(int sf2d_initialied) {
 	printf("runs out of memory.\n\n");
 	printf(CONSOLE_RESET);
 	printf("Press any button to exit.");
-	gfxFlushBuffers();
-	gfxSwapBuffers();
 	while (aptMainLoop()) {
 
 		hidScanInput();
@@ -101,6 +99,8 @@ void die(int sf2d_initialied) {
 		if (kDown & (~KEY_TOUCH)) {
 			break;
 		}
+		gfxFlushBuffers();
+		gfxSwapBuffers();
 	}
 	// exit game
 	gfxExit();
@@ -194,15 +194,14 @@ int main() {
 		printf("to download free demo versions of Lemmings.\n\n");
 		printf("Press any button to exit.");
 
-		gfxFlushBuffers();
-		gfxSwapBuffers();
 		while (aptMainLoop()) {
-
 			hidScanInput();
 			u32 kDown = hidKeysDown();
 			if (kDown & (~KEY_TOUCH)) {
 				break;
 			}
+			gfxFlushBuffers();
+			gfxSwapBuffers();
 		}
 		gfxExit();
 		return 0; // error
@@ -277,7 +276,6 @@ int main() {
 
 
 	// GAME LOOP
-
 	while(1) {
 		int menu_selection = main_menu(games, &game, &lvl, menu_data, main_data, im_top, logo_scaled, &texture_logo, &texture_top_screen);
 
@@ -289,6 +287,9 @@ int main() {
 					im_top, logo_scaled,
 					&texture_logo, &texture_top_screen);
 			switch (level_selection) {
+				case MENU_EXIT_GAME:
+					menu_selection = MENU_EXIT_GAME;
+					break;
 				case MENU_ACTION_EXIT:
 					break;
 				case MENU_ACTION_LEVEL_SELECTED:
@@ -300,10 +301,6 @@ int main() {
 			}
 		}
 
-		if (menu_selection == MENU_ACTION_EXIT) {
-			break;
-		}
-
 		if (menu_selection == MENU_ERROR) {
 			die(1); // error
 		}
@@ -312,10 +309,14 @@ int main() {
 			while(1) {
 				struct LevelResult lev_result = run_level(game, lvl, main_data,
 						texture_top_screen, texture_logo);
-				if (lev_result.percentage_needed > 100 || lev_result.lvl != lvl) {
+				if (lev_result.exit_reason == LEVEL_ERROR) {
 					// an error occured
 					// error code may be coded in lev_result.lvl
 					die(1);
+					break;
+				}
+				if (lev_result.exit_reason == LEVEL_EXIT_GAME) {
+					menu_selection = MENU_EXIT_GAME;
 					break;
 				}
 
@@ -350,7 +351,16 @@ int main() {
 				if (result_screen == RESULT_ACTION_CANCEL) {
 					break;
 				}
+				if (result_screen == MENU_EXIT_GAME) {
+					menu_selection = MENU_EXIT_GAME;
+					break;
+				}
+				die(1); // error
 			}
+		}
+
+		if (menu_selection == MENU_ACTION_EXIT || menu_selection == MENU_EXIT_GAME) {
+			break;
 		}
 	}
 

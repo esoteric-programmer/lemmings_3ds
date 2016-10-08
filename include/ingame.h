@@ -6,11 +6,17 @@
 #include "main_data.h"
 #include "draw.h"
 
+#define LEVEL_ERROR              0
+#define LEVEL_TIMEOUT            1
+#define LEVEL_NO_LEMMINGS_LEFT   2
+#define LEVEL_EXIT_GAME        127
+
+
 struct LevelResult {
 	u8 lvl;
 	u8 percentage_rescued;
 	u8 percentage_needed;
-	u8 timeout;
+	u8 exit_reason;
 };
 
 // returns: percentage saved
