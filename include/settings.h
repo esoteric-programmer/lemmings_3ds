@@ -9,6 +9,8 @@ extern const char* PATH_ROOT;
 #define FPS                   17
 #define SCREEN_WIDTH         320
 #define FRAMES_PER_DOS_FRAME   3 // slow down 3ds animation...
+#define FADE_IN_FRAMES        (18 * FRAMES_PER_DOS_FRAME) // duration of fade-in (level start)
+#define FADE_OUT_FRAMES       (32 * FRAMES_PER_DOS_FRAME) // duration of fade-out (level end)
 
 #define ENABLE_NUKE_GLITCH              1
 #define ENABLE_ENTRANCE_PAUSING_GLITCH  1

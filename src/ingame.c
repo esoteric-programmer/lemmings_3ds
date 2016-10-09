@@ -161,7 +161,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		level->info.x_pos = 0;
 	}
 	int update_above = 1;
-	u16 fade_in = 45;
+	u16 fade_in = FADE_IN_FRAMES;
 	u16 fade_out = 0;
 
 	u32 kDown;
@@ -590,9 +590,9 @@ struct LevelResult run_level(u8 game, u8 lvl,
 		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
 		u32 fade = 0xFF;
 		if (fade_in) {
-			fade = ((45-fade_in)*0xFF) / 45;
+			fade = ((FADE_IN_FRAMES-fade_in)*0xFF) / FADE_IN_FRAMES;
 		}else if (fade_out) {
-			fade = ((45-fade_out)*0xFF) / 45;
+			fade = ((FADE_OUT_FRAMES-fade_out)*0xFF) / FADE_OUT_FRAMES;
 		}
 		fade = (fade>0xFF?0xFF:fade);
 		fade = fade | (fade<<8) | (fade<<16) | 0xFF000000;
@@ -643,7 +643,7 @@ struct LevelResult run_level(u8 game, u8 lvl,
 			}
 		}else if (fade_out) {
 			fade_out += ((action & ACTION_SPEED_UP)?3:1);
-			if (fade_out > 45) {
+			if (fade_out > FADE_OUT_FRAMES) {
 				break;
 			}
 		}
