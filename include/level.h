@@ -36,6 +36,7 @@ struct LevelInfo {
 	u8 to_rescue;
 	u8 percentage_needed;
 	u8 minutes;
+	u8 speed_up;
 	u8 skills[8];
 	u16 x_pos;
 	char name[33];

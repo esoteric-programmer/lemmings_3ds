@@ -463,7 +463,9 @@ struct LevelResult run_level(u8 game, u8 lvl,
 				}
 			}
 		}
-
+		if (level->info.speed_up) {
+			action |= ACTION_SPEED_UP;
+		}
 
 		struct Lemming* lem1 = 0;
 		struct Lemming* lem2 = 0;

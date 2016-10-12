@@ -398,6 +398,9 @@ int read_level(u8 game, u8 id, struct Level* level) {
 	level->info.to_rescue = dec->data[5];
 	level->info.percentage_needed = ((u16)level->info.to_rescue)*100 / (u16)level->info.lemmings;
 	level->info.minutes = dec->data[7];
+	if ((u8)dec->data[30] == 0xFF && (u8)dec->data[31] == 0xFF) {
+		level->info.speed_up = 1;
+	}
 	for (i=0;i<8;i++) {
 		level->info.skills[i] = dec->data[9+2*i];
 	}
