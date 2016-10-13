@@ -7,6 +7,8 @@ To avoid duplicates, you may only fill these folders if you own all Lemmings gam
 orig, ohno, xmas91, xmas92, holi94
 
 The game uses the NDSP service to play audio. Thus you need a DSP firm dump to have audio.
+You may want to use your own sound files. Put your wave files into lemmings/audio folder.
+See README.txt in that folder for more details.
 
 \* See README.txt in these folders.
 

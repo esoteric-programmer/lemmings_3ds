@@ -26,7 +26,7 @@
 #include <string.h>
 //#include <sys/types.h>
 #include "adlib.h"
-#include "adlib.dat.h"
+#include "import_adlib.h"
 
 //#include "setup.h"
 //#include "mapper.h"

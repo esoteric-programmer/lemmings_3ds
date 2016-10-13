@@ -44,7 +44,7 @@
 #include <string.h>
 #include "dbopl.h"
 
-#include "adlib.dat.h"
+#include "import_adlib.h"
 
 #ifndef PI
 #define PI 3.14159265358979323846

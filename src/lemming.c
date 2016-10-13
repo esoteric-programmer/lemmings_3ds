@@ -331,6 +331,10 @@ void add_lemming(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Entrances*
 
 void nuke(struct Level* level) {
 	if (!nuking) {
+		if (is_custom_sound(0x05)) {
+			// play "Oh no!" sound only once
+			play_sound(0x05);
+		}
 		nuking = 1;
 		timer_assign = 1;
 		if (level && ENABLE_NUKE_GLITCH) {
@@ -364,8 +368,10 @@ void update_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Level*
 						break;
 					default:
 						set_lemaction(lemmings+i,LEMACTION_OHNO);
-						// play sound: Oh no!
-						play_sound(0x05);
+						if (!nuking || !is_custom_sound(0x05)) {
+							// play sound: Oh no!
+							play_sound(0x05);
+						}
 						break;
 				}
 				continue;

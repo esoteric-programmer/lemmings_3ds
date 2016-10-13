@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "adlib.dat.h"
+#include "import_adlib.h"
 
 struct Registers {
 	u16 ax;
