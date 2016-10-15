@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <3ds.h>
-#include <sf2d.h>
 
 #include "decode.h"
 #include "import.h"
@@ -20,9 +19,34 @@
 #include "ingame.h"
 #include "audio.h"
 #include "menu.h"
+#include "main.h"
 
 const char* PATH_ROOT = LEMMINGS_DIR;
 
+volatile int suspended = 0;
+aptHookCookie hookCookie;
+
+int was_suspended() {
+	if (suspended) {
+		suspended = 0;
+		return 1;
+	}
+	return 0;
+}
+
+void event_hook(APT_HookType hook_type, void* param) {
+	switch (hook_type) {
+		case APTHOOK_ONRESTORE:
+		case APTHOOK_ONWAKEUP:
+			suspended = 1;
+			break;
+		case APTHOOK_ONSUSPEND:
+			// TODO
+			break;
+		default:
+			break;
+	}
+}
 
 // TODO:
 // make xmas91 and xmas92 distinguishable in main menu (maybe add info to top screen)
@@ -35,34 +59,7 @@ const char* PATH_ROOT = LEMMINGS_DIR;
 	update_lemmings
 */
 
-void die(int sf2d_initialied) {
-	if (sf2d_initialied) {
-		// clear screen
-		sf2d_start_frame(GFX_TOP, GFX_LEFT);
-		sf2d_end_frame();
-		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
-		sf2d_end_frame();
-		sf2d_swapbuffers();
-		sf2d_start_frame(GFX_TOP, GFX_LEFT);
-		sf2d_end_frame();
-		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
-		sf2d_end_frame();
-		sf2d_swapbuffers();
-		sf2d_start_frame(GFX_TOP, GFX_LEFT);
-		sf2d_end_frame();
-		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
-		sf2d_end_frame();
-		sf2d_swapbuffers();
-		if (!aptMainLoop()) {
-			deinit_audio();
-			sf2d_fini();
-			exit(1);
-		}
-		deinit_audio();
-		sf2d_fini();
-		// init console to display message
-		gfxInitDefault();
-	}
+void die() {
 	consoleInit(GFX_TOP, NULL);
 	consoleClear();
 	printf(CONSOLE_RED);
@@ -103,6 +100,7 @@ void die(int sf2d_initialied) {
 		gfxSwapBuffers();
 	}
 	// exit game
+	aptUnhook(&hookCookie);
 	gfxExit();
 	exit(1);
 }
@@ -112,8 +110,7 @@ int main() {
 
 	int i;
 
-	gfxInitDefault();
-	//sf2d_init();
+	gfxInit( GSP_RGBA4_OES,  GSP_RGBA4_OES, false);
 	consoleInit(GFX_TOP, NULL);
 	consoleClear();
 	printf("\n");
@@ -121,6 +118,8 @@ int main() {
 	printf("        ---------- Please Wait -----------  \n");
 	gfxFlushBuffers();
 	gfxSwapBuffers();
+
+	aptHook(&hookCookie, event_hook, NULL);
 
 	u8 games[LEMMING_GAMES];
 	memset(games,0,LEMMING_GAMES);
@@ -235,38 +234,21 @@ int main() {
 	}
 	memset(menu_data,0,sizeof(struct MainMenuData));
 
-	struct RGB_Image* logo_scaled = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*380*57);
-	if (!logo_scaled) {
-		die(0); // error
-	}
-	logo_scaled->width = 380;
-	logo_scaled->height = 57;
-
-	struct RGB_Image* im_top = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*400*320);
-	if (!im_top) {
-		die(0); // error
-	}
-	im_top->width = 400;
-	im_top->height = 320;
-
 	struct MainInGameData* main_data = (struct MainInGameData*)malloc(sizeof(struct MainInGameData));
 	if (!main_data) {
 		die(0); // error
 	}
 	memset(main_data,0,sizeof(struct MainInGameData));
 
-	// initialize sf2d, create textures
-	gfxExit();
-	sf2d_init();
-	sf2d_texture* texture_logo = 0;
-	sf2d_texture* texture_top_screen = 0;
+	// initialize drawing buffers, set gfx mode, and so on...
+	init_drawing();
 
 	init_audio();
 	if (!read_gamespecific_data(game, menu_data, main_data)) {
 		// error!
 		die(1); // error
 	}
-	if (!draw_topscreen(menu_data, im_top, &texture_top_screen, logo_scaled, &texture_logo)) {
+	if (!update_topscreen(menu_data)) {
 		// error!
 		die(1); // error
 	}
@@ -277,15 +259,18 @@ int main() {
 
 	// GAME LOOP
 	while(1) {
-		int menu_selection = main_menu(games, &game, &lvl, menu_data, main_data, im_top, logo_scaled, &texture_logo, &texture_top_screen);
+		int menu_selection = main_menu(games, &game, &lvl, menu_data, main_data);
 
 
 		if (menu_selection == MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER) {
-			int level_selection = level_select_menu(games, &game, &lvl,
-					progress, level_names,
-					menu_data, main_data,
-					im_top, logo_scaled,
-					&texture_logo, &texture_top_screen);
+			int level_selection = level_select_menu(
+					games,
+					&game,
+					&lvl,
+					progress,
+					level_names,
+					menu_data,
+					main_data);
 			switch (level_selection) {
 				case MENU_EXIT_GAME:
 					menu_selection = MENU_EXIT_GAME;
@@ -307,8 +292,7 @@ int main() {
 
 		if (menu_selection == MENU_ACTION_START_SINGLE_PLAYER) {
 			while(1) {
-				struct LevelResult lev_result = run_level(game, lvl, main_data,
-						texture_top_screen, texture_logo);
+				struct LevelResult lev_result = run_level(game, lvl, menu_data, main_data);
 				if (lev_result.exit_reason == LEVEL_ERROR) {
 					// an error occured
 					// error code may be coded in lev_result.lvl
@@ -342,9 +326,7 @@ int main() {
 					}
 				}
 
-				int result_screen = show_result(game,
-						lev_result,
-						menu_data, &texture_logo, &texture_top_screen);
+				int result_screen = show_result(game,lev_result,menu_data);
 				if (result_screen == RESULT_ACTION_NEXT) {
 					continue;
 				}
@@ -363,9 +345,9 @@ int main() {
 			break;
 		}
 	}
-
+	aptUnhook(&hookCookie);
 	deinit_audio();
-	sf2d_fini();
+	gfxExit();
 	return 0;
 }
 

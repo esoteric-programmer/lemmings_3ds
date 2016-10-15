@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <string.h>
+#include "settings.h"
 #include "import_ground.h"
 
 static inline void read_object_info(struct ObjectInfo* ret, FILE* in) {
@@ -39,17 +40,29 @@ static inline void read_palette(struct VariablePalette* ret, FILE* in) {
 	for (i=0;i<8;i++) {
 		ret->vga_custom[i] = 0;
 		fread(ret->vga_custom+i,1,3,in);
-		ret->vga_custom[i]=(((ret->vga_custom[i] >> 16) * 255 / 63) << 16) | ((((ret->vga_custom[i] & 0xFF00) >> 8) * 255 / 63) << 8) | ((ret->vga_custom[i] & 0xFF) * 255 / 63);
+		#ifdef ABGR
+		ret->vga_custom[i]=(((ret->vga_custom[i] >> 16) * 255 / 63) << 8) | ((((ret->vga_custom[i] & 0xFF00) >> 8) * 255 / 63) << 16) | (((ret->vga_custom[i] & 0xFF) * 255 / 63) << 24) | 0x000000FF;
+		#else
+		ret->vga_custom[i]=(((ret->vga_custom[i] >> 16) * 255 / 63) << 16) | ((((ret->vga_custom[i] & 0xFF00) >> 8) * 255 / 63) << 8) | ((ret->vga_custom[i] & 0xFF) * 255 / 63) | 0xFF000000;
+		#endif
 	}
 	for (i=0;i<8;i++) {
 		ret->vga_standard[i] = 0;
 		fread(ret->vga_standard+i,1,3,in);
-		ret->vga_standard[i]=(((ret->vga_standard[i] >> 16) * 255 / 63) << 16) | ((((ret->vga_standard[i] & 0xFF00) >> 8) * 255 / 63) << 8) | ((ret->vga_standard[i] & 0xFF) * 255 / 63);
+		#ifdef ABGR
+		ret->vga_standard[i]=(((ret->vga_standard[i] >> 16) * 255 / 63) << 8) | ((((ret->vga_standard[i] & 0xFF00) >> 8) * 255 / 63) << 16) | (((ret->vga_standard[i] & 0xFF) * 255 / 63) << 24) | 0x000000FF;
+		#else
+		ret->vga_standard[i]=(((ret->vga_standard[i] >> 16) * 255 / 63) << 16) | ((((ret->vga_standard[i] & 0xFF00) >> 8) * 255 / 63) << 8) | ((ret->vga_standard[i] & 0xFF) * 255 / 63) | 0xFF000000;
+		#endif
 	}
 	for (i=0;i<8;i++) {
 		ret->vga_preview[i] = 0;
 		fread(ret->vga_preview+i,1,3,in);
-		ret->vga_preview[i]=(((ret->vga_preview[i] >> 16) * 255 / 63) << 16) | ((((ret->vga_preview[i] & 0xFF00) >> 8) * 255 / 63) << 8) | ((ret->vga_preview[i] & 0xFF) * 255 / 63);
+		#ifdef ABGR
+		ret->vga_preview[i]=(((ret->vga_preview[i] >> 16) * 255 / 63) << 8) | ((((ret->vga_preview[i] & 0xFF00) >> 8) * 255 / 63) << 16) | (((ret->vga_preview[i] & 0xFF) * 255 / 63) << 24) | 0x000000FF;
+		#else
+		ret->vga_preview[i]=(((ret->vga_preview[i] >> 16) * 255 / 63) << 16) | ((((ret->vga_preview[i] & 0xFF00) >> 8) * 255 / 63) << 8) | ((ret->vga_preview[i] & 0xFF) * 255 / 63) | 0xFF000000;
+		#endif
 	}
 }
 

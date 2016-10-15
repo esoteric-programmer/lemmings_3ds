@@ -1357,3 +1357,17 @@ int assign_bash(struct Lemming* lem1, struct Lemming* lem2, struct Level* level)
 	return 1;
 }
 
+int count_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]) {
+	u8 ret = 0;
+	if (!lemmings) {
+		return ret; // error
+	}
+	u8 i;
+	for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
+		if (lemmings[i].removed || lemmings[i].current_action >= 18) {
+			continue;
+		}
+		ret++;
+	}
+	return ret;
+}

@@ -14,9 +14,12 @@
 // each time it is called
 #define SAMPLES_PER_DSP_BUFFER 255
 
+#define NUM_TUNE_BUFFERS 5
+#define SAMPLES_PER_TUNE_BUFFER 4096
+
 // if wave files are used (instead of ADLIB.DAT) for sfx effects,
 // DSP is used to mix them.
-// this is the number of channels reserve for that task (at most 22).
+// this is the number of channels reserve for that task (at most 21).
 // For comparison: ADLIB.DAT driver uses 3 channels for sound effects.
 #define NUM_DSP_SFX_CHANNELS 16
 
@@ -34,6 +37,10 @@ struct WaveSound sound_effects[18];
 ndspWaveBuf sound_effect_buffers[NUM_DSP_SFX_CHANNELS];
 u8 currently_triggered_wave[18];
 
+struct WaveFile tune;
+ndspWaveBuf tune_buffers[NUM_TUNE_BUFFERS];
+int next_tune_buffer = 0;
+
 // adlib
 struct Data* adlib = 0;
 double millis_since_update_adlib_gone = 0.0;
@@ -48,17 +55,21 @@ void add_sample(unsigned long length, s32* data) {
 	if (audio_active == AUDIO_ERROR) {
 		return;
 	}
-	if(ndsp_buffers[next_ndsp_buffer].status == NDSP_WBUF_PLAYING || ndsp_buffers[next_ndsp_buffer].status == NDSP_WBUF_QUEUED) {
+	if(ndsp_buffers[next_ndsp_buffer].status == NDSP_WBUF_PLAYING
+			|| ndsp_buffers[next_ndsp_buffer].status == NDSP_WBUF_QUEUED) {
 		// should not occur
 		return;
 	}
 
 	int i;
 	for (i=0;i<length;i++) {
-		*((s16*)((u8*)ndsp_buffers[next_ndsp_buffer].data_vaddr+2*i)) = 2*(data[i] < -0x4000?-0x4000:(data[i]> 0x3FFF?0x3FFF:data[i]));
+		*((s16*)((u8*)ndsp_buffers[next_ndsp_buffer].data_vaddr+2*i)) =
+				2*(data[i] < -0x4000?-0x4000:(data[i]> 0x3FFF?0x3FFF:data[i]));
 	}
 	ndsp_buffers[next_ndsp_buffer].nsamples = length;
-	DSP_FlushDataCache(ndsp_buffers[next_ndsp_buffer].data_vaddr, 2*SAMPLES_PER_DSP_BUFFER);
+	DSP_FlushDataCache(
+			ndsp_buffers[next_ndsp_buffer].data_vaddr,
+			2*SAMPLES_PER_DSP_BUFFER);
 	ndspChnWaveBufAdd(0, ndsp_buffers+next_ndsp_buffer);
 
 	next_ndsp_buffer++;
@@ -73,7 +84,8 @@ void update_audio() {
 	for (i=0;i<18;i++) {
 		currently_triggered_wave[i] = 0;
 	}
-	while(ndsp_buffers[next_ndsp_buffer].status != NDSP_WBUF_PLAYING && ndsp_buffers[next_ndsp_buffer].status != NDSP_WBUF_QUEUED) {
+	while(ndsp_buffers[next_ndsp_buffer].status != NDSP_WBUF_PLAYING
+			&& ndsp_buffers[next_ndsp_buffer].status != NDSP_WBUF_QUEUED) {
 		opl_query_samples(SAMPLES_PER_DSP_BUFFER);
 		millis_since_update_adlib_gone += (double)SAMPLES_PER_DSP_BUFFER / 44.1;
 		if (millis_since_update_adlib_gone >= 14.0) {
@@ -92,7 +104,7 @@ void init_audio() {
 		return;
 	}
 	ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-	for (i=0;i<NUM_DSP_SFX_CHANNELS+2;i++) {
+	for (i=0;i<NUM_DSP_SFX_CHANNELS+3;i++) {
 		ndspChnReset(i); // necessary?
 		ndspChnSetInterp(i, NDSP_INTERP_LINEAR);
 		ndspChnSetRate(i, 44100.0F);
@@ -104,9 +116,20 @@ void init_audio() {
 		ndsp_buffers[i].data_vaddr = linearAlloc(2*SAMPLES_PER_DSP_BUFFER);
 		if (!ndsp_buffers[i].data_vaddr) {
 			audio_active = AUDIO_ERROR;
+			return;
 		}
 		ndsp_buffers[i].looping = 0;
 		ndsp_buffers[i].status = NDSP_WBUF_FREE;
+	}
+	for (i=0; i<NUM_TUNE_BUFFERS; i++) {
+		memset(&tune_buffers[i], 0, sizeof(ndspWaveBuf));
+		tune_buffers[i].data_vaddr = linearAlloc(2*SAMPLES_PER_TUNE_BUFFER);
+		if (!tune_buffers[i].data_vaddr) {
+			audio_active = AUDIO_ERROR;
+			return;
+		}
+		tune_buffers[i].looping = 0;
+		tune_buffers[i].status = NDSP_WBUF_FREE;
 	}
 	for (i=0;i<NUM_DSP_SFX_CHANNELS;i++) {
 		sound_effect_buffers[i].status = NDSP_WBUF_FREE;
@@ -189,7 +212,7 @@ void play_music(u8 game, u8 lvl) {
 void stop_audio() {
 	int i;
 	call_adlib(0x0200);
-	for (i=0;i<NUM_DSP_SFX_CHANNELS+2;i++) {
+	for (i=0;i<NUM_DSP_SFX_CHANNELS+3;i++) {
 		ndspChnWaveBufClear(i);
 	}
 	for (i=0;i<NUM_DSP_SFX_CHANNELS;i++) {
@@ -227,40 +250,35 @@ void play_sound(u8 sound) {
 			wave = 1; // don't play adlib sound
 			int i;
 			for (i=0;i<NUM_DSP_SFX_CHANNELS;i++) {
-				if (!ndspChnIsPlaying(2+i) && (sound_effect_buffers[i].status == NDSP_WBUF_FREE || sound_effect_buffers[i].status == NDSP_WBUF_DONE)) {
+				if (!ndspChnIsPlaying(3+i)
+						&& (sound_effect_buffers[i].status == NDSP_WBUF_FREE
+							|| sound_effect_buffers[i].status == NDSP_WBUF_DONE)) {
 					// play sound
-					ndspChnWaveBufClear(2+i);
-					ndspChnReset(2+i);
-					ndspChnSetRate(2+i, sound_effects[sound-1].frequency);
+					ndspChnWaveBufClear(3+i);
+					ndspChnReset(3+i);
+					ndspChnSetRate(3+i, sound_effects[sound-1].frequency);
 					if (sound_effects[sound-1].bitdepth == 8) {
 						if (sound_effects[sound-1].channels == 1) {
-							ndspChnSetFormat(2+i, NDSP_FORMAT_MONO_PCM8);
+							ndspChnSetFormat(3+i, NDSP_FORMAT_MONO_PCM8);
 						}else {
-							ndspChnSetFormat(2+i, NDSP_FORMAT_STEREO_PCM8);
+							ndspChnSetFormat(3+i, NDSP_FORMAT_STEREO_PCM8);
 						}
 					}else{
 						if (sound_effects[sound-1].channels == 1) {
-							ndspChnSetFormat(2+i, NDSP_FORMAT_MONO_PCM16);
+							ndspChnSetFormat(3+i, NDSP_FORMAT_MONO_PCM16);
 						}else {
-							ndspChnSetFormat(2+i, NDSP_FORMAT_STEREO_PCM16);
+							ndspChnSetFormat(3+i, NDSP_FORMAT_STEREO_PCM16);
 						}
 					}
 					sound_effect_buffers[i].status = NDSP_WBUF_FREE;
 					memset(&sound_effect_buffers[i], 0, sizeof(ndspWaveBuf));
 					sound_effect_buffers[i].looping = 0;
 					sound_effect_buffers[i].nsamples = sound_effects[sound-1].samples;
-/*					void* ptr = linearAlloc(sound_effects[sound-1].size);
-					if (!ptr) {
-						return;
-					}
-					memcpy(
-						ptr,
-						sound_effects[sound-1].data,
-						sound_effects[sound-1].size);
-						*/
 					sound_effect_buffers[i].data_vaddr = sound_effects[sound-1].data;
-					DSP_FlushDataCache(sound_effect_buffers[i].data_vaddr, sound_effects[sound-1].size);
-					ndspChnWaveBufAdd(2+i, &sound_effect_buffers[i]);
+					DSP_FlushDataCache(
+							sound_effect_buffers[i].data_vaddr,
+							sound_effects[sound-1].size);
+					ndspChnWaveBufAdd(3+i, &sound_effect_buffers[i]);
 					return;
 				}
 			}

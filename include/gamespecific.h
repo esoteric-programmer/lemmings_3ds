@@ -32,6 +32,7 @@ struct GameSpecific {
 	const u8 num_of_difficulties;
 	const u8 num_of_level_per_difficulty;
 	const char* const path;
+	const char* const custom_audio_path;
 	const char* const level_dat_prefix;
 	const char* const* const difficulties;
 	const unsigned char* const level_position;

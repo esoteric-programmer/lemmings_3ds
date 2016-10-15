@@ -1,33 +1,22 @@
 #include <malloc.h>
 #include <stdio.h>
+#include <string.h>
 #include <3ds.h>
-#include <sf2d.h>
 #include "menu.h"
 #include "draw.h"
 #include "audio.h"
 #include "gamespecific.h"
 #include "import_main.h"
 
-void clean_menu_bottom_graphics(sf2d_texture** texture_bot_screen, struct RGB_Image** im_bottom) {
-	if (texture_bot_screen) {
-		if (*texture_bot_screen) {
-			sf2d_free_texture(*texture_bot_screen);
-			*texture_bot_screen = 0;
-		}
-	}
-	if (im_bottom) {
-		if (*im_bottom) {
-			free(*im_bottom);
-			*im_bottom = 0;
-		}
-	}
-}
-
-
 // draw level selection screen to im_bottom
-void select_level(u8 game, struct RGB_Image* im_bottom, struct MainMenuData* menu_data, u8 progress[], u8 cur_level, u8 top_offset, const char* level_names) {
-
-	tile_menu_background(im_bottom, menu_data);
+void select_level(
+		u8 game,
+		struct MainMenuData* menu_data,
+		u8 progress[],
+		u8 cur_level,
+		u8 top_offset,
+		const char* level_names) {
+	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
 
 	u8 rating = cur_level / import[game].num_of_level_per_difficulty;
 	char msg[30*(40+1)+1];
@@ -57,21 +46,17 @@ void select_level(u8 game, struct RGB_Image* im_bottom, struct MainMenuData* men
 				i==cur_level-top_offset?"->":"  ",level_no,level_name);
 		msg_ptr += strlen(msg_ptr);
 	}
-	draw_menu_text_small(im_bottom,menu_data,0,0,msg);
+	draw_menu_text_small(BOTTOM_SCREEN_BACK,menu_data,0,0,msg,0);
 }
 
-int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* level_names,
-		struct MainMenuData* menu_data, struct MainInGameData* main_data,
-		struct RGB_Image* im_top, struct RGB_Image* logo_scaled,
-		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen) {
-
-	sf2d_texture* texture_bot_screen = 0;
-	struct RGB_Image* im_bottom = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*320*240);
-	if (!im_bottom) {
-		return MENU_ERROR; // error
-	}
-	im_bottom->width = 320;
-	im_bottom->height = 240;
+int level_select_menu(
+		u8 games[],
+		u8* game,
+		int* lvl,
+		u8* progress,
+		const char* level_names,
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data) {
 
 	// SHOW LEVEL SELECTION SCREEN!
 	int redraw_selection = 1;
@@ -102,19 +87,7 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 		//kUp = hidKeysUp();
 		// hidTouchRead(&stylus);
 		if (redraw_selection) {
-			if (texture_bot_screen) {
-				sf2d_free_texture(texture_bot_screen);
-				texture_bot_screen = 0;
-			}
-
-			select_level(*game,im_bottom, menu_data, progress+progress_offset, cur_lev, top, level_names+33*level_names_offset);
-			texture_bot_screen = sf2d_create_texture(im_bottom->width, im_bottom->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
-			if (!texture_bot_screen) {
-				clean_menu_bottom_graphics(0, &im_bottom);
-				return MENU_ERROR; // error
-			}
-			sf2d_fill_texture_from_RGBA8(texture_bot_screen, im_bottom->data, im_bottom->width, im_bottom->height);
-			sf2d_texture_tile32(texture_bot_screen);
+			select_level(*game,menu_data, progress+progress_offset, cur_lev, top, level_names+33*level_names_offset);
 			redraw_selection = 0;
 		}
 
@@ -123,18 +96,15 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 				*game = old_game;
 				if (!read_gamespecific_data(*game, menu_data, main_data)) {
 					// error!
-					clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 					return MENU_ERROR; // error
 				}
-				if (!draw_topscreen(menu_data, im_top, texture_top_screen, logo_scaled, texture_logo)) {
+				if (!update_topscreen(menu_data)) {
 					// error!
-					clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 					clean_gamedata(menu_data, main_data);
 					return MENU_ERROR; // error
 				}
 			}
 			// exit selection
-			clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 			return MENU_ACTION_EXIT;
 		}
 
@@ -212,12 +182,10 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 						*game = prev_game;
 						if (!read_gamespecific_data(*game, menu_data, main_data)) {
 							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 							return MENU_ERROR; // error
 						}
-						if (!draw_topscreen(menu_data, im_top, texture_top_screen, logo_scaled, texture_logo)) {
+						if (!update_topscreen(menu_data)) {
 							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 							clean_gamedata(menu_data, main_data);
 							return MENU_ERROR; // error
 						}
@@ -257,12 +225,10 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 						*game = next_game;
 						if (!read_gamespecific_data(*game, menu_data, main_data)) {
 							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 							return MENU_ERROR; // error
 						}
-						if (!draw_topscreen(menu_data, im_top, texture_top_screen, logo_scaled, texture_logo)) {
+						if (!update_topscreen(menu_data)) {
 							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 							clean_gamedata(menu_data, main_data);
 							return MENU_ERROR; // error
 						}
@@ -287,92 +253,95 @@ int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* 
 			if (progress[progress_offset + cur_lev/import[*game].num_of_level_per_difficulty]>=cur_lev%import[*game].num_of_level_per_difficulty) {
 				// start level!!
 				*lvl = cur_lev;
-				clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 				return MENU_ACTION_LEVEL_SELECTED;
 			}
 		}
-
-		sf2d_start_frame(GFX_TOP, GFX_LEFT);
-		if (*texture_top_screen) {
-			sf2d_draw_texture(*texture_top_screen, 0, 0);
-		}
-		if (*texture_logo) {
-			sf2d_draw_texture(*texture_logo, 10, 20);
-		}
-		sf2d_end_frame();
-
-		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
-		sf2d_draw_texture(texture_bot_screen, 0, 0);
-		sf2d_end_frame();
-		sf2d_swapbuffers();
+		begin_frame();
+		copy_from_backbuffer(TOP_SCREEN);
+		copy_from_backbuffer(BOTTOM_SCREEN);
+		end_frame();
 	}
-	clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 	return MENU_EXIT_GAME;
 }
 
-
 // draw main menu into im_bottom and texture_bot_screen.
-int draw_main_menu(u8 game, u8 difficulty, struct MainMenuData* menu_data, struct RGB_Image* im_bottom, sf2d_texture** texture_bot_screen, int only_redraw_difficulty, int only_redraw_music) {
-	if (*texture_bot_screen) {
-		sf2d_free_texture(*texture_bot_screen);
-		*texture_bot_screen = 0;
-	}
-	if (!only_redraw_difficulty && !only_redraw_music) {
-		tile_menu_background(im_bottom, menu_data);
+int draw_main_menu(
+		u8 game,
+		u8 difficulty,
+		struct MainMenuData* menu_data,
+		int only_redraw_difficulty, int only_redraw_music) {
+	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+	draw(
+			BOTTOM_SCREEN_BACK,
+			27,
+			40,
+			menu_data->static_pictures[2]->data,
+			menu_data->static_pictures[2]->width,
+			menu_data->static_pictures[2]->height,
+			menu_data->palette);
+	draw(
+			BOTTOM_SCREEN_BACK,
+			174,
+			40,
+			menu_data->static_pictures[3]->data,
+			menu_data->static_pictures[3]->width,
+			menu_data->static_pictures[3]->height,
+			menu_data->palette);
+	draw(
+			BOTTOM_SCREEN_BACK,
+			174,
+			140,
+			menu_data->static_pictures[5]->data,
+			menu_data->static_pictures[5]->width,
+			menu_data->static_pictures[5]->height,
+			menu_data->palette);
 
-		draw(im_bottom,menu_data->palette,menu_data->static_pictures[2]->data,27,40,menu_data->static_pictures[2]->width,menu_data->static_pictures[2]->height);
-		draw(im_bottom,menu_data->palette,menu_data->static_pictures[3]->data,174,40,menu_data->static_pictures[3]->width,menu_data->static_pictures[3]->height);
-		draw(im_bottom,menu_data->palette,menu_data->static_pictures[4]->data,27,140,menu_data->static_pictures[4]->width,menu_data->static_pictures[4]->height);
-		draw(im_bottom,menu_data->palette,menu_data->static_pictures[5]->data,174,140,menu_data->static_pictures[5]->width,menu_data->static_pictures[5]->height);
-	}
-
-	if (import[game].num_of_difficulty_graphics >= import[game].num_of_difficulties && import[game].num_of_difficulties > 1) {
+	if (import[game].num_of_difficulty_graphics >= import[game].num_of_difficulties
+			&& import[game].num_of_difficulties > 1) {
 		// draw current difficulty
-		draw(im_bottom,menu_data->palette,menu_data->static_pictures[
-				10+import[game].num_of_difficulty_graphics-difficulty
-			]->data,174+33,140+25,menu_data->static_pictures[
-				10+import[game].num_of_difficulty_graphics-difficulty
-			]->width,menu_data->static_pictures[
-				10+import[game].num_of_difficulty_graphics-difficulty
-			]->height); // x-position: 33; y-position: 25
+		draw(
+				BOTTOM_SCREEN_BACK,
+				174+33,
+				140+25,
+				menu_data->static_pictures[
+						10+import[game].num_of_difficulty_graphics-difficulty
+				]->data,
+				menu_data->static_pictures[
+						10+import[game].num_of_difficulty_graphics-difficulty
+				]->width,
+				menu_data->static_pictures[
+						10+import[game].num_of_difficulty_graphics-difficulty
+				]->height,
+				menu_data->palette); // x-position: 33; y-position: 25
 	}
-
-	if (!only_redraw_difficulty) {
-		draw(im_bottom,menu_data->palette,menu_data->static_pictures[4]->data,27,140,menu_data->static_pictures[4]->width,menu_data->static_pictures[4]->height);
-		if (is_audio_enabled()) {
-			draw(im_bottom,menu_data->palette,menu_data->static_pictures[8]->data,27+27,140+26,menu_data->static_pictures[8]->width,menu_data->static_pictures[8]->height);
-		}else if (is_audio_only_fx()) {
-			draw(im_bottom,menu_data->palette,menu_data->static_pictures[9]->data,27+27,140+26,menu_data->static_pictures[9]->width,menu_data->static_pictures[9]->height);
-		}
+	draw(
+			BOTTOM_SCREEN_BACK,
+			27,
+			140,
+			menu_data->static_pictures[4]->data,
+			menu_data->static_pictures[4]->width,
+			menu_data->static_pictures[4]->height,
+			menu_data->palette);
+	if (is_audio_enabled() || is_audio_only_fx()) {
+		int picture_id = (is_audio_only_fx()?9:8);
+		draw(
+				BOTTOM_SCREEN_BACK,
+				27+27,
+				140+26,
+				menu_data->static_pictures[picture_id]->data,
+				menu_data->static_pictures[picture_id]->width,
+				menu_data->static_pictures[picture_id]->height,
+				menu_data->palette);
 	}
-
-	*texture_bot_screen = sf2d_create_texture(im_bottom->width, im_bottom->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
-	if (!*texture_bot_screen) {
-		return 0; // error
-	}
-
-	sf2d_fill_texture_from_RGBA8(*texture_bot_screen, im_bottom->data, im_bottom->width, im_bottom->height);
-	sf2d_texture_tile32(*texture_bot_screen);
 	return 1;
 }
 
 int main_menu(u8 games[], u8* game, int* lvl,
-		struct MainMenuData* menu_data, struct MainInGameData* main_data,
-		struct RGB_Image* im_top, struct RGB_Image* logo_scaled,
-		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen) {
-
-	sf2d_texture* texture_bot_screen = 0;
-	struct RGB_Image* im_bottom = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*320*240);
-	if (!im_bottom) {
-		return MENU_ERROR; // error
-	}
-	im_bottom->width = 320;
-	im_bottom->height = 240;
+		struct MainMenuData* menu_data, struct MainInGameData* main_data) {
 
 	if (!draw_main_menu(*game,
 			*lvl/import[*game].num_of_level_per_difficulty,
-			menu_data,im_bottom,&texture_bot_screen, 0,0)) {
-		clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
+			menu_data,0,0)) {
 		return MENU_ERROR; // error
 	}
 
@@ -418,17 +387,14 @@ int main_menu(u8 games[], u8* game, int* lvl,
 		}
 
 		if ((kHeld & KEY_L) && (kHeld & KEY_R)) {
-			clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 			return MENU_ACTION_EXIT; // exit
 		}
 
 		if (kDown & (KEY_A | KEY_START)) {
-			clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 			return MENU_ACTION_START_SINGLE_PLAYER;
 		}
 
 		if (kDown & (KEY_B | KEY_SELECT | KEY_X)) {
-			clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
 			return MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER;
 		}
 
@@ -437,8 +403,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 			if (update) {
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
-						menu_data,im_bottom,&texture_bot_screen,0,1)) {
-					clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
+						menu_data,0,1)) {
 					return MENU_ERROR; // error
 				}
 			}
@@ -448,15 +413,9 @@ int main_menu(u8 games[], u8* game, int* lvl,
 			if (*lvl/import[*game].num_of_level_per_difficulty < import[*game].num_of_difficulties-1) {
 				*lvl = import[*game].num_of_level_per_difficulty*(*lvl/import[*game].num_of_level_per_difficulty) + import[*game].num_of_level_per_difficulty;
 
-				if (texture_bot_screen) {
-					sf2d_free_texture(texture_bot_screen);
-					texture_bot_screen = 0;
-				}
-
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
-						menu_data,im_bottom,&texture_bot_screen,1,0)) {
-					clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
+						menu_data,1,0)) {
 					return MENU_ERROR; // error
 				}
 
@@ -473,24 +432,15 @@ int main_menu(u8 games[], u8* game, int* lvl,
 						*game = next_game;
 						if (!read_gamespecific_data(*game, menu_data, main_data)) {
 							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
-							return MENU_ERROR; // error
-						}
-						if (!draw_topscreen(menu_data, im_top, texture_top_screen, logo_scaled, texture_logo)) {
-							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
-							clean_gamedata(menu_data, main_data);
 							return MENU_ERROR; // error
 						}
 						*lvl = 0;
-						if (texture_bot_screen) {
-							sf2d_free_texture(texture_bot_screen);
-							texture_bot_screen = 0;
-						}
 						if (!draw_main_menu(*game,
 								*lvl/import[*game].num_of_level_per_difficulty,
-								menu_data,im_bottom,&texture_bot_screen,0,0)) {
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
+								menu_data,0,0)) {
+							return MENU_ERROR; // error
+						}
+						if (!update_topscreen(menu_data)) {
 							return MENU_ERROR; // error
 						}
 						continue;
@@ -504,8 +454,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
-						menu_data,im_bottom,&texture_bot_screen,1,0)) {
-					clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
+						menu_data,1,0)) {
 					return MENU_ERROR; // error
 				}
 			}else{
@@ -520,24 +469,15 @@ int main_menu(u8 games[], u8* game, int* lvl,
 						*game = prev_game;
 						if (!read_gamespecific_data(*game, menu_data, main_data)) {
 							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
-							return MENU_ERROR; // error
-						}
-						if (!draw_topscreen(menu_data, im_top, texture_top_screen, logo_scaled, texture_logo)) {
-							// error!
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
-							clean_gamedata(menu_data, main_data);
 							return MENU_ERROR; // error
 						}
 						*lvl = import[*game].num_of_level_per_difficulty * (import[*game].num_of_difficulties-1);
-						if (texture_bot_screen) {
-							sf2d_free_texture(texture_bot_screen);
-							texture_bot_screen = 0;
-						}
 						if (!draw_main_menu(*game,
 								*lvl/import[*game].num_of_level_per_difficulty,
-								menu_data,im_bottom,&texture_bot_screen,0,0)) {
-							clean_menu_bottom_graphics(&texture_bot_screen, &im_bottom);
+								menu_data,0,0)) {
+							return MENU_ERROR; // error
+						}
+						if (!update_topscreen(menu_data)) {
 							return MENU_ERROR; // error
 						}
 						continue;
@@ -546,23 +486,10 @@ int main_menu(u8 games[], u8* game, int* lvl,
 
 			}
 		}
-		sf2d_start_frame(GFX_TOP, GFX_LEFT);
-		if (*texture_top_screen) {
-			sf2d_draw_texture(*texture_top_screen, 0, 0);
-		}
-		if (*texture_logo) {
-			sf2d_draw_texture(*texture_logo, 10, 20);
-		}
-		sf2d_end_frame();
-
-		sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
-		sf2d_draw_texture(texture_bot_screen, 0, 0);
-		sf2d_end_frame();
-		sf2d_swapbuffers();
-	}
-	if (texture_bot_screen) {
-		sf2d_free_texture(texture_bot_screen);
-		texture_bot_screen = 0;
+		begin_frame();
+		copy_from_backbuffer(TOP_SCREEN);
+		copy_from_backbuffer(BOTTOM_SCREEN);
+		end_frame();
 	}
 	return MENU_EXIT_GAME;
 }

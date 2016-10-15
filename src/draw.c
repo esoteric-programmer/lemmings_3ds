@@ -1,31 +1,243 @@
-#include "draw.h"
-#include "highperf_font.h"
 #include <string.h>
 #include <stdlib.h>
+#include <sf2d.h>
+#include "draw.h"
+#include "highperf_font.h"
 #include "lemming.h"
 #include "particles.h"
+#include "settings.h"
 
-void draw_lemmings_minimap(struct Lemming[MAX_NUM_OF_LEMMINGS], struct MainInGameData* data, struct RGB_Image* image);
+#ifdef NO_SF2D
+#define SET_PIXEL(buf,x,y,val) { \
+		(buf)->data[3*((x+1)*(buf)->height-(y))] = (u8)(((val)>>8)&0xFF); \
+		(buf)->data[3*((x+1)*(buf)->height-(y))+1] = (u8)(((val)>>16)&0xFF); \
+		(buf)->data[3*((x+1)*(buf)->height-(y))+2] = (u8)(((val)>>24)&0xFF); \
+		}
+#define GET_PIXEL(buf,x,y) (((u32)((buf)->data[3*((x+1)*(buf)->height-(y))])<<8) \
+		| ((u32)((buf)->data[3*((x+1)*(buf)->height-(y))+1])<<16) \
+		| ((u32)((buf)->data[3*((x+1)*(buf)->height-(y))+2])<<24) \
+		| 0xFF)
+#else
+#define SET_PIXEL(buf,x,y, val) {(((u32*)(buf)->data)[(x)+(y)*(buf)->width]) = (val); }
+#define GET_PIXEL(buf,x,y) (((u32*)(buf)->data)[(x)+(y)*(buf)->width])
+#endif
 
-void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], struct Image* masks[23], u32 palette[16], struct RGB_Image* image, u16 x_offset);
+struct Buffer {
+	u16 width;
+	u16 height;
+	u8* data;
+};
 
-int draw(struct RGB_Image* image, u32 palette[16], const u8* img, s16 x, s16 y, u16 w, u16 h) {
-	if (!image || !palette || !img) {
+struct Buffer top_screen = {0,0,0};
+struct Buffer bottom_screen = {0,0,0};
+struct Buffer top_screen_backbuffer = {0,0,0};
+struct Buffer bottom_screen_backbuffer = {0,0,0};
+
+static inline struct Buffer* getScreenBuffer(ScreenBuffer buffer) {
+	switch (buffer) {
+		case TOP_SCREEN:
+			return &top_screen;
+		case BOTTOM_SCREEN:
+			return &bottom_screen;
+		case TOP_SCREEN_BACK:
+			return &top_screen_backbuffer;
+		case BOTTOM_SCREEN_BACK:
+			return &bottom_screen_backbuffer;
+		default:
+			return 0;
+	}
+}
+
+void init_drawing() {
+	#ifdef NO_SF2D
+	gfxSetScreenFormat(GFX_TOP,GSP_BGR8_OES);
+	gfxSetDoubleBuffering(GFX_TOP,1);
+	gfxSetScreenFormat(GFX_BOTTOM,GSP_BGR8_OES);
+	gfxSetDoubleBuffering(GFX_BOTTOM,1);
+	top_screen_backbuffer.data = (u8*)malloc(3*400*240);
+	bottom_screen_backbuffer.data = (u8*)malloc(3*320*240);
+	#else
+	gfxExit();
+	sf2d_init();
+	sf2d_start_frame(GFX_TOP, GFX_LEFT);
+	sf2d_end_frame();
+	sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
+	sf2d_end_frame();
+	sf2d_swapbuffers();
+	top_screen_backbuffer.data = (u8*)malloc(4*400*240);
+	bottom_screen_backbuffer.data = (u8*)malloc(4*320*240);
+	top_screen.data = (u8*)malloc(4*400*240);
+	bottom_screen.data = (u8*)malloc(4*320*240);
+	#endif
+	top_screen_backbuffer.width = 400;
+	top_screen_backbuffer.height = 240;
+	bottom_screen_backbuffer.width = 320;
+	bottom_screen_backbuffer.height = 240;
+	top_screen.width = 400;
+	top_screen.height = 240;
+	bottom_screen.width = 320;
+	bottom_screen.height = 240;
+}
+
+void fade_palette(u32 palette[16], float fading) {
+	if (fading >= 1.0f) {
+		return;
+	}
+	if (fading < 0.0f) {
+		fading = 0.0f;
+	}
+	u8 i;
+	for (i=0;i<16;i++) {
+		palette[i] =
+				((u32)((float)((palette[i]>>8) & 0xFF)*fading)<<8)
+				| ((u32)((float)((palette[i]>>16) & 0xFF)*fading)<<16)
+				| ((u32)((float)((palette[i]>>24) & 0xFF)*fading)<<24)
+				| (palette[i] & 0xFF);
+	}
+}
+
+void begin_frame() {
+	#ifdef NO_SF2D
+	top_screen.data = gfxGetFramebuffer(GFX_TOP,GFX_LEFT,0,0);
+	bottom_screen.data = gfxGetFramebuffer(GFX_BOTTOM,GFX_LEFT,0,0);
+	#endif
+}
+
+void end_frame() {
+	#ifdef NO_SF2D
+	gfxFlushBuffers();
+	gfxSwapBuffers();
+	gspWaitForVBlank();
+	#else
+	sf2d_texture* top_screen_t = sf2d_create_texture(400, 240, TEXFMT_RGBA8, SF2D_PLACE_RAM);
+	sf2d_fill_texture_from_RGBA8(top_screen_t, top_screen.data, 400, 240);
+	sf2d_texture_tile32(top_screen_t);
+	sf2d_texture* bot_screen_t = sf2d_create_texture(320, 240, TEXFMT_RGBA8, SF2D_PLACE_RAM);
+	sf2d_fill_texture_from_RGBA8(bot_screen_t, bottom_screen.data, 320, 240);
+	sf2d_texture_tile32(bot_screen_t);
+
+	sf2d_start_frame(GFX_TOP, GFX_LEFT);
+	sf2d_draw_texture(top_screen_t,0,0);
+	sf2d_end_frame();
+	sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
+	sf2d_draw_texture(bot_screen_t,0,0);
+	sf2d_end_frame();
+	sf2d_swapbuffers();
+	sf2d_free_texture(top_screen_t);
+	sf2d_free_texture(bot_screen_t);
+	#endif
+}
+
+void copy_from_backbuffer(ScreenBuffer screen) {
+	switch (screen) {
+		case TOP_SCREEN:
+		case TOP_SCREEN_BACK:
+			memcpy(
+					top_screen.data,
+					top_screen_backbuffer.data,
+					#ifdef NO_SF2D
+					3*top_screen.width*top_screen.height
+					#else
+					4*top_screen.width*top_screen.height
+					#endif
+					);
+			break;
+		case BOTTOM_SCREEN:
+		case BOTTOM_SCREEN_BACK:
+			memcpy(
+					bottom_screen.data,
+					bottom_screen_backbuffer.data,
+					#ifdef NO_SF2D
+					3*bottom_screen.width*bottom_screen.height
+					#else
+					4*bottom_screen.width*bottom_screen.height
+					#endif
+					);
+			break;
+		default:
+			break;
+	}
+}
+
+void draw_lemmings_minimap(
+		struct Lemming[MAX_NUM_OF_LEMMINGS],
+		u32 color);
+
+void draw_single_lemming(
+		ScreenBuffer screen,
+		s16 x,
+		s16 y,
+		struct Lemming* lem,
+		struct Image* lemmings_anim[337],
+		struct Image* masks[23],
+		u32 palette[16],
+		s16 x_offset,
+		s16 y_offset);
+
+int clear(ScreenBuffer screen) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!dest->data) {
+		return 0;
+	}
+	memset(dest->data, 0,
+			#ifdef NO_SF2D
+			3*dest->width*dest->height
+			#else
+			4*dest->width*dest->height
+			#endif
+			);
+	return 1;
+}
+
+int clear_rectangle(
+		ScreenBuffer screen,
+		u16 x,
+		u16 y,
+		u16 w,
+		u16 h) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!dest->data) {
+		return 0;
+	}
+	#ifdef NO_SF2D
+	u16 xi;
+	for (xi = 0; xi < w; xi++) {
+		memset(dest->data + 3*((xi+x+1)*dest->height - (y+h-1)), 0, 3*h);
+	}
+	#else
+	u16 yi;
+	for (yi = 0; yi < h; yi++) {
+		memset(dest->data + 4*(x + (yi+y)*dest->width), 0, 4*w);
+	}
+	#endif
+	return 1;
+}
+
+int draw(
+		ScreenBuffer screen,
+		s16 x,
+		s16 y,
+		const u8* img,
+		u16 w,
+		u16 h,
+		u32 palette[16]) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!dest->data || !palette || !img) {
 		return 0; // error
 	}
 	s16 xi, yi;
 	for (yi = 0; yi<h; yi++) {
 		s16 draw_y = yi + y;
-		if (draw_y < 0 || draw_y >= image->height) {
+		if (draw_y < 0 || draw_y >= dest->height) {
 			continue;
 		}
 		for (xi = 0; xi<w; xi++) {
 			s16 draw_x = xi + x;
-			if (draw_x < 0 || draw_x >= image->width) {
+			if (draw_x < 0 || draw_x >= dest->width) {
 				continue;
 			}
 			if (img[xi + yi*(s16)w] & 0xF0) {
-				image->data[draw_x + draw_y*image->width] = palette[img[xi + yi*(s16)w] & 0x0F] | 0xFF000000;
+				SET_PIXEL(dest, draw_x, draw_y, palette[img[xi + yi*(s16)w] & 0x0F]);
 			}
 		}
 	}
@@ -34,8 +246,16 @@ int draw(struct RGB_Image* image, u32 palette[16], const u8* img, s16 x, s16 y, 
 
 
 // help function for interpolation
-static inline u32 get_value(struct RGB_Image* image, float x1, float y1, float x2, float y2) {
-	if (!image) {
+static inline u32 get_value(
+		const u8* image,
+		u16 w,
+		u16 h,
+		float x1,
+		float y1,
+		float x2,
+		float y2,
+		u32 palette[16]) {
+	if (!image || !palette) {
 		return 0;
 	}
 	if (x1 > x2) {
@@ -55,7 +275,7 @@ static inline u32 get_value(struct RGB_Image* image, float x1, float y1, float x
 	s16 end_x = (s16)x2 + 1;
 	s16 start_y = (s16)y1;
 	s16 end_y = (s16)y2 + 1;
-	if (start_x >= image->width || start_y >= image->height) {
+	if (start_x >= w || start_y >= h) {
 		return 0;
 	}
 	s16 i,j;
@@ -92,12 +312,22 @@ static inline u32 get_value(struct RGB_Image* image, float x1, float y1, float x
 			float cur_r = 0.0;
 			float cur_g = 0.0;
 			float cur_b = 0.0;
-			if (i >= 0 && i < image->width && j >= 0 && j < image->height) {
-				u32 px = image->data[i+j*image->width];
-				cur_a = ((float)(px >> 24)) / 255.0f;
-				cur_r = ((float)((px >> 16) & 0xFF));
+			if (i >= 0 && i < w && j >= 0 && j < h) {
+				u32 px = palette[image[i+j*w] & 0x0F];
+				if (!(image[i+j*w] & 0xF0)) {
+					px = 0x00000000;
+				}
+				#ifdef ABGR
+				cur_a = ((float)((px >> 0) & 0xFF)) / 255.0f;
+				cur_r = ((float)((px >> 24) & 0xFF));
+				cur_g = ((float)((px >> 16) & 0xFF));
+				cur_b = ((float)((px >> 8) & 0xFF));
+				#else
+				cur_a = ((float)((px >> 24) & 0xFF)) / 255.0f;
+				cur_r = ((float)((px >> 0) & 0xFF));
 				cur_g = ((float)((px >> 8) & 0xFF));
-				cur_b = ((float)((px >> 0) & 0xFF));
+				cur_b = ((float)((px >> 16) & 0xFF));
+				#endif
 			}
 			alpha += weight * cur_a;
 			r += weight * cur_a * cur_r;
@@ -160,53 +390,179 @@ static inline u32 get_value(struct RGB_Image* image, float x1, float y1, float x
 	if (alpha - (float)alpha_i >= 0.5 && alpha_i < 255) {
 		alpha_i++;
 	}
-	return (alpha_i<<24) | (r_i<<16) | (g_i<<8) | b_i;
+	#ifdef ABGR
+	return (alpha_i<<0) | (r_i<<24) | (g_i<<16) | (b_i << 8);
+	#else
+	return (alpha_i<<24) | (r_i<<0) | (g_i<<8) | (b_i << 16);
+	#endif
 }
 
-// scale with linear interpolation (sf2d seems o scale without interpolation)
-void scale(struct RGB_Image* dest, float factor, struct RGB_Image* source) {
-	if (!dest || !source) {
-		return;
+// draw after scale with linear interpolation
+int draw_scaled(
+		ScreenBuffer screen,
+		s16 x,
+		s16 y,
+		const u8* img,
+		u16 w,
+		u16 h,
+		u32 palette[16],
+		float scaling) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!dest->data || !palette || !img) {
+		return 0; // error
 	}
-	s16 x,y;
-	for (y=0;y<dest->height;y++) {
-		for (x=0;x<dest->width;x++) {
-			dest->data[x+y*dest->width] = //source->data[(int)((float)x/factor) + source->width * (int)((float)y/factor)];
-					get_value(source, (float)x/factor, (float)y/factor, (float)(x+1)/factor, (float)(y+1)/factor);
+	s16 xi, yi;
+	u16 dest_w, dest_h;
+	dest_w = (u16)(((float)w) * scaling + 1.0f);
+	dest_h = (u16)(((float)h) * scaling + 1.0f);
+	for (yi=0;yi<dest_h;yi++) {
+		s16 draw_y = yi + y;
+		if (draw_y < 0 || draw_y >= dest->height) {
+			continue;
+		}
+		for (xi=0;xi<dest_w;xi++) {
+			s16 draw_x = xi + x;
+			if (draw_x < 0 || draw_x >= dest->width) {
+				continue;
+			}
+			u32 color = get_value(
+					img,
+					w,
+					h,
+					(float)xi/scaling,
+					(float)yi/scaling,
+					(float)(xi+1)/scaling,
+					(float)(yi+1)/scaling,
+					palette);
+			u32 old = GET_PIXEL(dest, x+xi, y+yi);
+			#ifdef ABGR
+			float alpha = (float)((color >> 0)&0xFF) / 255.0f;
+			float b = (float)((color >> 8)&0xFF) * alpha / 255.0f
+					+ (float)((old >> 8)&0xFF) * (1.0f-alpha) / 255.0f;
+			if (b>1.0f) {
+				b = 1.0f;
+			}
+			float g = (float)((color >> 16)&0xFF) * alpha / 255.0f
+					+ (float)((old >> 16)&0xFF) * (1.0f-alpha) / 255.0f;
+			if (g>1.0f) {
+				g = 1.0f;
+			}
+			float r = (float)((color >> 24)&0xFF) * alpha / 255.0f
+					+ (float)((old >> 24)&0xFF) * (1.0f-alpha) / 255.0f;
+			if (r>1.0f) {
+				r = 1.0f;
+			}
+			u32 new = (((u32)(r*255.0f)) << 24)
+					| (((u32)(g*255.0f)) << 16)
+					| (((u32)(b*255.0f)) << 8)
+					| 0x000000FF;
+			SET_PIXEL(dest, x+xi, y+yi, new);
+			#else
+			float alpha = (float)((color >> 24)&0xFF) / 255.0f;
+			float b = (float)((color >> 16)&0xFF) * alpha / 255.0f
+					+ (float)((old >> 16)&0xFF) * (1.0f-alpha) / 255.0f;
+			if (b>1.0f) {
+				b = 1.0f;
+			}
+			float g = (float)((color >> 8)&0xFF) * alpha / 255.0f
+					+ (float)((old >> 8)&0xFF) * (1.0f-alpha) / 255.0f;
+			if (g>1.0f) {
+				g = 1.0f;
+			}
+			float r = (float)((color >> 0)&0xFF) * alpha / 255.0f
+					+ (float)((old >> 0)&0xFF) * (1.0f-alpha) / 255.0f;
+			if (r>1.0f) {
+				r = 1.0f;
+			}
+			SET_PIXEL(dest, x+xi, y+yi,
+					(((u32)(r*255.0f)) << 0)
+					| (((u32)(g*255.0f)) << 8)
+					| (((u32)(b*255.0f)) << 16)
+					| 0xFF000000);
+			#endif
 		}
 	}
+	return 1;
 }
 
-int draw_level(struct RGB_Image* image, struct Level* level) {
-	s16 i,x,y;
-	if (!image || !level) {
-		return 0;
+int draw_level(
+		ScreenBuffer screen,
+		s16 x,
+		s16 y,
+		u16 w,
+		u16 h,
+		struct Level* level,
+		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
+		struct MainInGameData* main_data,
+		u32* level_palette) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!dest->data || !level) {
+		return 0; // error
 	}
-
-	if (level->info.x_pos + image->width > 1584) {
-		if (image->width >= 1584) {
-			level->info.x_pos = 0;
+	if (!level_palette) {
+		level_palette = level->palette.vga;
+	}
+	// adjust everything
+	if (x>=dest->width || y>dest->height) {
+		return 1;
+	}
+	if (x+w<0 || y+h<0) {
+		return 1;
+	}
+	if (x+w>dest->width) {
+		w = dest->width-x;
+	}
+	if (y+h>dest->height) {
+		h = dest->height-y;
+	}
+	s16 x_offset = level->info.x_pos;
+	s16 y_offset = 0;
+	if (x_offset + w > 1584) {
+		if (w >= 1584) {
+			x_offset = 0;
 		}else{
-			level->info.x_pos = 1584 - image->width;
+			x_offset = 1584 - w;
 		}
 	}
+	if (x<0) {
+		x_offset -= x;
+		w += x;
+		x = 0;
+	}
+	if (y<0) {
+		y_offset -= y;
+		h += y;
+		y = 0;
+	}
 
-	for (y=0;y<160 && y<image->height;y++) {
-		for (x=0;x<image->width;x++) {
-			s16 level_x = x + (s16)level->info.x_pos;
-			if (level_x >= 1584) {
-				image->data[x+y*image->width] = 0x000000;
+	// draw terrain
+	s16 xi,yi;
+	for (yi=0;yi<h;yi++) {
+		if (y+yi < 0 || y+yi >= dest->height) {
+			continue;
+		}
+		x=0;w=320;
+		for (xi=0;xi<w;xi++) {
+			if (x+xi < 0 || x+xi >= dest->width) {
+				continue;
 			}
-			if (level->terrain[level_x+y*1584] & 0xF0) {
-				image->data[x+y*image->width] = level->palette.vga[level->terrain[level_x+y*1584] & 0x0F] | 0xFF000000;
+			s16 level_x = x_offset + xi;
+			if (level_x >= 1584 || level_x < 0 || yi > 160) {
+				SET_PIXEL(dest, x+xi, y+yi, level_palette[0]);
+				continue;
+			}
+			if (level->terrain[level_x+yi*1584] & 0xF0) {
+				SET_PIXEL(dest, x+xi, y+yi,
+						level_palette[
+								level->terrain[level_x+yi*1584] & 0x0F]);
 			}else{
-				image->data[x+y*image->width] = level->palette.vga[0] | 0xFF000000;
+				SET_PIXEL(dest, x+xi, y+yi, level_palette[0]);
 			}
 		}
 	}
 
-
-	// draw objects into level graphic
+	// draw objects
+	u8 i;
 	for (i=0;i<32;i++) {
 		// process object!
 		if (!(level->obj[i].modifier & OBJECT_USED)) {
@@ -218,60 +574,82 @@ int draw_level(struct RGB_Image* image, struct Level* level) {
 		}
 
 		// copy image
-		s16 x,y;
-		for (y=0;y<o->height;y++) {
-			s16 draw_y;
+		for (yi=0;yi<o->height;yi++) {
+			s16 draw_y, level_y;
 			if (OBJECT_UPSIDE_DOWN & level->obj[i].modifier) {
-				draw_y = (s16)level->obj[i].y-y+(s16)o->height-1;
+				level_y = (s16)level->obj[i].y-yi+(s16)o->height-1;
 			}else{
-				draw_y = y+(s16)level->obj[i].y;
+				level_y = yi+(s16)level->obj[i].y;
 			}
-			if (draw_y < 0 || draw_y >= 160 || draw_y >= image->height) {
+			draw_y = level_y + y - y_offset;
+			if (draw_y < 0 || draw_y >= y+h) {
 				continue;
 			}
-			for (x=0;x<o->width;x++) {
-				if (x+level->obj[i].x < 0 || x+level->obj[i].x >= 1584) {
+			for (xi=0;xi<o->width;xi++) {
+				if (xi+level->obj[i].x < 0 || xi+level->obj[i].x >= 1584) {
 					continue;
 				}
 				if (level->obj[i].current_frame > o->end_frame) {
 					continue;
 				}
-				s16 draw_x = ((s16)(x+level->obj[i].x)) - ((s16)level->info.x_pos);
-				if (draw_x < 0 || draw_x >= image->width) {
+				s16 draw_x = xi+ (s16)level->obj[i].x - x_offset + x;
+				if (draw_x < 0 || draw_x >= x+w) {
 					continue;
 				}
 
-				u8 color = o->data[level->obj[i].current_frame * ((u32)o->width) * ((u32)o->height) + y * ((u32)o->width) + x];
+				u8 color = o->data[level->obj[i].current_frame * ((u32)o->width) * ((u32)o->height) + yi * ((u32)o->width) + xi];
 				if ((color & 0xF0) == 0) {
 					continue;
 				}
 				// TODO: OBJECT_DONT_OVERWRITE -> don't overwrite terrain or don't overwrite anything?
 
-				if ((OBJECT_DONT_OVERWRITE & level->obj[i].modifier) && (level->terrain[x+level->obj[i].x+1584*(draw_y)] & 0xF0)) {
+				if ((OBJECT_DONT_OVERWRITE & level->obj[i].modifier) && (level->terrain[xi+level->obj[i].x+1584*(level_y)] & 0xF0)) {
 					continue;
 				}
-				if ((OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier) && !(level->terrain[x+level->obj[i].x+1584*(draw_y)] & 0xF0)) {
+				if ((OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier) && !(level->terrain[xi+level->obj[i].x+1584*(level_y)] & 0xF0)) {
 					continue;
 				}
 				if (OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier) {
 					//1->5; 3->5; 4->4; ...
 					color = 0xF4 | (color&0x1);
 				}
-				image->data[draw_x+image->width*draw_y] = level->palette.vga[color & 0x0F] | 0xFF000000;
+				SET_PIXEL(dest, draw_x, draw_y, level_palette[color & 0x0F]);
 			}
 		}
 	}
+
+	// draw lemmings
+	draw_lemmings(
+			screen,
+			x,
+			y,
+			lemmings,
+			main_data->lemmings_anim,
+			main_data->masks,
+			level_palette,
+			level->info.x_pos,
+			0);
 	return 1;
 }
 
-void draw_highperf_text(struct RGB_Image* image, struct MainInGameData* data,
-		s16 y_offset, const char* text) {
-	if (!text || !image || !data) {
+void draw_highperf_text(
+		ScreenBuffer screen,
+		s16 x,
+		s16 y,
+		struct MainInGameData* data,
+		const char* text,
+		u32* highperf_palette) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!text || !dest->data || !data) {
 		return;
 	}
+	if (!highperf_palette) {
+		highperf_palette = data->high_perf_palette;
+	}
 	int i=0;
-	s16 x_offset = 0;
-	s16 x,y;
+	s16 x_offset = x;
+	s16 y_offset = y;
+	s16 xi,yi;
 	while(1) {
 
 		int id = -1; // unsupported symbol
@@ -281,7 +659,7 @@ void draw_highperf_text(struct RGB_Image* image, struct MainInGameData* data,
 		}
 			if (text[i] == '\n') {
 				i++;
-				x_offset = 0;
+				x_offset = x;
 				y_offset += 16;
 				continue;
 			}
@@ -332,25 +710,29 @@ void draw_highperf_text(struct RGB_Image* image, struct MainInGameData* data,
 				continue;
 			}
 		// now draw character with index i
-		for (y=0;y<16 && y+y_offset<image->height;y++) {
-			for (x=8*x_offset;x<8*(x_offset+1);x++) {
-				if (x >= image->width) {
+		for (yi=0;yi<16 && yi+y_offset<dest->height;yi++) {
+			for (xi=8*x_offset;xi<8*(x_offset+1);xi++) {
+				if (xi >= dest->width) {
 					break;
 				}
-				s16 screen_x = x + ((s16)image->width-320)/2;
-				if (screen_x < 0 || screen_x >= image->width) {
+				s16 screen_x = xi + ((s16)dest->width-320)/2;
+				if (screen_x < 0 || screen_x >= dest->width) {
 					continue;
 				} else {
 					// draw character
 					if (id == -1) {
 						if (other) {
-							if (other[8*y + x-8*x_offset] & 0xF0) {
-								image->data[screen_x+(y+y_offset)*image->width] = data->high_perf_palette[other[8*y + x-8*x_offset] & 0xF] | 0xFF000000;
+							if (other[8*yi + xi-8*x_offset] & 0xF0) {
+								SET_PIXEL(dest, screen_x, yi+y_offset,
+										highperf_palette[
+												other[8*yi + xi-8*x_offset] & 0xF]);
 							}
 						}
 					}else{
-						if (data->high_perf_font[id*8*16 + 8*y + x-8*x_offset] & 0xF0) {
-							image->data[screen_x+(y+y_offset)*image->width] = data->high_perf_palette[data->high_perf_font[id*8*16 + 8*y + x-8*x_offset] & 0xF] | 0xFF000000;
+						u8 color = data->high_perf_font[id*8*16 + 8*yi + xi-8*x_offset];
+						if (color & 0xF0) {
+							SET_PIXEL(dest, screen_x, yi+y_offset,
+									highperf_palette[color & 0xF]);
 						}
 					}
 				}
@@ -362,10 +744,19 @@ void draw_highperf_text(struct RGB_Image* image, struct MainInGameData* data,
 }
 
 
-void draw_menu_text(struct RGB_Image* image, struct MainMenuData* data,
-		s16 x_offset, s16 y_offset, const char* text) {
-	if (!text || !image || !data) {
+void draw_menu_text(
+		ScreenBuffer screen,
+		struct MainMenuData* data,
+		s16 x_offset,
+		s16 y_offset,
+		const char* text,
+		u32* palette) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!text || !dest->data || !data) {
 		return;
+	}
+	if (!palette) {
+		palette = data->palette;
 	}
 	s16 x_pos = 0;
 	int i=0;
@@ -390,19 +781,20 @@ void draw_menu_text(struct RGB_Image* image, struct MainMenuData* data,
 				continue;
 			}
 		// now draw character with index i
-		for (y=0;y<16 && y+y_offset<image->height;y++) {
+		for (y=0;y<16 && y+y_offset<dest->height;y++) {
 			for (x=16*x_pos;x<16*(x_pos+1);x++) {
-				if (x+x_offset >= image->width) {
+				if (x+x_offset >= dest->width) {
 					break;
 				}
-				s16 screen_x = x_offset + x + ((s16)image->width-320)/2;
-				if (screen_x < 0 || screen_x >= image->width) {
+				s16 screen_x = x_offset + x + ((s16)dest->width-320)/2;
+				if (screen_x < 0 || screen_x >= dest->width) {
 					continue;
 				} else {
 					// draw character
 					if (id >= 0) {
-						if (data->menu_font[id*16*16 + 16*y + x-16*x_pos] & 0xF0) {
-							image->data[screen_x+(y+y_offset)*image->width] = data->palette[data->menu_font[id*16*16 + 16*y + x-16*x_pos] & 0xF] | 0xFF000000;
+						u8 color = data->menu_font[id*16*16 + 16*y + x-16*x_pos];
+						if (color & 0xF0) {
+							SET_PIXEL(dest, screen_x, y+y_offset, palette[color & 0xF]);
 						}
 					}
 				}
@@ -414,10 +806,19 @@ void draw_menu_text(struct RGB_Image* image, struct MainMenuData* data,
 }
 
 
-void draw_menu_text_small(struct RGB_Image* image, struct MainMenuData* data,
-		s16 x_offset, s16 y_offset, const char* text) {
-	if (!text || !image || !data) {
+void draw_menu_text_small(
+		ScreenBuffer screen,
+		struct MainMenuData* data,
+		s16 x_offset,
+		s16 y_offset,
+		const char* text,
+		u32* palette) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!text || !dest->data || !data) {
 		return;
+	}
+	if (!palette) {
+		palette = data->palette;
 	}
 	s16 x_pos = 0;
 	int i=0;
@@ -442,13 +843,13 @@ void draw_menu_text_small(struct RGB_Image* image, struct MainMenuData* data,
 				continue;
 			}
 		// now draw character with index i
-		for (y=0;y<8 && y+y_offset<image->height;y++) {
+		for (y=0;y<8 && y+y_offset<dest->height;y++) {
 			for (x=8*x_pos;x<8*(x_pos+1);x++) {
-				if (x+x_offset >= image->width) {
+				if (x+x_offset >= dest->width) {
 					break;
 				}
-				s16 screen_x = x_offset + x + ((s16)image->width-320)/2;
-				if (screen_x < 0 || screen_x >= image->width) {
+				s16 screen_x = x_offset + x + ((s16)dest->width-320)/2;
+				if (screen_x < 0 || screen_x >= dest->width) {
 					continue;
 				} else {
 					// draw character
@@ -464,16 +865,17 @@ void draw_menu_text_small(struct RGB_Image* image, struct MainMenuData* data,
 						for (i=0;i<4;i++) {
 							if (px[i] & 0xF0) {
 								cnt++;
-								rgb[0] += data->palette[px[i] & 0xF] & 0xFF;
-								rgb[1] += (data->palette[px[i] & 0xF]>>8) & 0xFF;
-								rgb[2] += (data->palette[px[i] & 0xF]>>16) & 0xFF;
+								rgb[0] += (palette[px[i] & 0xF]>>8) & 0xFF;
+								rgb[1] += (palette[px[i] & 0xF]>>16) & 0xFF;
+								rgb[2] += (palette[px[i] & 0xF]>>24) & 0xFF;
 							}
 						}
 						if (cnt) {
+							u32 px = GET_PIXEL(dest, screen_x, y+y_offset);
 							u16 rgb_old[3] = {
-									image->data[screen_x+(y+y_offset)*image->width] & 0xFF,
-									(image->data[screen_x+(y+y_offset)*image->width]>>8) & 0xFF,
-									(image->data[screen_x+(y+y_offset)*image->width]>>16) & 0xFF
+									(px>>8) & 0xFF,
+									(px>>16) & 0xFF,
+									(px>>24) & 0xFF
 							};
 							rgb[0] += rgb_old[0] * (4-cnt);
 							rgb[1] += rgb_old[1] * (4-cnt);
@@ -481,8 +883,10 @@ void draw_menu_text_small(struct RGB_Image* image, struct MainMenuData* data,
 							rgb[0] /= 4;
 							rgb[1] /= 4;
 							rgb[2] /= 4;
-							u32 color = ((u32)rgb[0]) | (((u32)rgb[1])<<8) | (((u32)rgb[2])<<16);
-							image->data[screen_x+(y+y_offset)*image->width] = color | 0xFF000000;
+							u32 color = (((u32)rgb[0])<<8)
+									| (((u32)rgb[1])<<16)
+									| (((u32)rgb[2])<<24);
+							SET_PIXEL(dest, screen_x, y+y_offset, color);
 						}
 					}
 				}
@@ -494,30 +898,41 @@ void draw_menu_text_small(struct RGB_Image* image, struct MainMenuData* data,
 }
 
 
-int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
-		struct Level* level, struct LevelState* state,
+int draw_toolbar(
+		struct MainInGameData* data,
+		struct Level* level,
+		struct LevelState* state,
 		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
-		const char* text) {
-	if (!image || !data || !level || !state) {
+		const char* text,
+		u32* highperf_palette) {
+	struct Buffer* dest = getScreenBuffer(BOTTOM_SCREEN);
+	s16 y = 160+32;
+	if (!dest->data || !data || !level || !state) {
 		return 0;
 	}
+	if (!highperf_palette) {
+		data->high_perf_palette[7] = level->palette.vga[8];
+		highperf_palette = data->high_perf_palette;
+	}
 
-	s16 x,y,i;
-	data->high_perf_palette[7] = level->palette.vga[8];
-	for (y=0;y<40 && y+160<image->height;y++) {
-		for (x=0;x<image->width;x++) {
-			s16 toolbar_x = x - ((s16)image->width-320)/2;
+	s16 x,yi,i;
+	for (yi=0;yi<40 && yi+y<dest->height;yi++) {
+		for (x=0;x<dest->width;x++) {
+			s16 toolbar_x = x - ((s16)dest->width-320)/2;
 			if (toolbar_x >= 320 || toolbar_x < 0) {
-				image->data[x+(y+160)*image->width] = data->high_perf_palette[0] | 0xFF000000;
+				SET_PIXEL(dest, x, y+yi, highperf_palette[0]);
 			} else {
-				image->data[x+(y+160)*image->width] = data->high_perf_palette[data->high_perf_toolbar[toolbar_x+y*320] & 0x0F] | 0xFF000000;
+				SET_PIXEL(dest, x, y+yi,
+						highperf_palette[
+								data->high_perf_toolbar[
+										toolbar_x+yi*320] & 0x0F]);
 			}
 		}
 	}
 
-	draw_highperf_text(image, data, 160, text);
+	draw_highperf_text(GFX_BOTTOM, ((s16)dest->width-320)/2, 160+32, data, text, highperf_palette);
 
-	// DRAW SKILLZ
+	// number of available draw skills
 	u8 nums[10];
 	nums[0] = level->info.rate;
 	nums[1] = state->cur_rate;
@@ -525,25 +940,27 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 		nums[i+2] = level->info.skills[i];
 	}
 	for (i=0;i<10;i++) {
-		for (y=0;y<8 && y+177<image->height;y++) {
+		for (yi=0;yi<8 && yi+y+17<dest->height;yi++) {
 			for (x=16*i+4;x<16*i+12;x++) {
-				s16 screen_x = x + ((s16)image->width-320)/2;
-				if (screen_x < 0 || screen_x >= image->width) {
+				s16 screen_x = x + ((s16)dest->width-320)/2;
+				if (screen_x < 0 || screen_x >= dest->width) {
 					continue;
 				} else {
 					// draw rectangle
 					if (nums[i] == 0) {
-						image->data[screen_x+(y+177)*image->width] = data->high_perf_palette[3] | 0xFF000000;
+						SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
 					}else{
 						if (nums[i] > 99) {
 							nums[i] = 99;
 						}
-						image->data[screen_x+(y+177)*image->width] = data->high_perf_palette[0] | 0xFF000000;
-						if (data->skill_numbers[(nums[i]%10)*2*8*8 + y*8 + (x-16*i-4)]) {
-							image->data[screen_x+(y+177)*image->width] = data->high_perf_palette[3] | 0xFF000000;
+						SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[0]);
+						if (data->skill_numbers[
+								(nums[i]%10)*2*8*8 + yi*8 + (x-16*i-4)]) {
+							SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
 						}
-						if (data->skill_numbers[((nums[i]/10)*2+1)*8*8 + y*8 + (x-16*i-4)]) {
-							image->data[screen_x+(y+177)*image->width] = data->high_perf_palette[3] | 0xFF000000;
+						if (data->skill_numbers[
+								((nums[i]/10)*2+1)*8*8 + yi*8 + (x-16*i-4)]) {
+							SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
 						}
 					}
 				}
@@ -551,22 +968,23 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 		}
 	}
 
-	// draw active_skill
+	// mark active_skill
 	if (state->selected_skill >= 8) {
 		state->selected_skill = 0;
 	}
-	for (y=0;y<24 && y+176<image->height;y++) {
+	for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
 		for (x=16*(state->selected_skill+2);x<16*(state->selected_skill+3);x++) {
-			s16 screen_x = x + ((s16)image->width-320)/2;
-			if (screen_x < 0 || screen_x >= image->width) {
+			s16 screen_x = x + ((s16)dest->width-320)/2;
+			if (screen_x < 0 || screen_x >= dest->width) {
 				continue;
 			} else {
 				// draw rectangle
-				if (y==0 || y==23) {
-					image->data[screen_x+(y+176)*image->width] = data->high_perf_palette[3] | 0xFF000000;
+				if (yi==0 || yi==23) {
+					SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 				}else{
-					if (x==16*(state->selected_skill+2) || x==16*(state->selected_skill+2)+15) {
-						image->data[screen_x+(y+176)*image->width] = data->high_perf_palette[3] | 0xFF000000;
+					if (x==16*(state->selected_skill+2)
+							|| x==16*(state->selected_skill+2)+15) {
+						SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 					}
 				}
 			}
@@ -574,59 +992,60 @@ int draw_toolbar(struct RGB_Image* image, struct MainInGameData* data,
 	}
 
 	// draw mini-map
-	for (y=16;y<160;y+=8) {
+	for (yi=16;yi<160;yi+=8) {
 		for (x=0;x<1584;x+=16) {
 			int solid = 0;
 			for (i=0;i<16;i++) {
-				solid += ((level->terrain[x+i+y*1584] & 0xF0)?1:0);
+				solid += ((level->terrain[x+i+yi*1584] & 0xF0)?1:0);
 			}
 			solid = (solid>8?7:0); // palette entry to draw in minimap
 			s16 minimap_x = 209 + x/16;
-			s16 minimap_y = 177 + y/8;
-			minimap_x += + ((s16)image->width-320)/2;
-			if (minimap_x < 0 || minimap_x >= image->width || minimap_y < 0 || minimap_y >= image->height) {
+			s16 minimap_y = y+17 + yi/8;
+			minimap_x += + ((s16)dest->width-320)/2;
+			if (minimap_x < 0 || minimap_x >= dest->width || minimap_y < y || minimap_y >= dest->height) {
 				continue;
 			}
-			image->data[minimap_x+minimap_y*image->width] = data->high_perf_palette[solid]  | 0xFF000000;
+			SET_PIXEL(dest, minimap_x, minimap_y, highperf_palette[solid]);
 		}
 	}
 
-	// draw lemmings
-	draw_lemmings_minimap(lemmings,data,image);
+	// draw lemmings into minimap
+	draw_lemmings_minimap(lemmings,highperf_palette[2]);
 
 
 	// draw current view into minimap
-	s16 view_rect_width = 103 - (1584-image->width) / 16;
+	s16 view_rect_width = 103 - (1584-dest->width) / 16;
 	if (view_rect_width < 3) {
 		view_rect_width = 3;
 	}else if (view_rect_width > 103) {
 		view_rect_width = 103;
 	}
-	for (y=0;y<20;y++) {
+	for (yi=0;yi<20;yi++) {
 		for (x=level->info.x_pos / 16;x<level->info.x_pos / 16 + view_rect_width; x++) {
-			s16 screen_x = x + ((s16)image->width-320)/2 + 209;
-			s16 screen_y = y + 178;
-			if (screen_x < 0 || screen_x >= image->width || screen_y >= image->height) {
+			s16 screen_x = x + ((s16)dest->width-320)/2 + 209;
+			s16 screen_y = y + 18 + yi;
+			if (screen_x < 0 || screen_x >= dest->width || screen_y >= dest->height) {
 				continue;
 			}
 			// draw rectangle
-			if (y==0 || y==19) {
-				image->data[screen_x+screen_y*image->width] = data->high_perf_palette[3] | 0xFF000000;
+			if (yi==0 || yi==19) {
+				SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 			}else{
 				if (x==level->info.x_pos / 16 || x==level->info.x_pos / 16 + view_rect_width - 1) {
-					image->data[screen_x+screen_y*image->width] = data->high_perf_palette[3] | 0xFF000000;
+					SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 				}
 			}
 
 		}
 	}
-
 	return 1; // all fine
 }
 
-void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct MainInGameData* data, struct RGB_Image* image) {
+void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], u32 color) {
+	s16 y = 160+32;
+	struct Buffer* dest = getScreenBuffer(BOTTOM_SCREEN);
 	int i;
-	if (!lemmings || !image) {
+	if (!lemmings) {
 		return; // error
 	}
 	for (i=0;i<80;i++) {
@@ -638,23 +1057,40 @@ void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct 
 		}
 
 		s16 minimap_x = 209 + (lemmings[i].x>=0?lemmings[i].x:0)/16;
-		s16 minimap_y = 177 + (lemmings[i].y>=16?lemmings[i].y:16)/8;
-		image->data[minimap_x+minimap_y*image->width] = data->high_perf_palette[2] | 0xFF000000; // green
+		s16 minimap_y = y + 17 + (lemmings[i].y>=16?lemmings[i].y:16)/8;
+		SET_PIXEL(dest, minimap_x, minimap_y, color); // green
 	}
 }
 
-u8 draw_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Image* lemmings_anim[337], struct Image* masks[23], u32 palette[16], struct RGB_Image* image, u16 x_offset) {
+u8 draw_lemmings(
+		ScreenBuffer screen,
+		s16 x,
+		s16 y,
+		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
+		struct Image* lemmings_anim[337],
+		struct Image* masks[23],
+		u32 palette[16],
+		s16 x_offset,
+		s16 y_offset) {
 	int i;
 	u8 ret = 0;
 	if (!lemmings) {
 		return ret; // error
 	}
-	for (i=0;i<80;i++) {
+	for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
 		if (lemmings[i].removed || lemmings[i].current_action >= 18) {
 			continue;
 		}
 		ret++;
-		draw_single_lemming(lemmings+i,lemmings_anim,masks,palette,image,x_offset);
+		draw_single_lemming(
+				screen,
+				x,
+				y,
+				lemmings+i,
+				lemmings_anim,
+				masks,palette,
+				x_offset,
+				y_offset);
 	}
 	return ret;
 }
@@ -679,9 +1115,27 @@ static inline int get_particle(u8 particle, u8 frame, s8* x, s8* y, u8* color) {
 	return 1;
 }
 
-void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], struct Image* masks[23], u32 palette[16], struct RGB_Image* image, u16 x_offset) {
-	if (!lem || !lemmings_anim || !palette || !image) {
+void draw_single_lemming(
+		ScreenBuffer screen,
+		s16 x,
+		s16 y,
+		struct Lemming* lem,
+		struct Image* lemmings_anim[337],
+		struct Image* masks[23],
+		u32 palette[16],
+		s16 x_offset,
+		s16 y_offset) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!lem || !lemmings_anim || !palette || !dest->data) {
 		return;
+	}
+	if (y<0) {
+		y_offset -= y;
+		y = 0;
+	}
+	if (x<0) {
+		x_offset -= x;
+		x = 0;
 	}
 	u8 act = 0;
 	if (ENABLE_SHRUGGER_GLITCH) {
@@ -692,8 +1146,8 @@ void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], 
 	if (act >= 18 || lem->removed) {
 		return;
 	}
-	s16 x_pos = lem->x + (s16)lem->x_draw_offset - (s16)x_offset;
-	s16 y_pos = lem->y + (s16)lem->y_draw_offset;
+	s16 x_pos = lem->x + (s16)lem->x_draw_offset - x_offset + x;
+	s16 y_pos = lem->y + (s16)lem->y_draw_offset - y_offset + y;
 	int im_idx = action_image_offsets[act][lem->look_right?1:0] + lem->frame_offset;
 	if (im_idx < 0) {
 		return;
@@ -706,38 +1160,37 @@ void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], 
 		}
 		u8 frame = (u8)(im_idx-337);
 		for (i=0;i<80;i++) {
-			s8 x,y;
+			s8 xi,yi;
 			u8 c;
-			if (get_particle(i,frame,&x,&y,&c)) {
-				x_pos = lem->x - (s16)x_offset + (s16)x;
-				y_pos = lem->y + (s16)y;
-				if (x_pos < 0 || x_pos >= image->width) {
+			if (get_particle(i,frame,&xi,&yi,&c)) {
+				x_pos = lem->x + (s16)xi - x_offset + x;
+				y_pos = lem->y + (s16)yi - y_offset + y;
+				if (x_pos < x || x_pos >= dest->width) {
 					continue;
 				}
-				if (y_pos < 0 || y_pos >= image->height) {
+				if (y_pos < y || y_pos >= dest->height) {
 					continue;
 				}
-				image->data[x_pos+y_pos*image->width] =
-					palette[c & 0x0F] | 0xFF000000;
+				SET_PIXEL(dest, x_pos, y_pos, palette[c & 0x0F]);
 			}
 		}
 		return;
 	}
 	struct Image* im = lemmings_anim[im_idx];
 	// copy im to image
-	s16 x,y;
-	for (y=0;y<im->height;y++) {
-		if (y+y_pos < 0 || y+y_pos >= image->height) {
+	s16 xi,yi;
+	for (yi=0;yi<im->height;yi++) {
+		if (yi+y_pos < y || yi+y_pos >= dest->height) {
 			continue;
 		}
-		for (x=0;x<im->width;x++) {
-			if (x+x_pos < 0 || x+x_pos >= image->width) {
+		for (xi=0;xi<im->width;xi++) {
+			if (xi+x_pos < 0 || xi+x_pos >= dest->width) {
 				continue;
 			}
-			if (im->data[x+y*im->width] & 0xF0) {
+			if (im->data[xi+yi*im->width] & 0xF0) {
 				// draw pixel
-				image->data[x+x_pos+(y+y_pos)*image->width] =
-					palette[im->data[x+y*im->width] & 0x0F] | 0xFF000000;
+				SET_PIXEL(dest, xi+x_pos, yi+y_pos,
+					palette[im->data[xi+yi*im->width] & 0x0F]);
 			}
 		}
 	}
@@ -747,20 +1200,19 @@ void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], 
 		number = (number<9?number+1:9);
 		u8 idx = 22-number;
 		if (masks[idx]) {
-			s16 y_pos = lem->y + (s16)lem->y_draw_offset - masks[idx]->height;
-			s16 x_pos = lem->x - (s16)x_offset;
-			for (y=0;y<masks[idx]->height;y++) {
-				if (y+y_pos < 0 || y+y_pos >= image->height) {
+			s16 y_pos = lem->y - y_offset + y + (s16)lem->y_draw_offset - masks[idx]->height;
+			s16 x_pos = lem->x - x_offset + x;
+			for (yi=0;yi<masks[idx]->height;yi++) {
+				if (yi+y_pos < y || yi+y_pos >= dest->height) {
 					continue;
 				}
-				for (x=0;x<masks[idx]->width;x++) {
-					if (x+x_pos < 0 || x+x_pos >= image->width) {
+				for (xi=0;xi<masks[idx]->width;xi++) {
+					if (xi+x_pos < x || xi+x_pos >= dest->width) {
 						continue;
 					}
-					if (masks[idx]->data[x+y*masks[idx]->width] & 0xF0) {
+					if (masks[idx]->data[xi+yi*masks[idx]->width] & 0xF0) {
 						// draw pixel
-						image->data[x+x_pos+(y+y_pos)*image->width] =
-								palette[3] | 0xFF000000;
+						SET_PIXEL(dest, xi+x_pos, yi+y_pos, palette[3]);
 					}
 				}
 			}
@@ -768,62 +1220,40 @@ void draw_single_lemming(struct Lemming* lem, struct Image* lemmings_anim[337], 
 	}
 }
 
-void tile_menu_background(struct RGB_Image* im_bottom, struct MainMenuData* menu_data) {
-	memset(im_bottom->data,0,sizeof(u32)*im_bottom->width*im_bottom->height);
+void tile_menu_background(
+		ScreenBuffer screen,
+		struct MainMenuData* menu_data) {
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!dest->data || !menu_data) {
+		return;
+	}
+	clear(screen);
 	s16 i,j;
-	for (i=0;i<im_bottom->width;i+=320) {
-			for (j=0;j<im_bottom->height;j+=104) {
-				draw(im_bottom,
-						menu_data->palette,
+	for (i=0;i<dest->width;i+=320) {
+			for (j=0;j<dest->height;j+=104) {
+				draw(
+						screen,
+						i,
+						j,
 						menu_data->static_pictures[0]->data,
-						i,j,
 						menu_data->static_pictures[0]->width,
-						menu_data->static_pictures[0]->height);
+						menu_data->static_pictures[0]->height,
+						menu_data->palette);
 			}
 	}
 }
 
-int draw_topscreen(struct MainMenuData* menu, struct RGB_Image* im_top, sf2d_texture** texture_top_screen, struct RGB_Image* logo_scaled, sf2d_texture** texture_logo) {
-	if (*texture_logo) {
-		sf2d_free_texture(*texture_logo);
-		*texture_logo = 0;
-	}
-	if (*texture_top_screen) {
-		sf2d_free_texture(*texture_top_screen);
-		*texture_top_screen = 0;
-	}
-	*texture_top_screen = sf2d_create_texture(im_top->width, im_top->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
-	if (!(*texture_top_screen)) {
-		return 0;
-	}
-	tile_menu_background(im_top, menu);
 
-	sf2d_fill_texture_from_RGBA8(*texture_top_screen, im_top->data, im_top->width, im_top->height);
-	sf2d_texture_tile32(*texture_top_screen);
-
-
-	struct RGB_Image* logo = (struct RGB_Image*)malloc(sizeof(struct RGB_Image)+sizeof(u32)*632*94);
-	if (!logo) {
-		sf2d_free_texture(*texture_top_screen);
-		*texture_top_screen = 0;
-		return 0;
-	}
-	logo->width = 632;
-	logo->height = 94;
-	memset(logo->data,0,sizeof(u32)*logo->width*logo->height);
-	draw(logo,menu->palette,menu->static_pictures[1]->data,0,0,menu->static_pictures[1]->width,menu->static_pictures[1]->height);
-	scale(logo_scaled, 0.6, logo);
-	free(logo);
-	logo = 0;
-
-	*texture_logo = sf2d_create_texture(logo_scaled->width, logo_scaled->height, TEXFMT_RGBA8, SF2D_PLACE_RAM);
-	if (!*texture_logo) {
-		sf2d_free_texture(*texture_top_screen);
-		*texture_top_screen = 0;
-		return 0;
-	}
-
-	sf2d_fill_texture_from_RGBA8(*texture_logo, logo_scaled->data, logo_scaled->width, logo_scaled->height);
-	sf2d_texture_tile32(*texture_logo);
+int update_topscreen(struct MainMenuData* menu) {
+	tile_menu_background(TOP_SCREEN_BACK, menu);
+	draw_scaled(
+			TOP_SCREEN_BACK,
+			10,
+			20,
+			menu->static_pictures[1]->data,
+			menu->static_pictures[1]->width,
+			menu->static_pictures[1]->height,
+			menu->palette,
+			0.6f);
 	return 1;
 }

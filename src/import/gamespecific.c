@@ -89,7 +89,7 @@ const struct SpecialSongs special_songs[] =
 const struct GameSpecific import[LEMMING_GAMES] = {
 		// original Lemmings DEMO
 		{
-			1, 4, 1, PATH_DATA_DEMO, "LEVEL",
+			1, 4, 1, PATH_DATA_DEMO, "orig", "LEVEL",
 			difficulties_classic,  ascending_numbers_0_to_63, msgs_orig, 4,
 			main_palette, ingame_palette, highperf_palette,
 			17, orig_song_order, 0, 0,
@@ -97,7 +97,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// original Lemmings
 		{
-			1, 4, 30, PATH_DATA_ORIGINAL, "LEVEL",
+			1, 4, 30, PATH_DATA_ORIGINAL, "orig", "LEVEL",
 			difficulties_classic,  position_of_classic_level, msgs_orig, 4,
 			main_palette, ingame_palette, highperf_palette,
 			17, orig_song_order, 4, special_songs,
@@ -105,7 +105,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Oh No! More Lemmings DEMO
 		{
-			0, 5, 1, PATH_DATA_OHNODEMO, "DLVEL",
+			0, 5, 1, PATH_DATA_OHNODEMO, "ohno", "DLVEL",
 			difficulties_ohnomore, ascending_numbers_0_to_63, msgs_ohno, 5,
 			main_palette, ingame_palette, highperf_palette,
 			6, ascending_numbers_0_to_63+1, 0, 0,
@@ -113,7 +113,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Oh No! More Lemmings
 		{
-			0, 5, 20, PATH_DATA_OHNOMORE, "DLVEL",
+			0, 5, 20, PATH_DATA_OHNOMORE, "ohno", "DLVEL",
 			difficulties_ohnomore, position_of_ohnomore_level, msgs_ohno, 5,
 			main_palette, ingame_palette, highperf_palette,
 			6, ascending_numbers_0_to_63+1, 0, 0,
@@ -121,7 +121,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Xmas Lemmings 1991
 		{
-			0, 1,  4, PATH_DATA_XMAS91, "LEVEL",
+			0, 1,  4, PATH_DATA_XMAS91, "xmas", "LEVEL",
 			difficulties_xmas91, ascending_numbers_0_to_63, msgs_ohno, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
 			3, ascending_numbers_0_to_63+1, 0, 0,
@@ -129,7 +129,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Xmas Lemmings 1992
 		{
-			0, 1,  4, PATH_DATA_XMAS92, "LEVEL",
+			0, 1,  4, PATH_DATA_XMAS92, "xmas", "LEVEL",
 			difficulties_xmas92, ascending_numbers_0_to_63, msgs_ohno, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
 			3, ascending_numbers_0_to_63+1, 0, 0,
@@ -137,7 +137,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Holiday Lemmings 1993 DEMO
 		{
-			0, 1, 4, PATH_DATA_HOLI93DEMO, "LEVEL",
+			0, 1, 4, PATH_DATA_HOLI93DEMO, "xmas", "LEVEL",
 			difficulties_holi_demo, ascending_numbers_0_to_63, msgs_holi93, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
 			3, ascending_numbers_0_to_63+1, 0, 0,
@@ -145,7 +145,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Holiday Lemmings 1993
 		{
-			0, 2, 16, PATH_DATA_HOLIDAY93, "LEVEL",
+			0, 2, 16, PATH_DATA_HOLIDAY93, "xmas", "LEVEL",
 			difficulties_holi93, ascending_numbers_0_to_63, msgs_holi93, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
 			3, ascending_numbers_0_to_63+1, 0, 0,
@@ -153,7 +153,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Holiday Lemmings 1994 DEMO
 		{
-			0, 1, 4, PATH_DATA_HOLI94DEMO, "LEVEL",
+			0, 1, 4, PATH_DATA_HOLI94DEMO, "ohno", "LEVEL",
 			difficulties_holi_demo, ascending_numbers_0_to_63, msgs_holi94, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
 			6, ascending_numbers_0_to_63+1, 0, 0,
@@ -161,7 +161,7 @@ const struct GameSpecific import[LEMMING_GAMES] = {
 		},
 		// Holiday Lemmings 1994
 		{
-			0, 4, 16, PATH_DATA_HOLIDAY94, "LEVEL",
+			0, 4, 16, PATH_DATA_HOLIDAY94, "ohno", "LEVEL",
 			difficulties_holi94, ascending_numbers_0_to_63, msgs_holi94, 4,
 			main_palette_xmas, ingame_palette_xmas, highperf_palette_xmas,
 			6, ascending_numbers_0_to_63+1, 0, 0,
@@ -486,100 +486,200 @@ const char* msgs_holi94[9] = {
 		" lemmings need you! \n"
 };
 
+#ifdef ABGR
 const u32 main_palette[] = {
-		0x000000,
-		0x204080,
-		0x203060,
-		0x100030,
-		0x7C0820,
-		0x902C40,
-		0xA45868,
-		0xBC8C98,
-		0x005000,
-		0x106000,
-		0x207000,
-		0x408000,
-		0xD0D0D0,
-		0x00B0B0,
-		0xB05040,
-		0x9080E0
+		0x000000FF,
+		0x804020FF,
+		0x603020FF,
+		0x300010FF,
+		0x20087CFF,
+		0x402C90FF,
+		0x6858A4FF,
+		0x988CBCFF,
+		0x005000FF,
+		0x006010FF,
+		0x007020FF,
+		0x008040FF,
+		0xD0D0D0FF,
+		0xB0B000FF,
+		0x4050B0FF,
+		0xE08090FF
 };
 
 const u32 ingame_palette[] = {
-		0x000000,
- 		0xE24040,
-		0x00B200,
-		0xD2D2F2,
-		0x00B2B2,
-		0x2020F2,
-		0x818181,
+		0x000000FF,
+ 		0x4040E2FF,
+		0x00B200FF,
+		0xF2D2D2FF,
+		0xB2B200FF,
+		0xF22020FF,
+		0x818181FF,
 		0
 };
 
 const u32 highperf_palette[] = {
-		0x000000,
-		0xE04040,
-		0x00B000,
-		0xD0D0F0,
-		0x00B0B0,
-		0x2020F0,
-		0x808080,
+		0x000000FF,
+		0x4040E0FF,
+		0x00B000FF,
+		0xF0D0D0FF,
+		0xB0B000FF,
+		0xF02020FF,
+		0x808080FF,
 		0, // TO BE OVERWRITTEN BY LEVEL-PALETTE-VALUE 8
-		0x00A800,
-		0x50FC50,
-		0x505450,
-		0x0000A8,
-		0x0054A8,
-		0xA8A800,
-		0xF854F8,
-		0xA800A8
+		0x00A800FF,
+		0x50FC50FF,
+		0x505450FF,
+		0xA80000FF,
+		0xA85400FF,
+		0x00A8A8FF,
+		0xF854F8FF,
+		0xA800A8FF
 };
 
 const u32 main_palette_xmas[] = {
-		0x000000,
-		0x204080,
-		0x203060,
-		0x100030,
-		0x7C0820,
-		0x902C40,
-		0xA45868,
-		0xBC8C98,
-		0x005000,
-		0x106000,
-		0x207000,
-		0x408000,
-		0xD0D0D0,
-		0x00B0B0,
-		0x1010C8, // xmas: red
-		0x9080E0
+		0x000000FF,
+		0x804020FF,
+		0x603020FF,
+		0x300010FF,
+		0x20087CFF,
+		0x402C90FF,
+		0x6858A4FF,
+		0x988CBCFF,
+		0x005000FF,
+		0x006010FF,
+		0x007020FF,
+		0x008040FF,
+		0xD0D0D0FF,
+		0xB0B000FF,
+		0xC81010FF, // xmas: red
+		0xE08090FF
 };
 
 const u32 ingame_palette_xmas[] = {
-		0x000000,
- 		0x2020F2,
-		0x00B200,
-		0xD2D2F2,
-		0x00B2B2,
-		0xE24040,
-		0x818181,
+		0x000000FF,
+ 		0xF22020FF,
+		0x00B200FF,
+		0xF2D2D2FF,
+		0xB2B200FF,
+		0x4040E2FF,
+		0x818181FF,
 		0
 };
 
 const u32 highperf_palette_xmas[] = {
-		0x000000,
-		0x2020D0,
-		0x00B000,
-		0xD0D0F0,
-		0x00F0F0,
-		0xE04040,
-		0x808080, // TODO
+		0x000000FF,
+		0xD02020FF,
+		0x00B000FF,
+		0xF0D0D0FF,
+		0xF0F000FF,
+		0x4040E0FF,
+		0x808080FF, // TODO
 		0, // TO BE OVERWRITTEN BY LEVEL-PALETTE-VALUE 8
-		0x00A800, // TODO
-		0x50F050,
-		0x505450, // TODO
-		0x0000A8, // TODO
-		0x303060,
-		0x0050A0,
-		0xF854F8, // TODO
-		0x404090
+		0x00A800FF, // TODO
+		0x50F050FF,
+		0x505450FF, // TODO
+		0xA80000FF, // TODO
+		0x603030FF,
+		0xA05000FF,
+		0xF854F8FF, // TODO
+		0x904040FF
 };
+#else
+const u32 main_palette[] = {
+		0xFF000000,
+		0xFF204080,
+		0xFF203060,
+		0xFF100030,
+		0xFF7C0820,
+		0xFF902C40,
+		0xFFA45868,
+		0xFFBC8C98,
+		0xFF005000,
+		0xFF106000,
+		0xFF207000,
+		0xFF408000,
+		0xFFD0D0D0,
+		0xFF00B0B0,
+		0xFFB05040,
+		0xFF9080E0
+};
+
+const u32 ingame_palette[] = {
+		0xFF000000,
+		0xFFE24040,
+		0xFF00B200,
+		0xFFD2D2F2,
+		0xFF00B2B2,
+		0xFF2020F2,
+		0xFF818181,
+		0
+};
+
+const u32 highperf_palette[] = {
+		0xFF000000,
+		0xFFE04040,
+		0xFF00B000,
+		0xFFD0D0F0,
+		0xFF00B0B0,
+		0xFF2020F0,
+		0xFF808080,
+		0, // TO BE OVERWRITTEN BY LEVELPALETTEVALUE 8
+		0xFF00A800,
+		0xFF50FC50,
+		0xFF505450,
+		0xFF0000A8,
+		0xFF0054A8,
+		0xFFA8A800,
+		0xFFF854F8,
+		0xFFA800A8
+};
+
+const u32 main_palette_xmas[] = {
+		0xFF000000,
+		0xFF204080,
+		0xFF203060,
+		0xFF100030,
+		0xFF7C0820,
+		0xFF902C40,
+		0xFFA45868,
+		0xFFBC8C98,
+		0xFF005000,
+		0xFF106000,
+		0xFF207000,
+		0xFF408000,
+		0xFFD0D0D0,
+		0xFF00B0B0,
+		0xFF1010C8, // xmas: red
+		0xFF9080E0
+};
+
+const u32 ingame_palette_xmas[] = {
+		0xFF000000,
+		0xFF2020F2,
+		0xFF00B200,
+		0xFFD2D2F2,
+		0xFF00B2B2,
+		0xFFE24040,
+		0xFF818181,
+		0
+};
+
+const u32 highperf_palette_xmas[] = {
+		0xFF000000,
+		0xFF2020D0,
+		0xFF00B000,
+		0xFFD0D0F0,
+		0xFF00F0F0,
+		0xFFE04040,
+		0xFF808080, // TODO
+		0, // TO BE OVERWRITTEN BY LEVELPALETTEVALUE 8
+		0xFF00A800, // TODO
+		0xFF50F050,
+		0xFF505450, // TODO
+		0xFF0000A8, // TODO
+		0xFF303060,
+		0xFF0050A0,
+		0xFFF854F8, // TODO
+		0xFF404090
+};
+#endif

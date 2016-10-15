@@ -4,6 +4,6 @@ Consider the following lines:
 For each line, consider 16 pixels in a row.
 Count the number of non-zero pixels.
 If at least 9 of these 16 pixels are non-zero,
-draw a colored pixel intpo the minimap.
+draw a colored pixel into the minimap.
 Otherwise leave it black.
 

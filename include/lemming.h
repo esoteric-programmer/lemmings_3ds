@@ -25,4 +25,7 @@ u8 select_lemming(struct Lemming[MAX_NUM_OF_LEMMINGS], s16 x, s16 y, u8 right_mo
 u8 assign_skill(u8 skill, struct Lemming* lem1, struct Lemming* lem2, struct Level*);
 
 const char* get_lemming_description(struct Lemming*); // returns ptr to pre-initialized string (no heap is reserved, do not free the pointer)
+
+// get number of lemmings alive
+int count_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]);
 #endif

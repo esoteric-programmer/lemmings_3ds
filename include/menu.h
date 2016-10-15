@@ -14,14 +14,20 @@
 #define RESULT_ACTION_CANCEL                    7
 #define MENU_EXIT_GAME                        127
 
-int main_menu(u8 games[], u8* game, int* lvl,
-		struct MainMenuData* menu_data, struct MainInGameData* main_data,
-		struct RGB_Image* im_top, struct RGB_Image* logo_scaled,
-		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen);
+int main_menu(
+		u8 games[],
+		u8* game,
+		int* lvl,
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data);
 
-int level_select_menu(u8 games[], u8* game, int* lvl, u8* progress, const char* level_names,
-		struct MainMenuData* menu_data, struct MainInGameData* main_data,
-		struct RGB_Image* im_top, struct RGB_Image* logo_scaled,
-		sf2d_texture** texture_logo, sf2d_texture** texture_top_screen);
+int level_select_menu(
+		u8 games[],
+		u8* game,
+		int* lvl,
+		u8* progress,
+		const char* level_names,
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data);
 
 #endif
