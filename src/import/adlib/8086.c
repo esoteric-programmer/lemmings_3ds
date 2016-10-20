@@ -2,7 +2,7 @@
  * Incomplete 8086 CPU Emulator
  *
  * Only instructions actual used in ADLIB.DAT of supported lemmings games
- * are implemented. So, many opcodes are not implemented.
+ * are implemented. Thus, many opcodes are not implemented.
  *
  * Flag A is not implemented.
  * rol, ror do not set flags (and sar may set wrong flags)
@@ -107,7 +107,9 @@ int x86_step();
 unsigned long (*port_read)(unsigned long,unsigned long) = 0;
 void (*port_write)(unsigned long,unsigned long,unsigned long) = 0;
 
-void install_port_handler(unsigned long (*OPL_Read)(unsigned long,unsigned long), void (*OPL_Write)(unsigned long port,unsigned long val,unsigned long iolen)) {
+void install_port_handler(
+		unsigned long (*OPL_Read)(unsigned long,unsigned long),
+		void (*OPL_Write)(unsigned long port,unsigned long val,unsigned long iolen)) {
 	port_read = OPL_Read;
 	port_write = OPL_Write;
 }

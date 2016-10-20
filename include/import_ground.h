@@ -32,7 +32,7 @@ struct TerrainInfo {
 	u16 unknown1;
 };
 
-struct VariablePalette {
+struct LevelPalette {
 	u8 ega_custom[8];
 	u8 ega_standard[8];
 	u8 ega_preview[8];
@@ -44,7 +44,7 @@ struct VariablePalette {
 struct GroundInfo {
 	struct ObjectInfo object_info[16];
 	struct TerrainInfo terrain_info[64];
-	struct VariablePalette palette;
+	struct LevelPalette palette;
 };
 
 int read_ground_data(struct GroundInfo* ret, FILE* in);

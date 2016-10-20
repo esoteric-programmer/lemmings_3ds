@@ -32,7 +32,7 @@ static inline void read_terrain_info(struct TerrainInfo* ret, FILE* in) {
 	fread(&(ret->unknown1),2,1,in);
 }
 
-static inline void read_palette(struct VariablePalette* ret, FILE* in) {
+static inline void read_palette(struct LevelPalette* ret, FILE* in) {
 	int i;
 	fread(ret->ega_custom,1,8,in);
 	fread(ret->ega_standard,1,8,in);

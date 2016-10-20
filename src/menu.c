@@ -8,6 +8,8 @@
 #include "gamespecific.h"
 #include "import_main.h"
 
+#define MAX(x,y) ((x)>=(y)?(x):(y))
+
 // draw level selection screen to im_bottom
 void select_level(
 		u8 game,
@@ -46,7 +48,7 @@ void select_level(
 				i==cur_level-top_offset?"->":"  ",level_no,level_name);
 		msg_ptr += strlen(msg_ptr);
 	}
-	draw_menu_text_small(BOTTOM_SCREEN_BACK,menu_data,0,0,msg,0);
+	draw_menu_text(BOTTOM_SCREEN_BACK,menu_data,0,0,msg,0,0.5f);
 }
 
 int level_select_menu(
@@ -61,9 +63,16 @@ int level_select_menu(
 	// SHOW LEVEL SELECTION SCREEN!
 	int redraw_selection = 1;
 	int cur_lev = *lvl;
-	int top = ((*lvl%import[*game].num_of_level_per_difficulty)>20?*lvl-20:import[*game].num_of_level_per_difficulty*(*lvl/import[*game].num_of_level_per_difficulty));
+	int top;
+	if ((*lvl%import[*game].num_of_level_per_difficulty)>20) {
+		top = *lvl-20;
+	}else{
+		top = import[*game].num_of_level_per_difficulty
+				* (*lvl/import[*game].num_of_level_per_difficulty);
+	}
 	if (top%import[*game].num_of_level_per_difficulty>6) {
-		top = import[*game].num_of_level_per_difficulty*(top/import[*game].num_of_level_per_difficulty)+6;
+		top = import[*game].num_of_level_per_difficulty
+				* (top/import[*game].num_of_level_per_difficulty)+6;
 	}
 	int dwn = 0;
 	int up = 0;
@@ -73,7 +82,8 @@ int level_select_menu(
 	u8 i;
 	for (i=0;i<*game;i++) {
 		progress_offset += import[i].num_of_difficulties;
-		level_names_offset += import[i].num_of_difficulties * import[i].num_of_level_per_difficulty;
+		level_names_offset += import[i].num_of_difficulties
+				* import[i].num_of_level_per_difficulty;
 	}
 	u8 old_game = *game;
 
@@ -87,7 +97,13 @@ int level_select_menu(
 		//kUp = hidKeysUp();
 		// hidTouchRead(&stylus);
 		if (redraw_selection) {
-			select_level(*game,menu_data, progress+progress_offset, cur_lev, top, level_names+33*level_names_offset);
+			select_level(
+					*game,
+					menu_data,
+					progress+progress_offset,
+					cur_lev,
+					top,
+					level_names+33*level_names_offset);
 			redraw_selection = 0;
 		}
 
@@ -115,16 +131,20 @@ int level_select_menu(
 				dwn = 1;
 			}
 
-			if (cur_lev % import[*game].num_of_level_per_difficulty < import[*game].num_of_level_per_difficulty-1) {
+			if (cur_lev % import[*game].num_of_level_per_difficulty
+					< import[*game].num_of_level_per_difficulty-1) {
 				cur_lev++;
 				if (cur_lev % import[*game].num_of_level_per_difficulty == 0) {
 					top = cur_lev;
 				}
-				if (cur_lev > top+20 && cur_lev%import[*game].num_of_level_per_difficulty < import[*game].num_of_level_per_difficulty-3) {
+				if (cur_lev > top+20
+						&& cur_lev%import[*game].num_of_level_per_difficulty
+							< import[*game].num_of_level_per_difficulty-3) {
 					top++;
 				}
 			}else if (kDown & KEY_DOWN){
-				cur_lev = import[*game].num_of_level_per_difficulty*(cur_lev/import[*game].num_of_level_per_difficulty);
+				cur_lev = import[*game].num_of_level_per_difficulty
+						* (cur_lev/import[*game].num_of_level_per_difficulty);
 				top = cur_lev;
 			}
 			redraw_selection = 1;
@@ -138,8 +158,11 @@ int level_select_menu(
 			}
 			if (cur_lev % import[*game].num_of_level_per_difficulty) {
 				cur_lev--;
-				if (cur_lev % import[*game].num_of_level_per_difficulty == import[*game].num_of_level_per_difficulty-1) {
-					top = import[*game].num_of_level_per_difficulty*(cur_lev/import[*game].num_of_level_per_difficulty) + (import[*game].num_of_level_per_difficulty-24>0?import[*game].num_of_level_per_difficulty-24:0);
+				if (cur_lev % import[*game].num_of_level_per_difficulty
+						== import[*game].num_of_level_per_difficulty-1) {
+					top = import[*game].num_of_level_per_difficulty
+							* (cur_lev/import[*game].num_of_level_per_difficulty)
+							+ MAX(import[*game].num_of_level_per_difficulty-24,0);
 				}
 				if (cur_lev < top+3) {
 					if (top % import[*game].num_of_level_per_difficulty != 0) {
@@ -147,7 +170,7 @@ int level_select_menu(
 					}
 				}
 			}else if (kDown & KEY_UP){
-				top = cur_lev + (import[*game].num_of_level_per_difficulty-24>0?import[*game].num_of_level_per_difficulty-24:0);
+				top = cur_lev + MAX(import[*game].num_of_level_per_difficulty-24,0);
 				cur_lev += import[*game].num_of_level_per_difficulty-1;
 			}
 			redraw_selection = 1;
@@ -166,7 +189,8 @@ int level_select_menu(
 
 		if (kDown & KEY_LEFT) {
 			if (cur_lev/import[*game].num_of_level_per_difficulty > 0) {
-				cur_lev = import[*game].num_of_level_per_difficulty*(cur_lev/import[*game].num_of_level_per_difficulty - 1);
+				cur_lev = import[*game].num_of_level_per_difficulty
+						* (cur_lev/import[*game].num_of_level_per_difficulty - 1);
 				top = cur_lev;
 				redraw_selection = 1;
 			} else {
@@ -189,7 +213,8 @@ int level_select_menu(
 							clean_gamedata(menu_data, main_data);
 							return MENU_ERROR; // error
 						}
-						cur_lev = import[*game].num_of_level_per_difficulty * (import[*game].num_of_difficulties-1);
+						cur_lev = import[*game].num_of_level_per_difficulty
+								* (import[*game].num_of_difficulties-1);
 						top = cur_lev;
 						redraw_selection = 1;
 
@@ -198,7 +223,8 @@ int level_select_menu(
 						u8 i;
 						for (i=0;i<*game;i++) {
 							progress_offset += import[i].num_of_difficulties;
-							level_names_offset += import[i].num_of_difficulties * import[i].num_of_level_per_difficulty;
+							level_names_offset += import[i].num_of_difficulties
+									* import[i].num_of_level_per_difficulty;
 						}
 
 						continue;
@@ -208,8 +234,10 @@ int level_select_menu(
 			}
 		}
 		if (kDown & KEY_RIGHT) {
-			if (cur_lev/import[*game].num_of_level_per_difficulty < import[*game].num_of_difficulties-1) {
-				cur_lev = import[*game].num_of_level_per_difficulty*(cur_lev/import[*game].num_of_level_per_difficulty + 1);
+			if (cur_lev/import[*game].num_of_level_per_difficulty
+					< import[*game].num_of_difficulties-1) {
+				cur_lev = import[*game].num_of_level_per_difficulty
+						* (cur_lev/import[*game].num_of_level_per_difficulty + 1);
 				top = cur_lev;
 				redraw_selection = 1;
 			} else {
@@ -241,7 +269,8 @@ int level_select_menu(
 						u8 i;
 						for (i=0;i<*game;i++) {
 							progress_offset += import[i].num_of_difficulties;
-							level_names_offset += import[i].num_of_difficulties * import[i].num_of_level_per_difficulty;
+							level_names_offset += import[i].num_of_difficulties
+									* import[i].num_of_level_per_difficulty;
 						}
 
 						continue;
@@ -250,7 +279,8 @@ int level_select_menu(
 			}
 		}
 		if (kDown & (KEY_A | KEY_START)) {
-			if (progress[progress_offset + cur_lev/import[*game].num_of_level_per_difficulty]>=cur_lev%import[*game].num_of_level_per_difficulty) {
+			if (progress[progress_offset + cur_lev/import[*game].num_of_level_per_difficulty]
+					>=cur_lev%import[*game].num_of_level_per_difficulty) {
 				// start level!!
 				*lvl = cur_lev;
 				return MENU_ACTION_LEVEL_SELECTED;
@@ -410,8 +440,11 @@ int main_menu(u8 games[], u8* game, int* lvl,
 		}
 
 		if (kDown & KEY_UP) {
-			if (*lvl/import[*game].num_of_level_per_difficulty < import[*game].num_of_difficulties-1) {
-				*lvl = import[*game].num_of_level_per_difficulty*(*lvl/import[*game].num_of_level_per_difficulty) + import[*game].num_of_level_per_difficulty;
+			if (*lvl/import[*game].num_of_level_per_difficulty
+					< import[*game].num_of_difficulties-1) {
+				*lvl = import[*game].num_of_level_per_difficulty
+						* (*lvl/import[*game].num_of_level_per_difficulty)
+						+ import[*game].num_of_level_per_difficulty;
 
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
@@ -450,7 +483,9 @@ int main_menu(u8 games[], u8* game, int* lvl,
 		}
 		if (kDown & KEY_DOWN) {
 			if (*lvl/import[*game].num_of_level_per_difficulty > 0) {
-				*lvl = import[*game].num_of_level_per_difficulty*(*lvl/import[*game].num_of_level_per_difficulty) - import[*game].num_of_level_per_difficulty;
+				*lvl = import[*game].num_of_level_per_difficulty
+						* (*lvl/import[*game].num_of_level_per_difficulty)
+						- import[*game].num_of_level_per_difficulty;
 
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
@@ -471,7 +506,8 @@ int main_menu(u8 games[], u8* game, int* lvl,
 							// error!
 							return MENU_ERROR; // error
 						}
-						*lvl = import[*game].num_of_level_per_difficulty * (import[*game].num_of_difficulties-1);
+						*lvl = import[*game].num_of_level_per_difficulty
+								* (import[*game].num_of_difficulties-1);
 						if (!draw_main_menu(*game,
 								*lvl/import[*game].num_of_level_per_difficulty,
 								menu_data,0,0)) {

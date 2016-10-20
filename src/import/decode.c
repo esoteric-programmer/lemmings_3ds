@@ -57,7 +57,6 @@ int goto_section(FILE* input, u16 section) {
 }
 
 
-
 struct Data* decompress_cur_section(FILE* input) {
 	struct CompressionHeader header;
 	memset(&header,0,sizeof(struct CompressionHeader));
@@ -253,4 +252,50 @@ struct Data* decompress_cur_section(FILE* input) {
 
 	free(in);
 	return data;
+}
+
+int planar_image_to_pixmap(
+		u8* pixmap_image,
+		void* planar_image,
+		u16 num_of_pixels,
+		u16 mask_offset) {
+	u8 plane;
+	u16 pos;
+	u8 in_mask = 0x80;
+	u8 out_mask = 0x01;
+	if (!planar_image || !pixmap_image || !num_of_pixels) {
+		return 0; // error
+	}
+	memset(pixmap_image,0,num_of_pixels);
+	u16 stream_pos = 0;
+	for (plane=0;plane<4;plane++) {
+		for (pos=0;pos<num_of_pixels;pos++) {
+			pixmap_image[pos] |= ((in_mask & ((u8*)planar_image)[stream_pos])!=0?out_mask:0);
+			in_mask >>= 1;
+			if (in_mask == 0) {
+				in_mask = 0x80;
+				stream_pos++;
+			}
+		}
+		out_mask <<= 1;
+	}
+	for (pos=0;pos<num_of_pixels;pos++) {
+		if (pixmap_image[pos] != 0) {
+			pixmap_image[pos] |= 0xF0; // add alpha channel
+		}
+	}
+	if (mask_offset != 0) {
+		// read transparency from mask
+		in_mask = 0x80;
+		stream_pos = mask_offset;
+		for (pos=0;pos<num_of_pixels;pos++) {
+			pixmap_image[pos] = (pixmap_image[pos] & 0x0F) | ((in_mask & ((u8*)planar_image)[stream_pos])?0xF0:0x00);
+			in_mask >>= 1;
+			if (in_mask == 0) {
+				in_mask = 0x80;
+				stream_pos++;
+			}
+		}
+	}
+	return 1; // success
 }

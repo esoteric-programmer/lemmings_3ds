@@ -1,7 +1,9 @@
 Version 0.4
-- Added custom sounds
+- Added custom sounds and music
 - Fixed level: Wicked 2
 - Corrected fade-in and fade-out time
+- Removed sf2d
+- Cleaned up source
 
 Version 0.3.1
 - Added sound effects of traps
@@ -21,7 +23,7 @@ Version 0.2.2
   - Oh No! More Lemmings Demo
   - Holiday Lemmings 1993 Demo
   - Holiday Lemmings 1994 Demo
-- Cleaned source
+- Cleaned up source
 - Source release
 - Bugfixes
 

@@ -9,12 +9,18 @@
 extern const int action_image_offsets[18][2];
 
 void init_lemmings(struct Lemming[MAX_NUM_OF_LEMMINGS]);
-void add_lemming(struct Lemming[MAX_NUM_OF_LEMMINGS], struct Entrances*, u8 release_rate, u8 total_lems);
-u8 lemmings_left(u8 total_lems); // get number of lemmings that did not have entered the level yet.
-void nuke(struct Level* level);
+void add_lemming(
+		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
+		struct Level* level,
+		struct LevelState* state);
+u8 lemmings_left(struct LevelState* state, u8 total_lems); // get number of lemmings that did not have entered the level yet.
+void nuke(struct LevelState* state, struct Level* level);
 
-void update_lemmings(struct Lemming[MAX_NUM_OF_LEMMINGS], struct Level*, struct Image* masks[23]);
-
+void update_lemmings(
+		struct Lemming[MAX_NUM_OF_LEMMINGS],
+		struct Level*,
+		struct LevelState* state,
+		struct Image* masks[23]);
 
 // x,y: mouse position
 // returns number of lemmings under cursor

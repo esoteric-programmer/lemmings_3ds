@@ -42,13 +42,6 @@ struct LevelInfo {
 	char name[33];
 };
 
-struct Palette {
-	u32 vga[16];
-	u32 vga_preview[16];
-	u32 ega[16];
-	u32 ega_preview[16];
-};
-
 struct Entrances {
 	struct {
 		s16 x;
@@ -62,7 +55,7 @@ struct Level {
 	struct Object* o[16];
 	struct ObjectInstance obj[32];
 	u8 object_map[1584/4*160/4];
-	struct Palette palette;
+	u32 palette[16];
 	struct Entrances entrances;
 	u8 rescued;
 };
@@ -70,10 +63,17 @@ struct Level {
 
 struct LevelState {
 	u16 frames_left; // until time is up
+	u8 opening_counter; // count frames until entrances open
 	u8 paused;
 	u8 cur_rate;
 	u8 selected_skill;
 	u8 entrances_open;
+	u8 fade_in;
+	u8 fade_out;
 	struct {s16 x; s16 y;} cursor;
+	u8 nuking;
+	u8 timer_assign;
+	u8 next_lemming_id;
+	u8 next_lemming_countdown;
 };
 #endif

@@ -411,6 +411,16 @@ int draw_scaled(
 	if (!dest->data || !palette || !img) {
 		return 0; // error
 	}
+	if (scaling >= 0.999f && scaling <= 1.001f) {
+		return draw(
+				screen,
+				x,
+				y,
+				img,
+				w,
+				h,
+				palette);
+	}
 	s16 xi, yi;
 	u16 dest_w, dest_h;
 	dest_w = (u16)(((float)w) * scaling + 1.0f);
@@ -500,7 +510,7 @@ int draw_level(
 		return 0; // error
 	}
 	if (!level_palette) {
-		level_palette = level->palette.vga;
+		level_palette = level->palette;
 	}
 	// adjust everything
 	if (x>=dest->width || y>dest->height) {
@@ -597,16 +607,25 @@ int draw_level(
 					continue;
 				}
 
-				u8 color = o->data[level->obj[i].current_frame * ((u32)o->width) * ((u32)o->height) + yi * ((u32)o->width) + xi];
+				u8 color = o->data[
+						level->obj[i].current_frame
+							* (u32)o->width
+							* (u32)o->height
+						+ yi * (u32)o->width
+						+ xi];
 				if ((color & 0xF0) == 0) {
 					continue;
 				}
 				// TODO: OBJECT_DONT_OVERWRITE -> don't overwrite terrain or don't overwrite anything?
 
-				if ((OBJECT_DONT_OVERWRITE & level->obj[i].modifier) && (level->terrain[xi+level->obj[i].x+1584*(level_y)] & 0xF0)) {
+				if ((OBJECT_DONT_OVERWRITE & level->obj[i].modifier)
+						&& (level->terrain[xi+level->obj[i].x+1584*(level_y)]
+							& 0xF0)) {
 					continue;
 				}
-				if ((OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier) && !(level->terrain[xi+level->obj[i].x+1584*(level_y)] & 0xF0)) {
+				if ((OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier)
+						&& !(level->terrain[xi+level->obj[i].x+1584*(level_y)]
+							& 0xF0)) {
 					continue;
 				}
 				if (OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier) {
@@ -750,150 +769,46 @@ void draw_menu_text(
 		s16 x_offset,
 		s16 y_offset,
 		const char* text,
-		u32* palette) {
-	struct Buffer* dest = getScreenBuffer(screen);
-	if (!text || !dest->data || !data) {
-		return;
-	}
+		u32* palette,
+		float scaling) {
 	if (!palette) {
 		palette = data->palette;
 	}
-	s16 x_pos = 0;
+	s16 x_pos = x_offset;
 	int i=0;
-	s16 x,y;
+	if (scaling < 0.0625f) {
+		scaling = 0.0625f;
+	}else if (scaling > 16.0f){
+		scaling = 16.0f;
+	}
 	while(1) {
-
 		int id = -1; // unsupported symbol
 		if (!text[i]) {
 			break;
 		}
-			if (text[i] == '\n') {
-				i++;
-				x_pos = 0;
-				y_offset += 16;
-				continue;
-			}
-			if (text[i] >= 33 && text[i] < 127) {
-				id = text[i]-33;
-			}
-			if (x_pos >= 40) {
-				i++;
-				continue;
-			}
+		if (text[i] == '\n') {
+			i++;
+			x_pos = x_offset;
+			y_offset += ((15.999f * scaling)+1.0f);
+			continue;
+		}
+		if (text[i] >= 33 && text[i] < 127) {
+			id = text[i]-33;
+		}
 		// now draw character with index i
-		for (y=0;y<16 && y+y_offset<dest->height;y++) {
-			for (x=16*x_pos;x<16*(x_pos+1);x++) {
-				if (x+x_offset >= dest->width) {
-					break;
-				}
-				s16 screen_x = x_offset + x + ((s16)dest->width-320)/2;
-				if (screen_x < 0 || screen_x >= dest->width) {
-					continue;
-				} else {
-					// draw character
-					if (id >= 0) {
-						u8 color = data->menu_font[id*16*16 + 16*y + x-16*x_pos];
-						if (color & 0xF0) {
-							SET_PIXEL(dest, screen_x, y+y_offset, palette[color & 0xF]);
-						}
-					}
-				}
-			}
+		if (id >= 0) {
+			draw_scaled(
+					screen,
+					x_pos,
+					y_offset,
+					data->menu_font + id*16*16,
+					16,
+					16,
+					palette,
+					scaling);
 		}
 		i++;
-		x_pos++;
-	}
-}
-
-
-void draw_menu_text_small(
-		ScreenBuffer screen,
-		struct MainMenuData* data,
-		s16 x_offset,
-		s16 y_offset,
-		const char* text,
-		u32* palette) {
-	struct Buffer* dest = getScreenBuffer(screen);
-	if (!text || !dest->data || !data) {
-		return;
-	}
-	if (!palette) {
-		palette = data->palette;
-	}
-	s16 x_pos = 0;
-	int i=0;
-	s16 x,y;
-	while(1) {
-
-		int id = -1; // unsupported symbol
-		if (!text[i]) {
-			break;
-		}
-			if (text[i] == '\n') {
-				i++;
-				x_pos = 0;
-				y_offset += 8;
-				continue;
-			}
-			if (text[i] >= 33 && text[i] < 127) {
-				id = text[i]-33;
-			}
-			if (x_pos >= 40) {
-				i++;
-				continue;
-			}
-		// now draw character with index i
-		for (y=0;y<8 && y+y_offset<dest->height;y++) {
-			for (x=8*x_pos;x<8*(x_pos+1);x++) {
-				if (x+x_offset >= dest->width) {
-					break;
-				}
-				s16 screen_x = x_offset + x + ((s16)dest->width-320)/2;
-				if (screen_x < 0 || screen_x >= dest->width) {
-					continue;
-				} else {
-					// draw character
-					if (id >= 0) {
-						u8 px[4];
-						px[0] = data->menu_font[id*16*16 + 16*2*y + 2*(x-8*x_pos)];
-						px[1] = data->menu_font[id*16*16 + 16*2*y + 2*(x-8*x_pos)+1];
-						px[2] = data->menu_font[id*16*16 + 16*(2*y+1) + 2*(x-8*x_pos)];
-						px[3] = data->menu_font[id*16*16 + 16*(2*y+1) + 2*(x-8*x_pos)+1];
-						u8 cnt = 0;
-						u16 rgb[3] = {0,0,0};
-						int i;
-						for (i=0;i<4;i++) {
-							if (px[i] & 0xF0) {
-								cnt++;
-								rgb[0] += (palette[px[i] & 0xF]>>8) & 0xFF;
-								rgb[1] += (palette[px[i] & 0xF]>>16) & 0xFF;
-								rgb[2] += (palette[px[i] & 0xF]>>24) & 0xFF;
-							}
-						}
-						if (cnt) {
-							u32 px = GET_PIXEL(dest, screen_x, y+y_offset);
-							u16 rgb_old[3] = {
-									(px>>8) & 0xFF,
-									(px>>16) & 0xFF,
-									(px>>24) & 0xFF
-							};
-							rgb[0] += rgb_old[0] * (4-cnt);
-							rgb[1] += rgb_old[1] * (4-cnt);
-							rgb[2] += rgb_old[2] * (4-cnt);
-							rgb[0] /= 4;
-							rgb[1] /= 4;
-							rgb[2] /= 4;
-							u32 color = (((u32)rgb[0])<<8)
-									| (((u32)rgb[1])<<16)
-									| (((u32)rgb[2])<<24);
-							SET_PIXEL(dest, screen_x, y+y_offset, color);
-						}
-					}
-				}
-			}
-		}
-		i++;
-		x_pos++;
+		x_pos += ((15.999f * scaling)+1.0f);
 	}
 }
 
@@ -911,7 +826,6 @@ int draw_toolbar(
 		return 0;
 	}
 	if (!highperf_palette) {
-		data->high_perf_palette[7] = level->palette.vga[8];
 		highperf_palette = data->high_perf_palette;
 	}
 
@@ -1002,7 +916,8 @@ int draw_toolbar(
 			s16 minimap_x = 209 + x/16;
 			s16 minimap_y = y+17 + yi/8;
 			minimap_x += + ((s16)dest->width-320)/2;
-			if (minimap_x < 0 || minimap_x >= dest->width || minimap_y < y || minimap_y >= dest->height) {
+			if (minimap_x < 0 || minimap_x >= dest->width
+					|| minimap_y < y || minimap_y >= dest->height) {
 				continue;
 			}
 			SET_PIXEL(dest, minimap_x, minimap_y, highperf_palette[solid]);

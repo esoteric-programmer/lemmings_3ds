@@ -4,7 +4,6 @@
 #include "import_level.h"
 #include "gamespecific.h"
 #include "decode.h"
-#include "import.h"
 #include "import_ground.h"
 #include "settings.h"
 
@@ -77,7 +76,13 @@ int decompress_rle(s8* in, s8* out, u16 out_length, u16 max_in_length) {
 	return in_pos; // success
 }
 
-int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* palette, struct Image* terrain_img[64], struct Object* objects[16]) {
+int read_vgagr(
+		u8 game,
+		FILE* ground_file,
+		FILE* vgagr_file,
+		u32 palette[16],
+		struct Image* terrain_img[64],
+		struct Object* objects[16]) {
 	struct GroundInfo info;
 	int ter;
 	int obj;
@@ -90,18 +95,7 @@ int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* pal
 	memset(terrain_img,0,64*sizeof(void*));
 	memset(objects, 0,16*sizeof(void*));
 	for (i=0;i<7;i++) {
-		palette->vga[i] = import[game].ingame_palette[i];
-		palette->vga_preview[i] = palette->vga[i]; // TODO: correct?
-	}
-	palette->ega[0] = ega2rgb(0x00); // black
-	palette->ega[1] = ega2rgb(0x39); // blue
-	palette->ega[2] = ega2rgb(0x02); // green
-	palette->ega[3] = ega2rgb(0x3F); // white
-	palette->ega[4] = ega2rgb(0x3E); // yellow
-	palette->ega[5] = ega2rgb(0x3C); // red
-	palette->ega[6] = ega2rgb(0x07); // grey
-	for (i=0;i<7;i++) {
-		palette->ega_preview[i] = palette->ega[i]; // TODO: correct?
+		palette[i] = import[game].ingame_palette[i];
 	}
 
 	read_ground_data(&info, ground_file);
@@ -111,21 +105,9 @@ int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* pal
 	}
 
 	for (i=0;i<8;i++) {
-		palette->vga[i+8] = info.palette.vga_custom[i];
+		palette[i+8] = info.palette.vga_custom[i];
 	}
-	palette->vga[7] = palette->vga[8];
-	for (i=0;i<8;i++) {
-		palette->vga_preview[i+8] = info.palette.vga_preview[i];
-	}
-	palette->vga_preview[7] = palette->vga_preview[8];
-	for (i=0;i<8;i++) {
-		palette->ega[i+8] = ega2rgb(info.palette.ega_custom[i]);
-	}
-	palette->ega[7] = palette->ega[8];
-	for (i=0;i<8;i++) {
-		palette->ega_preview[i+8] = ega2rgb(info.palette.ega_preview[i]);
-	}
-	palette->ega_preview[7] = palette->ega_preview[8];
+	palette[7] = palette[8];
 
 	for (ter=0;ter<64;ter++){
 
@@ -143,7 +125,11 @@ int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* pal
 		terrain_img[ter]->height = info.terrain_info[ter].height;
 
 		// TODO: test whether data->size is large enough
-		read_image(img_length, info.terrain_info[ter].mask_loc - info.terrain_info[ter].image_loc,dec->data + info.terrain_info[ter].image_loc, terrain_img[ter]->data);
+		planar_image_to_pixmap(
+				terrain_img[ter]->data,
+				dec->data + info.terrain_info[ter].image_loc,
+				img_length,
+				info.terrain_info[ter].mask_loc - info.terrain_info[ter].image_loc);
 	}
 
 	free(dec);
@@ -178,17 +164,19 @@ int read_vgagr(u8 game, FILE* ground_file, FILE* vgagr_file, struct Palette* pal
 		objects[obj]->trigger_height = info.object_info[obj].trigger_height;
 		objects[obj]->trigger = info.object_info[obj].trigger_effect_id;
 		objects[obj]->sound = info.object_info[obj].trap_sound_effect_id;
-		objects[obj]->preview_frame = (info.object_info[obj].preview_image_index - info.object_info[obj].animation_frames_base_loc) / data_size;
+		objects[obj]->preview_frame = (info.object_info[obj].preview_image_index
+				- info.object_info[obj].animation_frames_base_loc)
+					/ data_size;
 		if (objects[obj]->preview_frame > objects[obj]->end_frame) {
 			objects[obj]->preview_frame = 0;
 		}
 		for (i=0;i<frames;i++) {
 			// TODO: test whether data->size is large enough
-			read_image(
-					img_length,
-					info.object_info[obj].mask_offset_from_image,
+			planar_image_to_pixmap(
+					objects[obj]->data + i*img_length,
 					dec->data + info.object_info[obj].animation_frames_base_loc + i*data_size,
-					objects[obj]->data + i*img_length);
+					img_length,
+					info.object_info[obj].mask_offset_from_image);
 		}
 	}
 
@@ -331,7 +319,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 	u8* terrain = level->terrain;
 	struct Object** terrain_obj = level->o;
 	struct ObjectInstance* objects = level->obj;
-	struct Palette* palette = &(level->palette);
+	u32* palette = level->palette;
 	struct Entrances* entrances = &(level->entrances);
 	u8* object_map = level->object_map;
 
@@ -457,24 +445,16 @@ int read_level(u8 game, u8 id, struct Level* level) {
 		}
 		// read palette... ignore first entry (which should be 0x00)
 		// TODO: overwrite palette[0] with first entry??
-		palette->vga[8] = 0x007C78; // correct for all levels. but really hard-coded? TODO: EGA?
-		palette->vga_preview[8] = palette->vga[8];
+		palette[8] = 0x007C78;
 		for (i=1;i<8;i++) {
-			palette->vga[i+8] = (u32)((u8)extended->data[3*i+2])*255/63;
-			palette->vga[i+8]<<=8;
-			palette->vga[i+8] |= ((u32)((u8)extended->data[3*i+1]))*255/63;
-			palette->vga[i+8]<<=8;
-			palette->vga[i+8] |= ((u32)((u8)extended->data[3*i+0]))*255/63;
-			palette->vga_preview[i+8] = palette->vga[i+8];
+			palette[i+8] = (u32)((u8)extended->data[3*i+2])*255/63;
+			palette[i+8]<<=8;
+			palette[i+8] |= ((u32)((u8)extended->data[3*i+1]))*255/63;
+			palette[i+8]<<=8;
+			palette[i+8] |= ((u32)((u8)extended->data[3*i+0]))*255/63;
 		}
-		palette->vga[7] = palette->vga[8];
-		palette->vga_preview[7] = palette->vga_preview[8];
-		for (i=1;i<8;i++) {
-			palette->ega[i+8] = ega2rgb(extended->data[i+24]);
-		}
-		for (i=1;i<8;i++) {
-			palette->ega_preview[i+8] = ega2rgb(extended->data[i+32]);
-		}
+		palette[7] = palette[8];
+
 		s8* chunk = (s8*)malloc(19200);
 		if (!chunk) {
 			free(dec);
@@ -506,7 +486,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			}
 			chunk_offset++;
 
-			if (read_image(38400, 0, chunk, chunk_img)) {
+			if (planar_image_to_pixmap(chunk_img, chunk, 38400, 0)) {
 				// copy image
 				u16 x,y;
 				for (y=0;y<40;y++) {
@@ -730,11 +710,19 @@ void init_level_state(struct LevelState* state, struct Level* level) {
 	if (!state || !level) {
 		return;
 	}
+	memset(state, 0, sizeof(struct LevelState));
 	state->frames_left = level->info.minutes * 60 * FPS;
 	state->paused = 0;
+	state->opening_counter = 0;
 	state->cur_rate = level->info.rate;
 	state->selected_skill = 0;
 	state->cursor.x = 142; // TODO: SCREEN_WIDTH/2 - 18 ??
 	state->cursor.y = 92;
 	state->entrances_open = 0;
+	state->fade_out = 0;
+	state->fade_in = FADE_IN_DOSFRAMES;
+	state->nuking = 0;
+	state->timer_assign = 0;
+	state->next_lemming_id = 0;
+	state->next_lemming_countdown = 20;
 }

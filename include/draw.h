@@ -72,16 +72,8 @@ void draw_menu_text(
 		s16 x_offset,
 		s16 y_offset,
 		const char* text,
-		u32* palette);
-
-// draw a string using scaled (interpolated) menu-font into an RGB image
-void draw_menu_text_small(
-		ScreenBuffer screen,
-		struct MainMenuData* data,
-		s16 x_offset,
-		s16 y_offset,
-		const char* text,
-		u32* palette);
+		u32* palette,
+		float scaling);
 
 // draw toolbar at bottom of RGB image
 int draw_toolbar(

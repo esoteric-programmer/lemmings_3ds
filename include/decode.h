@@ -18,4 +18,9 @@ struct Data {
 
 int goto_section(FILE* input, u16 section);
 struct Data* decompress_cur_section(FILE* input);
+int planar_image_to_pixmap(
+		u8* pixmap_image,
+		void* planar_image,
+		u16 num_of_pixels,
+		u16 mask_offset);
 #endif

@@ -1,7 +1,6 @@
 #include <malloc.h>
 #include <string.h>
 #include "import_main.h"
-#include "import.h"
 #include "decode.h"
 #include "gamespecific.h"
 #include "settings.h"
@@ -426,7 +425,11 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 		}
 		data->lemmings_anim[frame]->width = format[frame].w;
 		data->lemmings_anim[frame]->height = format[frame].h;
-		read_image(format[frame].w*format[frame].h, 0, tmp, data->lemmings_anim[frame]->data);
+		planar_image_to_pixmap(
+				data->lemmings_anim[frame]->data,
+				tmp,
+				format[frame].w*format[frame].h,
+				0);
 		offset += size;
 	}
 	free(dec);
@@ -452,7 +455,11 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 		}
 		data->masks[frame]->width = mask_sizes[frame].w;
 		data->masks[frame]->height = mask_sizes[frame].h;
-		read_image(mask_sizes[frame].w*mask_sizes[frame].h, 0, tmp, data->masks[frame]->data);
+		planar_image_to_pixmap(
+				data->masks[frame]->data,
+				tmp,
+				mask_sizes[frame].w*mask_sizes[frame].h,
+				0);
 		offset += size;
 	}
 	free(dec);
@@ -469,18 +476,18 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 		data->high_perf_palette[i] = import[game].highperf_palette[i];
 	}
 
-	read_image(320*40, 0, dec->data, data->high_perf_toolbar);
+	planar_image_to_pixmap(data->high_perf_toolbar, dec->data, 320*40, 0);
 	for (i=0;i<20;i++) {
 		memcpy(tmp,dec->data+0x1900+8*i,8);
 		memset(tmp+8,0,8*3);
-		read_image(8*8, 0, tmp, data->skill_numbers+i*8*8);
+		planar_image_to_pixmap(data->skill_numbers+i*8*8, tmp, 8*8, 0);
 	}
 	for (i=0;i<38;i++) {
 		memcpy(tmp,dec->data+0x19A0+48*i,48);
 		//0->0, 2->2, 3->3, 5->9; other colors not tested yet
 		memcpy(tmp+48,tmp+32,16);
 		memset(tmp+32,0,16);
-		read_image(8*16, 0, tmp, data->high_perf_font+i*8*16);
+		planar_image_to_pixmap(data->high_perf_font+i*8*16, tmp, 8*16, 0);
 	}
 	free(dec);
 	fclose(main_dat);
@@ -584,7 +591,10 @@ int read_main_menu(u8 game, struct MainMenuData* data) {
 		}
 		data->static_pictures[i]->width = format[i].w;
 		data->static_pictures[i]->height = format[i].h;
-		read_image(format[i].w*format[i].h, 0, tmp, data->static_pictures[i]->data);
+		planar_image_to_pixmap(
+				data->static_pictures[i]->data,
+				tmp,
+				format[i].w*format[i].h, 0);
 		if (i>=8) {
 			int j;
 			for (j=0;j<format[i].w*format[i].h;j++) {
@@ -610,11 +620,19 @@ int read_main_menu(u8 game, struct MainMenuData* data) {
 
 	// read blinking eyes
 	for (i=0;i<7*8;i++) {
-		read_image(32*12, 0, dec->data+192*i, data->blinking_eyes+i*32*12);
+		planar_image_to_pixmap(
+				data->blinking_eyes+i*32*12,
+				dec->data+192*i,
+				32*12,
+				0);
 	}
 
 	for (i=0;i<2*16;i++) {
-		read_image(48*16, 0, dec->data+0x2A00+384*i, data->scroller+i*48*16);
+		planar_image_to_pixmap(
+				data->scroller+i*48*16,
+				dec->data+0x2A00+384*i,
+				48*16,
+				0);
 	}
 
 	// read reel and difficulty signs
@@ -636,7 +654,11 @@ int read_main_menu(u8 game, struct MainMenuData* data) {
 		}
 		data->static_pictures[i]->width = format[i].w;
 		data->static_pictures[i]->height = format[i].h;
-		read_image(format[i].w*format[i].h, 0, tmp, data->static_pictures[i]->data);
+		planar_image_to_pixmap(
+				data->static_pictures[i]->data,
+				tmp,
+				format[i].w*format[i].h,
+				0);
 		if (i>10) {
 			s16 p;
 			for (p=0;p<format[i].w*format[i].h;p++) {
@@ -648,9 +670,16 @@ int read_main_menu(u8 game, struct MainMenuData* data) {
 
 	// read menu-font
 	for (i=0;i<94;i++) {
-		memcpy(tmp,dec->data+0x5A80+0x3CC*(int)import[game].num_of_difficulty_graphics+96*i,96);
+		memcpy(
+				tmp,
+				dec->data+0x5A80+0x3CC*(int)import[game].num_of_difficulty_graphics+96*i,
+				96);
 		memset(tmp+96,0,32);
-		read_image(16*16, 0, tmp, data->menu_font+i*16*16);
+		planar_image_to_pixmap(
+				data->menu_font+i*16*16,
+				tmp,
+				16*16,
+				0);
 	}
 
 	free(dec);

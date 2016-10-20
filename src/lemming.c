@@ -5,45 +5,48 @@
 void process_interactive_objects(struct Lemming* lem, struct Level* level);
 
 //void (*const lemming_do_action[18])(struct Lemming*, struct Level*);
-int lemming_walk(struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_walk    (struct Lemming*, struct Level*, struct Image* masks[23]);
 int lemming_splatter(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_fall(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_jump(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_climb(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_hoist(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_float(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_build(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_shrug(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_exit(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_drown(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_fry(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_block(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_explode(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_ohno(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_dig(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_mine(struct Lemming*, struct Level*, struct Image* masks[23]);
-int lemming_bash(struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_fall    (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_jump    (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_climb   (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_hoist   (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_float   (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_build   (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_shrug   (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_exit    (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_drown   (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_fry     (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_block   (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_explode (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_ohno    (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_dig     (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_mine    (struct Lemming*, struct Level*, struct Image* masks[23]);
+int lemming_bash    (struct Lemming*, struct Level*, struct Image* masks[23]);
 
 //void (*const lemming_switch_action[18])(struct Lemming*)
 void lemming_start_splatter(struct Lemming*);
-void lemming_start_fall(struct Lemming*);
-void lemming_start_float(struct Lemming*);
-void lemming_start_build(struct Lemming*);
-void lemming_start_block(struct Lemming*);
-void lemming_start_mine(struct Lemming*);
-void lemming_start_dig(struct Lemming*);
-void switch_action_dummy(struct Lemming*); // dummy
+void lemming_start_fall    (struct Lemming*);
+void lemming_start_float   (struct Lemming*);
+void lemming_start_build   (struct Lemming*);
+void lemming_start_block   (struct Lemming*);
+void lemming_start_mine    (struct Lemming*);
+void lemming_start_dig     (struct Lemming*);
+void switch_action_dummy   (struct Lemming*); // dummy
 
 int assign_climb(struct Lemming*, struct Lemming*, struct Level*);
 int assign_float(struct Lemming*, struct Lemming*, struct Level*);
-int assign_bomb(struct Lemming*, struct Lemming*, struct Level*);
+int assign_bomb (struct Lemming*, struct Lemming*, struct Level*);
 int assign_block(struct Lemming*, struct Lemming*, struct Level*);
 int assign_build(struct Lemming*, struct Lemming*, struct Level*);
-int assign_bash(struct Lemming*, struct Lemming*, struct Level*);
-int assign_mine(struct Lemming*, struct Lemming*, struct Level*);
-int assign_dig(struct Lemming*, struct Lemming*, struct Level*);
+int assign_bash (struct Lemming*, struct Lemming*, struct Level*);
+int assign_mine (struct Lemming*, struct Lemming*, struct Level*);
+int assign_dig  (struct Lemming*, struct Lemming*, struct Level*);
 
-int (*const lemming_do_action[18])(struct Lemming*, struct Level*, struct Image* masks[]) = {
+int (*const lemming_do_action[18])(
+		struct Lemming*,
+		struct Level*,
+		struct Image* masks[]) = {
 	lemming_walk,
 	lemming_splatter,
 	lemming_explode,
@@ -61,7 +64,7 @@ int (*const lemming_do_action[18])(struct Lemming*, struct Level*, struct Image*
 	lemming_exit,
 	lemming_fry,
 	lemming_ohno,
-	lemming_shrug
+	lemming_shrug,
 };
 
 
@@ -69,41 +72,41 @@ const struct {
 	s8 x;
 	s8 y;
 } action_draw_offsets[18] = {
-	{-8, -10}, // WALK
-	{-8, -10}, // SPLATTER
-	{-16,-25}, // EXPLODE
-	{-8, -10}, // FALL
-	{-8, -10}, // JUMP
-	{-8,-12}, // DIG
-	{-8, -12}, // CLIMB
-	{-8,-12}, // HOIST
-	{-8,-13}, // BUILD
-	{-8,-10}, // BLOCK
-	{-8,-10}, // BASH
-	{-8, -16}, // FLOAT
-	{-8,-13}, // MINE
-	{-8,-10}, // DROWN
-	{-8,-13}, // EXIT
-	{-8,-14}, // FRY
-	{-8,-10}, // OHNO
-	{-8,-10} // SHRUG
+	{ -8, -10}, // WALK
+	{ -8, -10}, // SPLATTER
+	{-16, -25}, // EXPLODE
+	{ -8, -10}, // FALL
+	{ -8, -10}, // JUMP
+	{ -8, -12}, // DIG
+	{ -8, -12}, // CLIMB
+	{ -8, -12}, // HOIST
+	{ -8, -13}, // BUILD
+	{ -8, -10}, // BLOCK
+	{ -8, -10}, // BASH
+	{ -8, -16}, // FLOAT
+	{ -8, -13}, // MINE
+	{ -8, -10}, // DROWN
+	{ -8, -13}, // EXIT
+	{ -8, -14}, // FRY
+	{ -8, -10}, // OHNO
+	{ -8, -10}, // SHRUG
 };
 
 const int action_image_offsets[18][2] = { // for each action: left, right
-	{9, 0}, // WALK
+	{  9,   0}, // WALK
 	{250, 250}, // SPLATTER
 	{336, 336}, // EXPLODE
 	{230, 226}, // FALL
-	{17, 8}, // JUMP
-	{18, 18}, // DIG
-	{42, 34}, // CLIMB
-	{74, 66}, // HOIST // end of climbing
-	{98, 82}, // BUILD
+	{ 17,   8}, // JUMP
+	{ 18,  18}, // DIG
+	{ 42,  34}, // CLIMB
+	{ 74,  66}, // HOIST // end of climbing
+	{ 98,  82}, // BUILD
 	{288, 288}, // BLOCK
 	{146, 114}, // BASH
 	{242, 234}, // FLOAT
 	{202, 178}, // MINE
-	{50, 50}, // DROWN // in water
+	{ 50,  50}, // DROWN // in water
 	{266, 266}, // EXIT
 	{274, 274}, // FRY // killed by flameblower etc.
 	{320, 320}, // OHNO
@@ -114,22 +117,22 @@ struct {
 	s8 dy;
 	s8 frame_offset;
 } float_param[16] = {
-	{3,1},
-	{3,2},
-	{3,3},
-	{3,5},
-	{-1,5},
-	{0,5},
-	{1,5},
-	{1,5},
-	{2,5},
-	{2,6},
-	{2,7},
-	{2,7},
-	{2,6},
-	{2,5},
-	{2,4},
-	{2,4}
+	{ 3, 1},
+	{ 3, 2},
+	{ 3, 3},
+	{ 3, 5},
+	{-1, 5},
+	{ 0, 5},
+	{ 1, 5},
+	{ 1, 5},
+	{ 2, 5},
+	{ 2, 6},
+	{ 2, 7},
+	{ 2, 7},
+	{ 2, 6},
+	{ 2, 5},
+	{ 2, 4},
+	{ 2, 4},
 };
 
 void (*const lemming_switch_action[18])(struct Lemming*) = {
@@ -143,17 +146,20 @@ void (*const lemming_switch_action[18])(struct Lemming*) = {
 	switch_action_dummy, // HOIST; nothing special needed
 	lemming_start_build,
 	lemming_start_block,
-	switch_action_dummy,
+	switch_action_dummy, // BASH; nothing special needed
 	lemming_start_float,
 	lemming_start_mine,
-	switch_action_dummy,
-	switch_action_dummy,
-	switch_action_dummy,
-	switch_action_dummy,
-	switch_action_dummy
+	switch_action_dummy, // DROWN; nothing special needed
+	switch_action_dummy, // EXIT; nothing special needed
+	switch_action_dummy, // FRY; nothing special needed
+	switch_action_dummy, // OHNO; nothing special needed
+	switch_action_dummy, // SHRUG; nothing special needed
 };
 
-int (*const lemming_assign[8])(struct Lemming*, struct Lemming*, struct Level*) = {
+int (*const lemming_assign[8])(
+		struct Lemming*,
+		struct Lemming*,
+		struct Level*) = {
 	assign_climb,
 	assign_float,
 	assign_bomb,
@@ -165,10 +171,6 @@ int (*const lemming_assign[8])(struct Lemming*, struct Lemming*, struct Level*) 
 };
 
 void set_lemaction(struct Lemming* lem, u8 action);
-u8 nuking;
-u8 timer_assign;
-u8 next_lemming_id;
-u8 next_lemming_countdown;
 
 
 static inline int has_pixel_at(struct Level* level, s16 x, s16 y) {
@@ -191,7 +193,10 @@ static inline void check_top_collision(struct Lemming* lem) {
 	}
 }
 
-static inline u8 read_object_map(struct Level* level, s16 x, s16 y) {
+static inline u8 read_object_map(
+		struct Level* level,
+		s16 x,
+		s16 y) {
 	if (x<0 || x >= 1584 || y < 0 || y >= 160) {
 		return 0;
 	}
@@ -200,7 +205,11 @@ static inline u8 read_object_map(struct Level* level, s16 x, s16 y) {
 	return level->object_map[x+y*(1584/4)];
 }
 
-static inline void write_object_map(struct Level* level, s16 x, s16 y, u8 value) {
+static inline void write_object_map(
+		struct Level* level,
+		s16 x,
+		s16 y,
+		u8 value) {
 	if (x<0 || x >= 1584 || y < 0 || y >= 160) {
 		return;
 	}
@@ -209,32 +218,50 @@ static inline void write_object_map(struct Level* level, s16 x, s16 y, u8 value)
 	level->object_map[x+y*(1584/4)] = value;
 }
 
-static inline void blocker_restore_object_map(struct Lemming* lem, struct Level* level) {
+static inline void blocker_restore_object_map(
+		struct Lemming* lem,
+		struct Level* level) {
 	s16 i,j;
 	for (i=0;i<3;i++) {
 		for (j=0;j<3;j++) {
-			write_object_map(level, lem->x+4*(i-1), lem->y-2+4*(j-1), lem->saved_object_map[i+3*j]);
+			write_object_map(
+					level, lem->x+4*(i-1),
+					lem->y-2+4*(j-1),
+					lem->saved_object_map[i+3*j]);
 		}
 	}
 	lem->blocking = 0;
 }
 
-static inline void blocker_modify_object_map(struct Lemming* lem, struct Level* level) {
+static inline void blocker_modify_object_map(
+		struct Lemming* lem,
+		struct Level* level) {
 	s16 i,j;
 	for (i=0;i<3;i++) {
 		for (j=0;j<3;j++) {
-			lem->saved_object_map[i+3*j] = read_object_map(level, lem->x+4*(i-1), lem->y-2+4*(j-1));
-			write_object_map(level, lem->x+4*(i-1), lem->y-2+4*(j-1), (i==0?OBJECT_FORCE_LEFT:(i==2?OBJECT_FORCE_RIGHT:OBJECT_BLOCKER)));
+			lem->saved_object_map[i+3*j] =
+					read_object_map(level, lem->x+4*(i-1), lem->y-2+4*(j-1));
+			write_object_map(
+					level,
+					lem->x+4*(i-1),
+					lem->y-2+4*(j-1),
+					(i==0?OBJECT_FORCE_LEFT:
+							(i==2?OBJECT_FORCE_RIGHT:OBJECT_BLOCKER)));
 		}
 	}
 	lem->blocking = 1;
 }
 
-static inline int blocker_present(struct Lemming* lem, struct Level* level) {
+static inline int blocker_present(
+		struct Lemming* lem,
+		struct Level* level) {
 	s16 i,j;
 	for (i=0;i<3;i++) {
 		for (j=0;j<3;j++) {
-			switch (read_object_map(level, lem->x+4*(i-1), lem->y-2+4*(j-1))) {
+			switch (read_object_map(
+					level,
+					lem->x+4*(i-1),
+					lem->y-2+4*(j-1))) {
 				case OBJECT_FORCE_LEFT:
 				case OBJECT_FORCE_RIGHT:
 				case OBJECT_BLOCKER:
@@ -247,7 +274,11 @@ static inline int blocker_present(struct Lemming* lem, struct Level* level) {
 	return 0;
 }
 
-static inline void apply_mask(struct Image* mask, struct Level* level, s16 x_pos, s16 y_pos) {
+static inline void apply_mask(
+		struct Image* mask,
+		struct Level* level,
+		 s16 x_pos,
+		 s16 y_pos) {
 	if (!mask || !level) {
 		return;
 	}
@@ -270,11 +301,6 @@ static inline void apply_mask(struct Image* mask, struct Level* level, s16 x_pos
 
 
 void init_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]) {
-	nuking = 0;
-	timer_assign = 0;
-	next_lemming_id = 0;
-	next_lemming_countdown = 20;
-
 	if (lemmings) {
 		int i;
 		for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
@@ -283,69 +309,78 @@ void init_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]) {
 	}
 }
 
-u8 lemmings_left(u8 total_lems) {
-	if (nuking) {
+u8 lemmings_left(struct LevelState* state, u8 total_lems) {
+	if (state->nuking) {
 		return 0;
 	}
-	if (next_lemming_id >= MAX_NUM_OF_LEMMINGS || next_lemming_id >= total_lems) {
+	if (state->next_lemming_id >= MAX_NUM_OF_LEMMINGS
+			|| state->next_lemming_id >= total_lems) {
 		return 0;
 	}
-	u8 left = MAX_NUM_OF_LEMMINGS - next_lemming_id;
-	u8 left2 = total_lems - next_lemming_id;
+	u8 left = MAX_NUM_OF_LEMMINGS - state->next_lemming_id;
+	u8 left2 = total_lems - state->next_lemming_id;
 	return (left<left2?left:left2);
 }
 
-void add_lemming(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Entrances* entrances, u8 release_rate, u8 total_lems) {
-	if (!lemmings || !entrances || nuking) {
+void add_lemming(
+		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
+		struct Level* level,
+		struct LevelState* state) {
+	if (!lemmings || !state || !level) {
 		return;
 	}
-	if (next_lemming_id >= MAX_NUM_OF_LEMMINGS || next_lemming_id >= total_lems) {
+	if (!lemmings_left(state, level->info.lemmings)) {
 		return;
 	}
-	next_lemming_countdown--;
-	if (next_lemming_countdown != 0) {
+	state->next_lemming_countdown--;
+	if (state->next_lemming_countdown != 0) {
 		return;
 	}
-	lemmings[next_lemming_id].removed = 0;
-	lemmings[next_lemming_id].timer = 0;
-	lemmings[next_lemming_id].x = entrances->pos[next_lemming_id & 0x03].x;
-	lemmings[next_lemming_id].y = entrances->pos[next_lemming_id & 0x03].y;
-	lemmings[next_lemming_id].look_right = 1;
-	lemmings[next_lemming_id].abilities = 0;
-	lemmings[next_lemming_id].float_index = 0;
-	lemmings[next_lemming_id].bricks_left = 0;
-	lemmings[next_lemming_id].blocking = 0;
-	lemmings[next_lemming_id].start_digging = 0;
-	lemmings[next_lemming_id].object_below = 0;
-	lemmings[next_lemming_id].object_in_front = 0;
-	memset(lemmings[next_lemming_id].saved_object_map,0,9);
-	set_lemaction(lemmings+next_lemming_id, LEMACTION_FALL);
-	next_lemming_id++;
+	u8 id = state->next_lemming_id;
+	lemmings[id].removed = 0;
+	lemmings[id].timer = 0;
+	lemmings[id].x = level->entrances.pos[id & 0x03].x;
+	lemmings[id].y = level->entrances.pos[id & 0x03].y;
+	lemmings[id].look_right = 1;
+	lemmings[id].abilities = 0;
+	lemmings[id].float_index = 0;
+	lemmings[id].bricks_left = 0;
+	lemmings[id].blocking = 0;
+	lemmings[id].start_digging = 0;
+	lemmings[id].object_below = 0;
+	lemmings[id].object_in_front = 0;
+	memset(lemmings[id].saved_object_map,0,9);
+	set_lemaction(lemmings+id, LEMACTION_FALL);
+	state->next_lemming_id++;
 
-	s16 n = 99 - (s16)release_rate;
+	s16 n = 99 - (s16)state->cur_rate;
 	if (n<0) {
 		n += 256;
 	}
-	next_lemming_countdown = n/2+4;
+	state->next_lemming_countdown = n/2+4;
 }
 
-void nuke(struct Level* level) {
-	if (!nuking) {
+void nuke(struct LevelState* state, struct Level* level) {
+	if (!state->nuking) {
 		if (is_custom_sound(0x05)) {
 			// play "Oh no!" sound only once
 			play_sound(0x05);
 		}
-		nuking = 1;
-		timer_assign = 1;
+		state->nuking = 1;
+		state->timer_assign = 1;
 		if (level && ENABLE_NUKE_GLITCH) {
-			level->info.lemmings = next_lemming_id;
+			level->info.lemmings = state->next_lemming_id;
 		}
 	}
 }
 
-void update_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Level* level, struct Image* masks[23]) {
+void update_lemmings(
+		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
+		struct Level* level,
+		struct LevelState* state,
+		struct Image* masks[23]) {
 	int i;
-	if (!lemmings) {
+	if (!lemmings || !level || !state) {
 		return; // error
 	}
 	for (i=0;i<80;i++) {
@@ -368,7 +403,7 @@ void update_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Level*
 						break;
 					default:
 						set_lemaction(lemmings+i,LEMACTION_OHNO);
-						if (!nuking || !is_custom_sound(0x05)) {
+						if (!state->nuking || !is_custom_sound(0x05)) {
 							// play sound: Oh no!
 							play_sound(0x05);
 						}
@@ -377,21 +412,28 @@ void update_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], struct Level*
 				continue;
 			}
 		}
-		if ((*lemming_do_action[lemmings[i].current_action])(lemmings+i,level,masks)) {
+		if ((*lemming_do_action[lemmings[i].current_action])(
+				lemmings+i,
+				level,masks)) {
 			process_interactive_objects(lemmings+i,level);
 		}
 	}
 
-	if (nuking && timer_assign) {
-		while(timer_assign<=MAX_NUM_OF_LEMMINGS && lemmings[timer_assign-1].removed) {
-			timer_assign++;
+	if (state->nuking && state->timer_assign) {
+		while(state->timer_assign<=MAX_NUM_OF_LEMMINGS
+				&& lemmings[state->timer_assign-1].removed) {
+			state->timer_assign++;
 		}
-		if (timer_assign <= MAX_NUM_OF_LEMMINGS) {
-			if (!lemmings[timer_assign-1].timer && lemmings[timer_assign-1].current_action != LEMACTION_SPLATTER && lemmings[timer_assign-1].current_action != LEMACTION_EXPLODE) {
-				lemmings[timer_assign-1].timer = 79; // start value
+		if (state->timer_assign <= MAX_NUM_OF_LEMMINGS) {
+			if (!lemmings[state->timer_assign-1].timer
+					&& lemmings[state->timer_assign-1].current_action
+							!= LEMACTION_SPLATTER
+					&& lemmings[state->timer_assign-1].current_action
+							!= LEMACTION_EXPLODE) {
+				lemmings[state->timer_assign-1].timer = 79; // start value
 			}
 		}
-		timer_assign++;
+		state->timer_assign++;
 	}
 	return;
 }
@@ -820,13 +862,21 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	lem->frame_offset = (lem->frame_offset+1)%24;
 	if (lem->frame_offset == 1) {
 		if (masks) {
-			apply_mask(masks[lem->look_right?8:10], level, lem->x+lem->x_draw_offset, lem->y+lem->y_draw_offset);
+			apply_mask(
+					masks[lem->look_right?8:10],
+					level,
+					lem->x+lem->x_draw_offset,
+					lem->y+lem->y_draw_offset);
 		}
 		return 0;
 	}
 	if (lem->frame_offset == 2) {
 		if (masks) {
-			apply_mask(masks[lem->look_right?9:11], level, lem->x+(lem->look_right?1:-1)+lem->x_draw_offset, lem->y+1+lem->y_draw_offset);
+			apply_mask(
+					masks[lem->look_right?9:11],
+					level,
+					lem->x+(lem->look_right?1:-1)+lem->x_draw_offset,
+					lem->y+1+lem->y_draw_offset);
 		}
 		return 0;
 	}
@@ -854,7 +904,8 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 		u8 below = read_object_map(level,lem->x,lem->y);
 		if (below == OBJECT_STEEL ||
 				(below == OBJECT_ONEWAY_LEFT && lem->look_right) ||
-				(below == OBJECT_ONEWAY_RIGHT && (ENABLE_MINING_ONEWAY_BUG || !lem->look_right))) {
+				(below == OBJECT_ONEWAY_RIGHT
+					&& (ENABLE_MINING_ONEWAY_BUG || !lem->look_right))) {
 			if (below == OBJECT_STEEL) {
 				// play sound: hit steel
 				play_sound(0x0A);
@@ -898,7 +949,10 @@ int lemming_bash(struct Lemming* lem, struct Level* level, struct Image* masks[2
 			set_lemaction(lem,LEMACTION_FALL);
 			return 1;
 		}
-		u8 in_front = read_object_map(level, lem->x+(lem->look_right?8:-8), lem->y-8);
+		u8 in_front = read_object_map(
+				level,
+				lem->x+(lem->look_right?8:-8),
+				lem->y-8);
 		if (in_front == OBJECT_STEEL ||
 				(in_front == OBJECT_ONEWAY_LEFT && lem->look_right) ||
 				(in_front == OBJECT_ONEWAY_RIGHT && !lem->look_right)) {
@@ -914,7 +968,10 @@ int lemming_bash(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	}
 	if ((lem->frame_offset & 0xF) > 1 && (lem->frame_offset & 0xF) < 6) {
 		if (masks) {
-			apply_mask(masks[(lem->frame_offset & 0xF)-2 + (lem->look_right?0:4)],level,lem->x+lem->x_draw_offset,lem->y+lem->y_draw_offset);
+			apply_mask(
+					masks[(lem->frame_offset & 0xF)-2 + (lem->look_right?0:4)],
+					level,lem->x+lem->x_draw_offset,
+					lem->y+lem->y_draw_offset);
 		}
 		if (lem->frame_offset == 5) {
 			s16 i;
@@ -1021,7 +1078,13 @@ void process_interactive_objects(struct Lemming* lem, struct Level* level) {
 	}
 }
 
-u8 select_lemming(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], s16 mouse_x, s16 mouse_y, u8 right_mouse_btn, s16* lem1_idx, s16* lem2_idx) {
+u8 select_lemming(
+		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
+		s16 mouse_x,
+		s16 mouse_y,
+		u8 right_mouse_btn,
+		s16* lem1_idx,
+		s16* lem2_idx) {
 	if (lem1_idx) {
 		*lem1_idx = -1;
 	}

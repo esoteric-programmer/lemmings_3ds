@@ -8,7 +8,6 @@
 #include <3ds.h>
 
 #include "decode.h"
-#include "import.h"
 #include "import_level.h"
 #include "import_main.h"
 #include "draw.h"
@@ -110,7 +109,7 @@ int main() {
 
 	int i;
 
-	gfxInit( GSP_RGBA4_OES,  GSP_RGBA4_OES, false);
+	gfxInit( GSP_BGR8_OES,  GSP_BGR8_OES, false);
 	consoleInit(GFX_TOP, NULL);
 	consoleClear();
 	printf("\n");
@@ -260,8 +259,6 @@ int main() {
 	// GAME LOOP
 	while(1) {
 		int menu_selection = main_menu(games, &game, &lvl, menu_data, main_data);
-
-
 		if (menu_selection == MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER) {
 			int level_selection = level_select_menu(
 					games,

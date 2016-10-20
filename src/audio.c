@@ -40,6 +40,8 @@ u8 currently_triggered_wave[18];
 struct WaveFile tune;
 ndspWaveBuf tune_buffers[NUM_TUNE_BUFFERS];
 int next_tune_buffer = 0;
+int play_wave_tune = 0;
+int last_preloaded_tunebuffer = -1;
 
 // adlib
 struct Data* adlib = 0;
@@ -93,24 +95,26 @@ void update_audio() {
 			millis_since_update_adlib_gone -= 14.0;
 		}
 	}
-	if (tune.file) {
+	if (tune.file && play_wave_tune) {
 		while(tune_buffers[next_tune_buffer].status != NDSP_WBUF_PLAYING
 				&& tune_buffers[next_tune_buffer].status != NDSP_WBUF_QUEUED) {
-			tune_buffers[next_tune_buffer].nsamples =
-					wave_get_next_samples(
-							tune_buffers[next_tune_buffer].data_pcm8,
-							SAMPLES_PER_TUNE_BUFFER,
-							&tune);
-			if (!tune_buffers[next_tune_buffer].nsamples) {
-				wave_rewind(&tune);
+			if (last_preloaded_tunebuffer < 0) {
 				tune_buffers[next_tune_buffer].nsamples =
 						wave_get_next_samples(
 								tune_buffers[next_tune_buffer].data_pcm8,
 								SAMPLES_PER_TUNE_BUFFER,
 								&tune);
 				if (!tune_buffers[next_tune_buffer].nsamples) {
-					wave_close_file(&tune);
-					break;
+					wave_rewind(&tune);
+					tune_buffers[next_tune_buffer].nsamples =
+							wave_get_next_samples(
+									tune_buffers[next_tune_buffer].data_pcm8,
+									SAMPLES_PER_TUNE_BUFFER,
+									&tune);
+					if (!tune_buffers[next_tune_buffer].nsamples) {
+						wave_close_file(&tune);
+						break;
+					}
 				}
 			}
 			u8 sample_size = tune.channels*((tune.bitdepth+7)/8);
@@ -118,6 +122,10 @@ void update_audio() {
 					tune_buffers[next_tune_buffer].data_vaddr,
 							sample_size*tune_buffers[next_tune_buffer].nsamples);
 			ndspChnWaveBufAdd(2, &tune_buffers[next_tune_buffer]);
+
+			if (last_preloaded_tunebuffer == next_tune_buffer) {
+				last_preloaded_tunebuffer = -1;
+			}
 
 			next_tune_buffer++;
 			next_tune_buffer%=NUM_TUNE_BUFFERS;
@@ -175,6 +183,8 @@ void init_audio() {
 		import_wave_sound(sound_effects+i, sound_fn);
 		currently_triggered_wave[i] = 0;
 	}
+	play_wave_tune = 0;
+	last_preloaded_tunebuffer = -1;
 }
 
 int toggle_audio() {
@@ -224,10 +234,14 @@ void next_music(u8 game) {
 	cur_song = (cur_song + 1) % import[game].num_of_songs;
 }
 
-void play_music(u8 game, u8 lvl) {
+u16 next_adlib_music = 0x300;
+void prepare_music(u8 game, u8 lvl) {
 	u8 track;
 	int i;
+	play_wave_tune = 0;
+	last_preloaded_tunebuffer = -1;
 	if (audio_active != AUDIO_ENABLED) {
+		next_adlib_music = 0x300;
 		return;
 	}
 	track = import[game].song_ids[cur_song];
@@ -245,8 +259,9 @@ void play_music(u8 game, u8 lvl) {
 			import[game].custom_audio_path,
 			track);
 	if (!wave_open_file(&tune, tune_fn)) {
-		call_adlib(0x0300+(u16)track);
+		next_adlib_music = 0x0300+(u16)track;
 	}else{
+		next_adlib_music = 0x300;
 		ndspChnReset(2); // necessary?
 		ndspChnSetInterp(2, NDSP_INTERP_LINEAR);
 		ndspChnSetRate(2, tune.frequency);
@@ -263,6 +278,39 @@ void play_music(u8 game, u8 lvl) {
 				ndspChnSetFormat(2, NDSP_FORMAT_STEREO_PCM16);
 			}
 		}
+		int i;
+		for (i=0;i<NUM_TUNE_BUFFERS;i++) {
+			int buf_id = (next_tune_buffer+i)%NUM_TUNE_BUFFERS;
+			tune_buffers[buf_id].nsamples =
+					wave_get_next_samples(
+							tune_buffers[buf_id].data_pcm8,
+							SAMPLES_PER_TUNE_BUFFER,
+							&tune);
+			if (!tune_buffers[buf_id].nsamples) {
+				wave_rewind(&tune);
+				tune_buffers[buf_id].nsamples =
+						wave_get_next_samples(
+								tune_buffers[buf_id].data_pcm8,
+								SAMPLES_PER_TUNE_BUFFER,
+								&tune);
+				if (!tune_buffers[buf_id].nsamples) {
+					wave_close_file(&tune);
+					break;
+				}
+			}
+			last_preloaded_tunebuffer = buf_id;
+		}
+	}
+}
+
+void play_music() {
+	if (next_adlib_music > 0x300) {
+		call_adlib(next_adlib_music);
+		return;
+	}
+	if (tune.file) {
+		play_wave_tune = 1;
+		return;
 	}
 }
 
@@ -286,6 +334,8 @@ void stop_audio() {
 	for (i=0;i<18;i++) {
 		currently_triggered_wave[i] = 0;
 	}
+	play_wave_tune = 0;
+	last_preloaded_tunebuffer = -1;
 }
 
 int is_custom_sound(u8 sound) {
