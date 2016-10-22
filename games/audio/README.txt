@@ -4,7 +4,7 @@ corresponding ADLIB.DAT sound. All other sounds and tunes are
 still played by ADLIB.DAT.
 
 Format:
-Only PCM RIFF WAVE, only 8 or 16 bit, only 1 or 2 channels.
+Only PCM RIFF WAVE, only 8 or 16 bit, only 1 channel (mono).
 
 File names and corresponding sound effect:
 SFX01.WAV - Skill select
@@ -25,3 +25,23 @@ SFX15.WAV - Bear trap
 SFX16.WAV - "Yippieh" (Lemming exiting)
 SFX17.WAV - Drowning (in water)
 SFX18.WAV - Last 3 bricks of builder
+
+File names compared to wave sounds of Windows Lemmings
+SFX01.WAV = changeop.wav
+SFX02.WAV = door.wav
+SFX03.WAV = letsgo.wav
+SFX04.WAV = mousepre.wav
+SFX05.WAV = ohno.wav
+SFX06.WAV = electric.wav
+SFX07.WAV = thud.wav
+SFX08.WAV = splat.wav
+SFX09.WAV = chain.wav
+SFX10.WAV = chink.wav
+SFX11.WAV = ???
+SFX12.WAV = explode.wav
+SFX13.WAV = fire.wav
+SFX14.WAV = tenton.wav
+SFX15.WAV = thunk.wav
+SFX16.WAV = yippee.wav
+SFX17.WAV = glug.wav
+SFX18.WAV = ting.wav

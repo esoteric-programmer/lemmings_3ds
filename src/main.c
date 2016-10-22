@@ -59,6 +59,15 @@ void event_hook(APT_HookType hook_type, void* param) {
 */
 
 void die() {
+	#ifndef NO_SF2D
+	int i;
+	for (i=0;i<4;i++) {
+		begin_frame();
+		clear(TOP_SCREEN);
+		clear(BOTTOM_SCREEN);
+		end_frame();
+	}
+	#endif
 	consoleInit(GFX_TOP, NULL);
 	consoleClear();
 	printf(CONSOLE_RED);
@@ -89,14 +98,19 @@ void die() {
 	printf(CONSOLE_RESET);
 	printf("Press any button to exit.");
 	while (aptMainLoop()) {
-
 		hidScanInput();
 		u32 kDown = hidKeysDown();
 		if (kDown & (~KEY_TOUCH)) {
 			break;
 		}
+		#ifdef NO_SF2D
+		begin_frame();
+		clear(BOTTOM_SCREEN);
+		end_frame();
+		#else
 		gfxFlushBuffers();
 		gfxSwapBuffers();
+		#endif
 	}
 	// exit game
 	aptUnhook(&hookCookie);
@@ -224,16 +238,21 @@ int main() {
 	if (!progress) {
 		die(0); // error
 	}
-	read_savegame(progress);
+	struct SaveGame savegame;
+	memset(&savegame,0,sizeof(struct SaveGame));
+	savegame.progress = progress;
+	read_savegame(&savegame);
 
 	// initialize variables
-	struct MainMenuData* menu_data = (struct MainMenuData*)malloc(sizeof(struct MainMenuData));
+	struct MainMenuData* menu_data =
+			(struct MainMenuData*)malloc(sizeof(struct MainMenuData));
 	if (!menu_data) {
 		die(0); // error
 	}
 	memset(menu_data,0,sizeof(struct MainMenuData));
 
-	struct MainInGameData* main_data = (struct MainInGameData*)malloc(sizeof(struct MainInGameData));
+	struct MainInGameData* main_data =
+			(struct MainInGameData*)malloc(sizeof(struct MainInGameData));
 	if (!main_data) {
 		die(0); // error
 	}
@@ -243,6 +262,7 @@ int main() {
 	init_drawing();
 
 	init_audio();
+	read_audio_settings(&savegame);
 	if (!read_gamespecific_data(game, menu_data, main_data)) {
 		// error!
 		die(1); // error
@@ -258,13 +278,19 @@ int main() {
 
 	// GAME LOOP
 	while(1) {
-		int menu_selection = main_menu(games, &game, &lvl, menu_data, main_data);
+		int menu_selection = main_menu(
+				games,
+				&game,
+				&lvl,
+				menu_data,
+				main_data,
+				&savegame);
 		if (menu_selection == MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER) {
 			int level_selection = level_select_menu(
 					games,
 					&game,
 					&lvl,
-					progress,
+					savegame.progress,
 					level_names,
 					menu_data,
 					main_data);
@@ -312,15 +338,14 @@ int main() {
 					}
 					progress_offset += lvl/import[game].num_of_level_per_difficulty;
 
-					if (progress[progress_offset] < lvl%import[game].num_of_level_per_difficulty+1) {
-						progress[progress_offset] = lvl%import[game].num_of_level_per_difficulty+1;
-						write_savegame(progress);
+					if (progress[progress_offset]
+							< lvl%import[game].num_of_level_per_difficulty+1) {
+						progress[progress_offset] =
+								lvl%import[game].num_of_level_per_difficulty+1;
+						write_savegame(&savegame);
 					}
-					lvl = (lvl+1)%(import[game].num_of_difficulties*import[game].num_of_level_per_difficulty);
-					if (lvl == 0) {
-						// TODO: show congratulation message
-						// TODO: increase game variable?
-					}
+					lvl = (lvl+1) % (import[game].num_of_difficulties
+							* import[game].num_of_level_per_difficulty);
 				}
 
 				int result_screen = show_result(game,lev_result,menu_data);

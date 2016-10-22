@@ -4,38 +4,44 @@
 #include "settings.h"
 #include "gamespecific.h"
 
-void read_savegame(u8* progress) {
-	char savegame_fn[64];
+void read_savegame(struct SaveGame* savegame) {
+	char savefile_fn[64];
 	int i;
 	int offset = 0;
-
-	// fill progress with zeros
-	for (i=0;i<LEMMING_GAMES;i++) {
-		memset(progress+offset,0,import[i].num_of_difficulties);
-		offset += import[i].num_of_difficulties;
-	}
-
-	sprintf(savegame_fn,"%s/SAVEGAME.DAT", PATH_ROOT);
-	FILE* savegame = fopen(savegame_fn,"rb");
 	if (!savegame) {
 		return;
 	}
+	if (!savegame->progress) {
+		return;
+	}
+
+	// fill progress with zeros
+	for (i=0;i<LEMMING_GAMES;i++) {
+		memset(savegame->progress+offset,0,import[i].num_of_difficulties);
+		offset += import[i].num_of_difficulties;
+	}
+
+	sprintf(savefile_fn,"%s/SAVEGAME.DAT", PATH_ROOT);
+	FILE* savefile = fopen(savefile_fn,"rb");
+	if (!savefile) {
+		return;
+	}
 	u8 version = 0;
-	if (!fread(&version,1,1,savegame)) {
-		fclose(savegame);
+	if (!fread(&version,1,1,savefile)) {
+		fclose(savefile);
 		return;
 	}
 	if (version < 0x20) {
 		// old file; directly starts with progress of FUN rating
 		version = 0;
-		fseek(savegame,0,SEEK_SET);
+		fseek(savefile,0,SEEK_SET);
 	}else{
 		version -= 0x1F;
 	}
 
 	if (version > SAVEGAME_VERSION) {
 		// file is too new and therefore unsupported
-		fclose(savegame);
+		fclose(savefile);
 		return;
 	}
 
@@ -47,30 +53,48 @@ void read_savegame(u8* progress) {
 			continue;
 		}
 		// read data
-		if (fread(progress+offset,1,import[i].num_of_difficulties,savegame)
+		if (fread(
+						savegame->progress+offset,
+						1,
+						import[i].num_of_difficulties,
+						savefile)
 				!= import[i].num_of_difficulties) {
-			memset(progress+offset,0,import[i].num_of_difficulties);
+			memset(savegame->progress+offset,0,import[i].num_of_difficulties);
 			break;
 		}
 		offset += import[i].num_of_difficulties;
 	}
-	fclose(savegame);
+	if (version > 1) {
+		fread(&savegame->audio_settings,1,1,savefile);
+	}
+	fclose(savefile);
 }
 
-void write_savegame(u8* progress) {
-	char savegame_fn[64];
-	sprintf(savegame_fn,"%s/SAVEGAME.DAT", PATH_ROOT);
-	FILE* savegame = fopen(savegame_fn,"wb");
+void write_savegame(struct SaveGame* savegame) {
 	if (!savegame) {
 		return;
 	}
+	if (!savegame->progress) {
+		return;
+	}
+	char savefile_fn[64];
+	sprintf(savefile_fn,"%s/SAVEGAME.DAT", PATH_ROOT);
+	FILE* savefile = fopen(savefile_fn,"wb");
+	if (!savefile) {
+		return;
+	}
 	u8 version = SAVEGAME_VERSION + 0x1F;
-	fwrite(&version,1,1,savegame);
+	fwrite(&version,1,1,savefile);
 	int i;
 	int offset = 0;
 	for (i=0;i<LEMMING_GAMES;i++) {
-		fwrite(progress+offset,1,import[i].num_of_difficulties,savegame);
+		fwrite(
+				savegame->progress+offset,
+				1,
+				import[i].num_of_difficulties,
+				savefile);
 		offset += import[i].num_of_difficulties;
 	}
-	fclose(savegame);
+	fwrite(&savegame->audio_settings,1,1,savefile);
+	fclose(savefile);
 }

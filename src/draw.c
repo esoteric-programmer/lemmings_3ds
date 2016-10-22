@@ -33,6 +33,8 @@ struct Buffer bottom_screen = {0,0,0};
 struct Buffer top_screen_backbuffer = {0,0,0};
 struct Buffer bottom_screen_backbuffer = {0,0,0};
 
+int initialized = 0;
+
 static inline struct Buffer* getScreenBuffer(ScreenBuffer buffer) {
 	switch (buffer) {
 		case TOP_SCREEN:
@@ -77,6 +79,7 @@ void init_drawing() {
 	top_screen.height = 240;
 	bottom_screen.width = 320;
 	bottom_screen.height = 240;
+	initialized = 1;
 }
 
 void fade_palette(u32 palette[16], float fading) {
@@ -97,6 +100,9 @@ void fade_palette(u32 palette[16], float fading) {
 }
 
 void begin_frame() {
+	if (!initialized) {
+		return;
+	}
 	#ifdef NO_SF2D
 	top_screen.data = gfxGetFramebuffer(GFX_TOP,GFX_LEFT,0,0);
 	bottom_screen.data = gfxGetFramebuffer(GFX_BOTTOM,GFX_LEFT,0,0);
@@ -104,6 +110,9 @@ void begin_frame() {
 }
 
 void end_frame() {
+	if (!initialized) {
+		return;
+	}
 	#ifdef NO_SF2D
 	gfxFlushBuffers();
 	gfxSwapBuffers();
@@ -129,6 +138,9 @@ void end_frame() {
 }
 
 void copy_from_backbuffer(ScreenBuffer screen) {
+	if (!initialized) {
+		return;
+	}
 	switch (screen) {
 		case TOP_SCREEN:
 		case TOP_SCREEN_BACK:
@@ -175,6 +187,9 @@ void draw_single_lemming(
 		s16 y_offset);
 
 int clear(ScreenBuffer screen) {
+	if (!initialized) {
+		return 0;
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!dest->data) {
 		return 0;
@@ -195,6 +210,9 @@ int clear_rectangle(
 		u16 y,
 		u16 w,
 		u16 h) {
+	if (!initialized) {
+		return 0;
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!dest->data) {
 		return 0;
@@ -221,6 +239,9 @@ int draw(
 		u16 w,
 		u16 h,
 		u32 palette[16]) {
+	if (!initialized) {
+		return 0; // error
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!dest->data || !palette || !img) {
 		return 0; // error
@@ -407,6 +428,9 @@ int draw_scaled(
 		u16 h,
 		u32 palette[16],
 		float scaling) {
+	if (!initialized) {
+		return 0;
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!dest->data || !palette || !img) {
 		return 0; // error
@@ -505,6 +529,9 @@ int draw_level(
 		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
 		struct MainInGameData* main_data,
 		u32* level_palette) {
+	if (!initialized) {
+		return 0;
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!dest->data || !level) {
 		return 0; // error
@@ -616,7 +643,8 @@ int draw_level(
 				if ((color & 0xF0) == 0) {
 					continue;
 				}
-				// TODO: OBJECT_DONT_OVERWRITE -> don't overwrite terrain or don't overwrite anything?
+				// TODO: how to handle OBJECT_DONT_OVERWRITE?
+				// a) don't overwrite terrain or b) don't overwrite anything?
 
 				if ((OBJECT_DONT_OVERWRITE & level->obj[i].modifier)
 						&& (level->terrain[xi+level->obj[i].x+1584*(level_y)]
@@ -658,6 +686,9 @@ void draw_highperf_text(
 		struct MainInGameData* data,
 		const char* text,
 		u32* highperf_palette) {
+	if (!initialized) {
+		return;
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!text || !dest->data || !data) {
 		return;
@@ -771,6 +802,9 @@ void draw_menu_text(
 		const char* text,
 		u32* palette,
 		float scaling) {
+	if (!initialized) {
+		return;
+	}
 	if (!palette) {
 		palette = data->palette;
 	}
@@ -820,6 +854,9 @@ int draw_toolbar(
 		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
 		const char* text,
 		u32* highperf_palette) {
+	if (!initialized) {
+		return 0;
+	}
 	struct Buffer* dest = getScreenBuffer(BOTTOM_SCREEN);
 	s16 y = 160+32;
 	if (!dest->data || !data || !level || !state) {
@@ -844,7 +881,13 @@ int draw_toolbar(
 		}
 	}
 
-	draw_highperf_text(GFX_BOTTOM, ((s16)dest->width-320)/2, 160+32, data, text, highperf_palette);
+	draw_highperf_text(
+			GFX_BOTTOM,
+			((s16)dest->width-320)/2,
+			160+32,
+			data,
+			text,
+			highperf_palette);
 
 	// number of available draw skills
 	u8 nums[10];
@@ -946,7 +989,8 @@ int draw_toolbar(
 			if (yi==0 || yi==19) {
 				SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 			}else{
-				if (x==level->info.x_pos / 16 || x==level->info.x_pos / 16 + view_rect_width - 1) {
+				if (x==level->info.x_pos / 16
+						|| x==level->info.x_pos / 16 + view_rect_width - 1) {
 					SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 				}
 			}
@@ -957,6 +1001,9 @@ int draw_toolbar(
 }
 
 void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], u32 color) {
+	if (!initialized) {
+		return;
+	}
 	s16 y = 160+32;
 	struct Buffer* dest = getScreenBuffer(BOTTOM_SCREEN);
 	int i;
@@ -987,6 +1034,9 @@ u8 draw_lemmings(
 		u32 palette[16],
 		s16 x_offset,
 		s16 y_offset) {
+	if (!initialized) {
+		return 0;
+	}
 	int i;
 	u8 ret = 0;
 	if (!lemmings) {
@@ -1138,6 +1188,9 @@ void draw_single_lemming(
 void tile_menu_background(
 		ScreenBuffer screen,
 		struct MainMenuData* menu_data) {
+	if (!initialized) {
+		return;
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!dest->data || !menu_data) {
 		return;
@@ -1160,6 +1213,9 @@ void tile_menu_background(
 
 
 int update_topscreen(struct MainMenuData* menu) {
+	if (!initialized) {
+		return 0;
+	}
 	tile_menu_background(TOP_SCREEN_BACK, menu);
 	draw_scaled(
 			TOP_SCREEN_BACK,

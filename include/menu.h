@@ -3,6 +3,7 @@
 #include <3ds.h>
 #include "draw.h"
 #include "import_main.h"
+#include "savegame.h"
 
 #define MENU_ERROR                              0
 #define MENU_ACTION_EXIT                        1
@@ -19,7 +20,8 @@ int main_menu(
 		u8* game,
 		int* lvl,
 		struct MainMenuData* menu_data,
-		struct MainInGameData* main_data);
+		struct MainInGameData* main_data,
+		struct SaveGame* savegame);
 
 int level_select_menu(
 		u8 games[],

@@ -211,6 +211,24 @@ int is_audio_only_fx() {
 	return (audio_active == AUDIO_ONLY_FX);
 }
 
+void read_audio_settings(struct SaveGame* savegame) {
+	if (!savegame) {
+		return;
+	}
+	if (savegame->audio_settings) {
+		audio_active = savegame->audio_settings;
+	}
+}
+
+void write_audio_settings(struct SaveGame* savegame) {
+	if (!savegame) {
+		return;
+	}
+	if (audio_active) {
+		savegame->audio_settings = audio_active;
+	}
+}
+
 int import_audio(u8 game) {
 	if (adlib) {
 		free_adlib_data();

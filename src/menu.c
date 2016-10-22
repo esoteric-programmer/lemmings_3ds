@@ -366,8 +366,13 @@ int draw_main_menu(
 	return 1;
 }
 
-int main_menu(u8 games[], u8* game, int* lvl,
-		struct MainMenuData* menu_data, struct MainInGameData* main_data) {
+int main_menu(
+		u8 games[],
+		u8* game,
+		int* lvl,
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data,
+		struct SaveGame* savegame) {
 
 	if (!draw_main_menu(*game,
 			*lvl/import[*game].num_of_level_per_difficulty,
@@ -378,11 +383,7 @@ int main_menu(u8 games[], u8* game, int* lvl,
 	u32 kDown;
 	u32 kHeld;
 	touchPosition stylus;
-
-
-
 	while (aptMainLoop()) {
-
 		hidScanInput();
 		kDown = hidKeysDown();
 		kHeld = hidKeysHeld();
@@ -431,6 +432,10 @@ int main_menu(u8 games[], u8* game, int* lvl,
 		if (kDown & KEY_Y) {
 			int update = toggle_audio();
 			if (update) {
+				if (savegame) {
+					write_audio_settings(savegame);
+					write_savegame(savegame);
+				}
 				if (!draw_main_menu(*game,
 						*lvl/import[*game].num_of_level_per_difficulty,
 						menu_data,0,1)) {
