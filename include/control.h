@@ -28,20 +28,10 @@
 #define ACTION_SELECT_SKILL_BASHER   (1<<23)
 #define ACTION_SELECT_SKILL_MINER    (1<<24)
 #define ACTION_SELECT_SKILL_DIGGER   (1<<25)
-#define ACTION_MOVE_CURSOR_CPAD      (1<<26) // move according to CPAD position
-#define ACTION_MOVE_CURSOR_CPAD_LR   (1<<27) // mirror LR (can be combined with mirror UD)
-#define ACTION_MOVE_CURSOR_CPAD_UD   (1<<28) // mirror UD (can be combined with mirror LD)
-#define ACTION_SCROLL_CPAD           (1<<29) // move according to CPAD position
-#define ACTION_SCROLL_CPAD_LR        (1<<30) // mirror LR (can be combined with mirror UD)
-#define ACTION_QUIT_GAME             (1<<31)
+#define ACTION_MOVE_CURSOR_PARAM     (1<<26) // mirror UD (can be combined with mirror LD)
+#define ACTION_SCROLL_PARAM          (1<<27) // mirror LR (can be combined with mirror UD)
+#define ACTION_QUIT_GAME             (1<<28)
+#define ACTION_STEP_FRAME            (1<<29)
 
-extern struct Controls {
-	u32 down_keys;
-	u32 held_keys;
-	u32 forbidden_keys;
-	u32 action;
-} controls[];
-
-u32 get_action(u32 kDown, u32 kHeld);
-circlePosition cpad_to_movement(circlePosition circle_pos);
+u64 get_action(u32 kDown, u32 kHeld, circlePosition cpad, circlePosition* params);
 #endif

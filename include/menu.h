@@ -18,7 +18,7 @@
 int main_menu(
 		u8 games[],
 		u8* game,
-		int* lvl,
+		u8* lvl,
 		struct MainMenuData* menu_data,
 		struct MainInGameData* main_data,
 		struct SaveGame* savegame);
@@ -26,7 +26,7 @@ int main_menu(
 int level_select_menu(
 		u8 games[],
 		u8* game,
-		int* lvl,
+		u8* lvl,
 		u8* progress,
 		const char* level_names,
 		struct MainMenuData* menu_data,

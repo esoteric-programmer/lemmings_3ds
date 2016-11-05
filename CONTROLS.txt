@@ -22,10 +22,11 @@ In game:
 C-PAD         move cursor
 A             click at cursor position
 B             pause/resume
-X, D RIGHT    select next skill
-Y, D LEFT     select previous skill
+X             select next skill
+Y             select previous skill
 D UP          increase release rate
 D DOWN        decrease release rate
+D RIGHT       step one frame while game is paused
 L             time runs 3 times faster while held down
 R + C-PAD     scroll horizontal
 SELECT        highlight/select non-priorized lemming

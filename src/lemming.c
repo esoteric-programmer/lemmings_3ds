@@ -368,7 +368,7 @@ void nuke(struct LevelState* state, struct Level* level) {
 		}
 		state->nuking = 1;
 		state->timer_assign = 1;
-		if (level && ENABLE_NUKE_GLITCH) {
+		if (level && settings.glitch_nuke) {
 			level->info.lemmings = state->next_lemming_id;
 		}
 	}
@@ -905,7 +905,7 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 		if (below == OBJECT_STEEL ||
 				(below == OBJECT_ONEWAY_LEFT && lem->look_right) ||
 				(below == OBJECT_ONEWAY_RIGHT
-					&& (ENABLE_MINING_ONEWAY_BUG || !lem->look_right))) {
+					&& (settings.glitch_mining_right_oneway || !lem->look_right))) {
 			if (below == OBJECT_STEEL) {
 				// play sound: hit steel
 				play_sound(0x0A);
@@ -1207,7 +1207,7 @@ int assign_climb(struct Lemming* lem1, struct Lemming* lem2, struct Level* level
 			lem1->current_action != LEMACTION_EXPLODE) {
 		lem1->abilities |= LEMABILITY_CLIMB;
 		if (lem1->current_action == LEMACTION_SHRUG) {
-			if (ENABLE_SHRUGGER_GLITCH) {
+			if (settings.glitch_shrugger) {
 				lem1->current_action = LEMACTION_WALK; // this triggers a bug of the original game since draw_action is not updated
 			}else{
 				set_lemaction(lem1,LEMACTION_WALK);

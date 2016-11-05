@@ -1103,7 +1103,7 @@ void draw_single_lemming(
 		x = 0;
 	}
 	u8 act = 0;
-	if (ENABLE_SHRUGGER_GLITCH) {
+	if (settings.glitch_shrugger) {
 		act = lem->draw_action;
 	}else{
 		act = lem->current_action;

@@ -54,7 +54,7 @@ void select_level(
 int level_select_menu(
 		u8 games[],
 		u8* game,
-		int* lvl,
+		u8* lvl,
 		u8* progress,
 		const char* level_names,
 		struct MainMenuData* menu_data,
@@ -279,7 +279,8 @@ int level_select_menu(
 			}
 		}
 		if (kDown & (KEY_A | KEY_START)) {
-			if (progress[progress_offset + cur_lev/import[*game].num_of_level_per_difficulty]
+			if (progress[progress_offset
+					+ cur_lev/import[*game].num_of_level_per_difficulty]
 					>=cur_lev%import[*game].num_of_level_per_difficulty) {
 				// start level!!
 				*lvl = cur_lev;
@@ -352,8 +353,18 @@ int draw_main_menu(
 			menu_data->static_pictures[4]->width,
 			menu_data->static_pictures[4]->height,
 			menu_data->palette);
-	if (is_audio_enabled() || is_audio_only_fx()) {
-		int picture_id = (is_audio_only_fx()?9:8);
+/*
+	draw(
+			BOTTOM_SCREEN_BACK,
+			27+27,
+			140+26,
+			settings_icon,
+			64,
+			31,
+			menu_data->palette);
+*/
+	if (!audio_error() && (settings.sfx_volume || settings.music_volume)) {
+		int picture_id = (!settings.music_volume?9:8);
 		draw(
 				BOTTOM_SCREEN_BACK,
 				27+27,
@@ -369,7 +380,7 @@ int draw_main_menu(
 int main_menu(
 		u8 games[],
 		u8* game,
-		int* lvl,
+		u8* lvl,
 		struct MainMenuData* menu_data,
 		struct MainInGameData* main_data,
 		struct SaveGame* savegame) {
@@ -430,10 +441,17 @@ int main_menu(
 		}
 
 		if (kDown & KEY_Y) {
-			int update = toggle_audio();
+			int update = !audio_error();
 			if (update) {
+				if (settings.music_volume) {
+					settings.music_volume = 0;
+					settings.sfx_volume = 0;
+				}else if (settings.sfx_volume) {
+					settings.music_volume = 100;
+				}else{
+					settings.sfx_volume = 100;
+				}
 				if (savegame) {
-					write_audio_settings(savegame);
 					write_savegame(savegame);
 				}
 				if (!draw_main_menu(*game,

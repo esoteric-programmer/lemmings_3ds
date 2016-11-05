@@ -33,7 +33,7 @@ BUILD_FLAGS :=
 RUN_FLAGS :=
 
 VERSION_MAJOR := 0
-VERSION_MINOR := 4
+VERSION_MINOR := 5
 VERSION_MICRO := 0
 
 # 3DS CONFIGURATION #
@@ -59,16 +59,16 @@ ICON := icon.png
 
 include buildtools/make_base
 
-# ADD games/* AND TEXT FILES
+# ADD lemmings/* AND TEXT FILES
 
 TEXTFILES := $(wildcard *.txt) $(wildcard *.md)
 TEXTFILES_OUTPUT := $(addprefix $(OUTPUT_DIR)/,$(TEXTFILES))
-GAMES := $(wildcard games/*)
-GAMES_OUTPUT := $(GAMES:games/%=$(OUTPUT_DIR)/lemmings/%)
+GAMES := $(wildcard lemmings/*)
+GAMES_OUTPUT := $(GAMES:lemmings/%=$(OUTPUT_DIR)/lemmings/%)
 
 $(OUTPUT_ZIP_FILE): $(GAMES_OUTPUT) $(TEXTFILES_OUTPUT)
 
-$(OUTPUT_DIR)/lemmings/%: games/%
+$(OUTPUT_DIR)/lemmings/%: lemmings/%
 	@mkdir -p $(OUTPUT_DIR)/lemmings/
 	@cp -r $< $@
 

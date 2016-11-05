@@ -17,10 +17,49 @@ extern const char* PATH_ROOT;
 #define FADE_IN_DOSFRAMES     18
 #define FADE_OUT_DOSFRAMES    32
 
-#define ENABLE_NUKE_GLITCH              1
-#define ENABLE_ENTRANCE_PAUSING_GLITCH  1
-#define ENABLE_SHRUGGER_GLITCH          0
-#define ENABLE_MINING_ONEWAY_BUG        1
+extern struct Settings {
+	u8 glitch_nuke;
+	u8 glitch_entrance_pausing;
+	u8 glitch_mining_right_oneway;
+	u8 glitch_shrugger;
+	u8 glitch_mayhem12; // not implemented yet
+	u8 glitch_miner_splatter; // not implemented yet
+	u8 speedup_millis_per_frame;
+	u8 music_volume; // 0 = off; 100 = max
+	u8 sfx_volume; // 0 = off; 100 = max
+	u8 audio_order; // 0 = prefer custom sound; 1 = prefer ADLIB; 2 = only custom; 3 = only ADLIB
+	u8 dlbclick_nuke; // not implemented yet
+	u8 dblclick_exit; // not implemented yet
+	u8 skip_unavailable_skills; // not implemented yet
+	u8 zoom_mode_active; // not implemented yet
+	struct KeyBindings {
+		u32 modifier;
+		u32 click;
+		u32 inc_rate;
+		u32 dec_rate;
+		u32 next_skill;
+		u32 prev_skill;
+		u32 pause;
+		u32 nuke;
+		u32 exit;
+		u32 speed_up;
+		u32 non_prio;
+		u32 step_one_frame;
+		u32 step_backwards; // not implemented yet
+		u32 play_backwards; // not implemented yet
+		u32 toggle_zoom_mode; // not implemented yet
+		u32 cursor_up; // d-pad, xyab, c-pad, c-stick
+		u32 cursor_down; // d-pad, xyab, c-pad, c-stick
+		u32 cursor_left; // d-pad, xyab, c-pad, c-stick
+		u32 cursor_right; // d-pad, xyab, c-pad, c-stick
+		u32 scroll_up; // d-pad, xyab, c-pad, c-stick (for zoom-mode, not implemented yet)
+		u32 scroll_down; // d-pad, xyab, c-pad, c-stick (for zoom-mode, not implemented yet)
+		u32 scroll_left; // d-pad, xyab, c-pad, c-stick
+		u32 scroll_right; // d-pad, xyab, c-pad, c-stick
+	} key_bindings[2];
+} settings;
+
+extern u8 settings_icon[];
 
 #ifdef NO_SF2D
 #define ABGR

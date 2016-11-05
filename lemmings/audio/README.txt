@@ -3,8 +3,14 @@ sound file exists in this folder, it is used instead of
 corresponding ADLIB.DAT sound. All other sounds and tunes are
 still played by ADLIB.DAT.
 
+On Windows machines, you may run audio.bat to fill this folder
+and its subfolders. However, to do so, you need .Net 4.5 framework,
+VLC, PlayerSource_V29.zip from neolemmix website and
+(optionally) lem_wavs.zip from lemmings universe.
+
 Format:
 Only PCM RIFF WAVE, only 8 or 16 bit, only 1 channel (mono).
+Stereo might work, but has not been tested.
 
 File names and corresponding sound effect:
 SFX01.WAV - Skill select

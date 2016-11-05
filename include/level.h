@@ -75,5 +75,6 @@ struct LevelState {
 	u8 timer_assign;
 	u8 next_lemming_id;
 	u8 next_lemming_countdown;
+	u8 frame_step_forward;
 };
 #endif

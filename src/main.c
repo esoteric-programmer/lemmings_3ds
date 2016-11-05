@@ -123,12 +123,12 @@ int main() {
 
 	int i;
 
-	gfxInit( GSP_BGR8_OES,  GSP_BGR8_OES, false);
+	gfxInit(GSP_BGR8_OES,  GSP_BGR8_OES, false);
 	consoleInit(GFX_TOP, NULL);
 	consoleClear();
 	printf("\n");
-	printf("        ------ 3DS Lemmings Loading ------  \n");
-	printf("        ---------- Please Wait -----------  \n");
+	printf("       ----- Lemmings for 3DS Loading ----- \n");
+	printf("       ----------- Please Wait ------------ \n");
 	gfxFlushBuffers();
 	gfxSwapBuffers();
 
@@ -137,6 +137,7 @@ int main() {
 	u8 games[LEMMING_GAMES];
 	memset(games,0,LEMMING_GAMES);
 	u8 game = 0;
+	u8 lvl = 0;
 
 	// count number of levels
 	u16 overall_num_of_levels = 0;
@@ -172,6 +173,26 @@ int main() {
 		offset += 33*
 				(u16)import[i].num_of_difficulties *
 				(u16)import[i].num_of_level_per_difficulty;
+	}
+
+	// read save file
+	u8* progress = (u8*)malloc(overall_num_of_difficulties);
+	if (!progress) {
+		die(0); // error
+	}
+	struct SaveGame savegame;
+	memset(&savegame,0,sizeof(struct SaveGame));
+	savegame.progress = progress;
+	read_savegame(&savegame);
+	if (savegame.last_game < LEMMING_GAMES) {
+		if (games[savegame.last_game]) {
+			game = savegame.last_game;
+			if (savegame.last_level <
+					import[game].num_of_difficulties
+					* import[game].num_of_level_per_difficulty) {
+				lvl = savegame.last_level;
+			}
+		}
 	}
 
 	// find first game the LEVEL files of which have been scanned successfully
@@ -225,23 +246,12 @@ int main() {
 	sprintf(lh_fn,"%s/LEFTHANDED.DAT", PATH_ROOT);
 	FILE* lefthand = fopen(lh_fn,"r");
 	if (lefthand) {
-		controls[0].forbidden_keys = KEY_L;
-		controls[10].held_keys = KEY_R;
-		controls[11].held_keys = KEY_L;
-		controls[12].held_keys = KEY_CPAD_DOWN | KEY_L;
-		controls[13].held_keys = KEY_CPAD_UP | KEY_L;
+		settings.key_bindings[0].modifier = KEY_L;
+		settings.key_bindings[0].speed_up = KEY_R;
+		settings.key_bindings[0].scroll_left = KEY_CPAD_LEFT | KEY_L;
+		settings.key_bindings[0].scroll_right = KEY_CPAD_RIGHT | KEY_L;
 		fclose(lefthand);
 	}
-
-	// read save file
-	u8* progress = (u8*)malloc(overall_num_of_difficulties);
-	if (!progress) {
-		die(0); // error
-	}
-	struct SaveGame savegame;
-	memset(&savegame,0,sizeof(struct SaveGame));
-	savegame.progress = progress;
-	read_savegame(&savegame);
 
 	// initialize variables
 	struct MainMenuData* menu_data =
@@ -262,7 +272,6 @@ int main() {
 	init_drawing();
 
 	init_audio();
-	read_audio_settings(&savegame);
 	if (!read_gamespecific_data(game, menu_data, main_data)) {
 		// error!
 		die(1); // error
@@ -272,11 +281,8 @@ int main() {
 		die(1); // error
 	}
 
-	// begin with first level
-	int lvl = 0;
 
-
-	// GAME LOOP
+	// MAIN LOOP
 	while(1) {
 		int menu_selection = main_menu(
 				games,
@@ -314,6 +320,11 @@ int main() {
 		}
 
 		if (menu_selection == MENU_ACTION_START_SINGLE_PLAYER) {
+			if (savegame.last_game != game || savegame.last_level != lvl) {
+				savegame.last_game = game;
+				savegame.last_level = lvl;
+				write_savegame(&savegame);
+			}
 			while(1) {
 				struct LevelResult lev_result = run_level(game, lvl, menu_data, main_data);
 				if (lev_result.exit_reason == LEVEL_ERROR) {
@@ -342,10 +353,11 @@ int main() {
 							< lvl%import[game].num_of_level_per_difficulty+1) {
 						progress[progress_offset] =
 								lvl%import[game].num_of_level_per_difficulty+1;
-						write_savegame(&savegame);
 					}
 					lvl = (lvl+1) % (import[game].num_of_difficulties
 							* import[game].num_of_level_per_difficulty);
+					savegame.last_level = lvl;
+					write_savegame(&savegame);
 				}
 
 				int result_screen = show_result(game,lev_result,menu_data);

@@ -1,3 +1,6 @@
+Version 0.5
+- Added settings menu
+
 Version 0.4
 - Added custom sounds and music
 - Audio settings are saved now

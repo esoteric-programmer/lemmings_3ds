@@ -64,15 +64,15 @@ int read_io(
 	u32 kHeld;
 	touchPosition stylus;
 	circlePosition circle_pos;
+	circlePosition params[2] = {{0,0}, {0,0}};
 	hidScanInput();
 	kDown = hidKeysDown();
 	kHeld = hidKeysHeld();
 	//kUp = hidKeysUp();
 	hidTouchRead(&stylus);
 	hidCircleRead(&circle_pos);
-	circle_pos = cpad_to_movement(circle_pos);
-
-	u32 action = get_action(kDown, kHeld);
+	// circle_pos = cpad_to_movement(circle_pos);
+	u64 action = get_action(kDown, kHeld, circle_pos, params);
 	if (action & ACTION_QUIT_GAME) {
 		return 0; //exit game
 	}
@@ -88,17 +88,9 @@ int read_io(
 	if (action & ACTION_MOVE_CURSOR_DOWN) {
 		state->cursor.y += 2;
 	}
-	if (action & ACTION_MOVE_CURSOR_CPAD) {
-		s16 x = circle_pos.dx;
-		s16 y = circle_pos.dy;
-		if (action & ACTION_MOVE_CURSOR_CPAD_LR) {
-			x = -x;
-		}
-		if (action & ACTION_MOVE_CURSOR_CPAD_UD) {
-			y = -y;
-		}
-		state->cursor.x += x;
-		state->cursor.y += y;
+	if (action & ACTION_MOVE_CURSOR_PARAM) {
+		state->cursor.x += params[0].dx;
+		state->cursor.y += params[0].dy;
 	}
 	if (state->cursor.y < 0) {
 		state->cursor.y = 0;
@@ -134,7 +126,7 @@ int read_io(
 	if (state->cursor.x >= SCREEN_WIDTH) {
 		state->cursor.x = SCREEN_WIDTH-1;
 	}
-	if (state->cursor.y >= 200-6) {
+	if (state->cursor.y > 200-7) {
 		state->cursor.y = 200-7;
 	}
 	if (action & (ACTION_CURSOR_CLICK | ACTION_CURSOR_HOLD)) {
@@ -333,11 +325,8 @@ int read_io(
 			level->info.x_pos = 0;
 		}
 	}
-	if (action & ACTION_SCROLL_CPAD) {
-		s16 x = circle_pos.dx;
-		if (action & ACTION_SCROLL_CPAD_LR) {
-			x = -x;
-		}
+	if (action & ACTION_SCROLL_PARAM) {
+		s16 x = params[1].dx;
 		if (x < 0) {
 			if ((s16)level->info.x_pos >= -x) {
 				level->info.x_pos+=x;
@@ -403,6 +392,10 @@ int read_io(
 		if (io_state->time_since_nuke_pressed) {
 			io_state->time_since_nuke_pressed++;
 		}
+	}else {
+		if (action & ACTION_STEP_FRAME) {
+			state->frame_step_forward++;
+		}
 	}
 	return 1;
 }
@@ -414,7 +407,7 @@ int level_step(
 		struct Level* level,
 		struct LevelState* state,
 		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]) {
-	if (ENABLE_ENTRANCE_PAUSING_GLITCH || !state->paused) {
+	if (settings.glitch_entrance_pausing || !state->paused || state->frame_step_forward) {
 		if (state->opening_counter <= 55) {
 			state->opening_counter++;
 			// do action depending on _new:
@@ -434,18 +427,20 @@ int level_step(
 	}
 
 	if (state->fade_in) {
-		state->fade_in --;
+		state->fade_in--;
 	}else if (state->fade_out) {
-		state->fade_out ++;
+		state->fade_out++;
 		if (state->fade_out > FADE_OUT_DOSFRAMES) {
 			// exit
 			return 0;
 		}
 	}
 
-	if (!state->paused) {
+	if (!state->paused || state->frame_step_forward) {
 		int i;
-
+		if (state->frame_step_forward) {
+			state->frame_step_forward--;
+		}
 		if (state->entrances_open) {
 			add_lemming(lemmings,
 					level,
@@ -708,7 +703,7 @@ struct LevelResult run_level(
 				next_frame = time;
 			}
 			next_input += INPUT_SAMPLING_MILLIS;
-			
+
 			if (!read_io(level, &state, lemmings, &io_state)) {
 				result.exit_reason = LEVEL_EXIT_GAME;
 				free_objects(level->o);

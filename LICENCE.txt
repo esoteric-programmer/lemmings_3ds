@@ -6,10 +6,11 @@ banner.wav
 icon.png
 src/data/particles.c
 src/data/cursor.c
-/src/adlib/adlib.cpp (GPL)
-/src/adlib/adlib.h (GPL)
-/src/adlib/dbopl.cpp (GPL)
-/src/adlib/dbopl.h (GPL)
+src/adlib/adlib.cpp (GPL)
+src/adlib/adlib.h (GPL)
+src/adlib/dbopl.cpp (GPL)
+src/adlib/dbopl.h (GPL)
+lemmings/audio/audio.bat
 as well as ctrulib, sf2dlib, buildtools
 
 Note that all parts of the Lemmings series that are imitated by this software,
@@ -25,4 +26,3 @@ and related and neighboring rights to this software to the public domain
 worldwide.
 This does NOT concern the third-party content listed above.
 This software is distributed without any warranty.
-

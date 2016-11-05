@@ -725,4 +725,5 @@ void init_level_state(struct LevelState* state, struct Level* level) {
 	state->timer_assign = 0;
 	state->next_lemming_id = 0;
 	state->next_lemming_countdown = 20;
+	state->frame_step_forward = 0;
 }

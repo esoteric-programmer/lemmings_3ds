@@ -23,14 +23,9 @@
 // For comparison: ADLIB.DAT driver uses 3 channels for sound effects.
 #define NUM_DSP_SFX_CHANNELS 16
 
-#define AUDIO_ERROR 0
-#define AUDIO_DISABLED 1
-#define AUDIO_ONLY_FX 2
-#define AUDIO_ENABLED 3
-
 // general
 u8 cur_song = 0;
-u8 audio_active = AUDIO_ENABLED;
+u8 audio_error_occured = 0;
 
 // wave
 struct WaveSound sound_effects[18];
@@ -54,7 +49,7 @@ void install_opl_handler(void (*handler)(unsigned long)) {
 }
 
 void add_sample(unsigned long length, s32* data) {
-	if (audio_active == AUDIO_ERROR) {
+	if (audio_error_occured) {
 		return;
 	}
 	if(ndsp_buffers[next_ndsp_buffer].status == NDSP_WBUF_PLAYING
@@ -79,7 +74,10 @@ void add_sample(unsigned long length, s32* data) {
 }
 
 void update_audio() {
-	if (audio_active == AUDIO_ERROR || audio_active == AUDIO_DISABLED) {
+	if (audio_error_occured) {
+		return;
+	}
+	if (!settings.music_volume && !settings.sfx_volume) {
 		return;
 	}
 	int i;
@@ -95,7 +93,7 @@ void update_audio() {
 			millis_since_update_adlib_gone -= 14.0;
 		}
 	}
-	if (tune.file && play_wave_tune) {
+	if (tune.file && play_wave_tune && settings.music_volume) {
 		while(tune_buffers[next_tune_buffer].status != NDSP_WBUF_PLAYING
 				&& tune_buffers[next_tune_buffer].status != NDSP_WBUF_QUEUED) {
 			if (last_preloaded_tunebuffer < 0) {
@@ -138,7 +136,7 @@ void update_audio() {
 void init_audio() {
 	int i;
 	if (ndspInit() != 0) {
-		audio_active = AUDIO_ERROR;
+		audio_error_occured = 1;
 		return;
 	}
 	ndspSetOutputMode(NDSP_OUTPUT_STEREO);
@@ -153,7 +151,7 @@ void init_audio() {
 		memset(&ndsp_buffers[i], 0, sizeof(ndspWaveBuf));
 		ndsp_buffers[i].data_vaddr = linearAlloc(2*SAMPLES_PER_DSP_BUFFER);
 		if (!ndsp_buffers[i].data_vaddr) {
-			audio_active = AUDIO_ERROR;
+			audio_error_occured = 1;
 			return;
 		}
 		ndsp_buffers[i].looping = 0;
@@ -163,7 +161,7 @@ void init_audio() {
 		memset(&tune_buffers[i], 0, sizeof(ndspWaveBuf));
 		tune_buffers[i].data_vaddr = linearAlloc(4*SAMPLES_PER_TUNE_BUFFER);
 		if (!tune_buffers[i].data_vaddr) {
-			audio_active = AUDIO_ERROR;
+			audio_error_occured = 1;
 			return;
 		}
 		tune_buffers[i].looping = 0;
@@ -187,46 +185,8 @@ void init_audio() {
 	last_preloaded_tunebuffer = -1;
 }
 
-int toggle_audio() {
-	switch (audio_active) {
-		case AUDIO_DISABLED:
-			audio_active = AUDIO_ONLY_FX;
-			return 1;
-		case AUDIO_ONLY_FX:
-			audio_active = AUDIO_ENABLED;
-			return 1;
-		case AUDIO_ENABLED:
-			audio_active = AUDIO_DISABLED;
-			return 1;
-		default:
-			return 0;
-	}
-}
-
-int is_audio_enabled() {
-	return (audio_active == AUDIO_ENABLED);
-}
-
-int is_audio_only_fx() {
-	return (audio_active == AUDIO_ONLY_FX);
-}
-
-void read_audio_settings(struct SaveGame* savegame) {
-	if (!savegame) {
-		return;
-	}
-	if (savegame->audio_settings) {
-		audio_active = savegame->audio_settings;
-	}
-}
-
-void write_audio_settings(struct SaveGame* savegame) {
-	if (!savegame) {
-		return;
-	}
-	if (audio_active) {
-		savegame->audio_settings = audio_active;
-	}
+int audio_error() {
+	return audio_error_occured;
 }
 
 int import_audio(u8 game) {
@@ -258,7 +218,7 @@ void prepare_music(u8 game, u8 lvl) {
 	int i;
 	play_wave_tune = 0;
 	last_preloaded_tunebuffer = -1;
-	if (audio_active != AUDIO_ENABLED) {
+	if (audio_error_occured || !settings.music_volume) {
 		next_adlib_music = 0x300;
 		return;
 	}
@@ -367,7 +327,7 @@ int is_custom_sound(u8 sound) {
 
 void play_sound(u8 sound) {
 	int wave = 0;
-	if (audio_active == AUDIO_ERROR || audio_active == AUDIO_DISABLED) {
+	if (audio_error_occured || !settings.sfx_volume) {
 		return;
 	}
 	if (sound > 0 && sound <= 18) {
