@@ -353,7 +353,6 @@ int draw_main_menu(
 			menu_data->static_pictures[4]->width,
 			menu_data->static_pictures[4]->height,
 			menu_data->palette);
-/*
 	draw(
 			BOTTOM_SCREEN_BACK,
 			27+27,
@@ -362,7 +361,7 @@ int draw_main_menu(
 			64,
 			31,
 			menu_data->palette);
-*/
+/*
 	if (!audio_error() && (settings.sfx_volume || settings.music_volume)) {
 		int picture_id = (!settings.music_volume?9:8);
 		draw(
@@ -374,6 +373,7 @@ int draw_main_menu(
 				menu_data->static_pictures[picture_id]->height,
 				menu_data->palette);
 	}
+*/
 	return 1;
 }
 
@@ -441,6 +441,8 @@ int main_menu(
 		}
 
 		if (kDown & KEY_Y) {
+			return MENU_ACTION_SETTINGS;
+			/*
 			int update = !audio_error();
 			if (update) {
 				if (settings.music_volume) {
@@ -460,6 +462,7 @@ int main_menu(
 					return MENU_ERROR; // error
 				}
 			}
+			*/
 		}
 
 		if (kDown & KEY_UP) {

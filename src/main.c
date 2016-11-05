@@ -19,6 +19,7 @@
 #include "audio.h"
 #include "menu.h"
 #include "main.h"
+#include "settings_menu.h"
 
 const char* PATH_ROOT = LEMMINGS_DIR;
 
@@ -313,6 +314,20 @@ int main() {
 				default:
 					die(1); // error
 			}
+		}
+		if (menu_selection == MENU_ACTION_SETTINGS) {
+			int result = settings_menu(&savegame, menu_data);
+			switch (result) {
+				case MENU_EXIT_GAME:
+					menu_selection = MENU_EXIT_GAME;
+					break;
+				case MENU_ACTION_EXIT:
+					break;
+				case MENU_ERROR:
+				default:
+					die(1); // error
+			}
+			
 		}
 
 		if (menu_selection == MENU_ERROR) {
