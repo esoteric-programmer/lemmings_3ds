@@ -23,28 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "import_adlib.h"
-
-struct Registers {
-	u16 ax;
-	u16 cx;
-	u16 dx;
-	u16 bx;
-
-	u16 sp; // stack pointer
-	u16 bp; // base pointer
-	u16 si; // source index
-	u16 di; // destination index
-
-
-	u16 cs; // code segment
-	u16 ds; // data segment
-	u16 ss; // stack segment
-	u16 es; // extra segment
-
-	u16 ip; // instruction pointer
-	u16 sr; // status register (flags)
-} registers;
+#include "8086.h"
 
 #define AX registers.ax
 #define AL *((u8*)&(registers.ax))
@@ -69,22 +48,7 @@ struct Registers {
 #define IP registers.ip
 #define SR registers.sr
 
-#define FLAG_O (1<<11)
-#define FLAG_D (1<<10)
-#define FLAG_I (1<< 9)
-#define FLAG_T (1<< 8)
-#define FLAG_S (1<< 7)
-#define FLAG_Z (1<< 6)
-#define FLAG_A (1<< 4)
-#define FLAG_P (1<< 2)
-#define FLAG_C (1<< 1)
-
-u8* memory;
-size_t adlib_size = 0;
-#define STACK_SIZE 0x100
-u16 stack[STACK_SIZE];
-
-const u8 parity[] = {
+const u8 Emu8086::parity[] = {
 		1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
 		0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
 		0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
@@ -103,18 +67,20 @@ const u8 parity[] = {
 		1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
 };
 
-int x86_step();
-unsigned long (*port_read)(unsigned long,unsigned long) = 0;
-void (*port_write)(unsigned long,unsigned long,unsigned long) = 0;
-
-void install_port_handler(
-		unsigned long (*OPL_Read)(unsigned long,unsigned long),
-		void (*OPL_Write)(unsigned long port,unsigned long val,unsigned long iolen)) {
-	port_read = OPL_Read;
-	port_write = OPL_Write;
+Emu8086::Emu8086(unsigned long sample_rate) {
+	this->module = new Adlib::Module(sample_rate);
+	this->memory = 0;
 }
 
-int load_adlib_data(struct Data* decoded_adlib_dat) {
+Emu8086::~Emu8086() {
+	if (this->module) {
+		delete this->module;
+	}
+	free_adlib_data();
+}
+
+int Emu8086::load_adlib_data(struct Data* decoded_adlib_dat) {
+	size_t adlib_size = 0;
 	if (sizeof(struct Registers) != 14*2) {
 		return 0; // wrong struct size (recompile!)
 	}
@@ -125,6 +91,7 @@ int load_adlib_data(struct Data* decoded_adlib_dat) {
 	if (!adlib_size) {
 		return 0; // error
 	}
+	free_adlib_data();
 	memory = (u8*)malloc(adlib_size);
 	if (!memory) {
 		return 0; // error
@@ -138,14 +105,14 @@ int load_adlib_data(struct Data* decoded_adlib_dat) {
 	return 1;
 }
 
-void free_adlib_data() {
+void Emu8086::free_adlib_data() {
 	if (memory) {
 		free(memory);
 		memory = 0;
 	}
 }
 
-int call_adlib(u16 ax) {
+int Emu8086::call_adlib(u16 ax) {
 	if (!memory) {
 		return 0;
 	}
@@ -166,33 +133,33 @@ int call_adlib(u16 ax) {
 
 
 // interesting 8086 command, because IO ports are used for communicaton with adlib sound card
-int in_out(u8 direction, u8 width) {
+int Emu8086::in_out(u8 direction, u8 width) {
 	// communication with ADLIB
 	if (direction) {
 		// send instruction to adlib emulator!
 		if (width) {
 			// OUT DX, AX
-			if (port_write) {
-				port_write(DX, AX, 16);
+			if (this->module) {
+				this->module->PortWrite(DX, AX, 16);
 			}
 		}else{
 			// OUT DX, AL
-			if (port_write) {
-				port_write(DX, AL, 8);
+			if (this->module) {
+				this->module->PortWrite(DX, AL, 8);
 			}
 		}
 		return 1;
 	}else{
 		// IN: simulate read of adlib
 		if (width) {
-			if (port_read) {
-				AX = port_read(DX, 16);
+			if (this->module) {
+				AX = this->module->PortRead(DX, 16);
 			}else{
 				AX = 255;
 			}
 		}else{
-			if (port_read) {
-				AL = port_read(DX, 8);
+			if (this->module) {
+				AL = this->module->PortRead(DX, 8);
 			} else {
 				AL = 255;
 			}
@@ -203,7 +170,7 @@ int in_out(u8 direction, u8 width) {
 }
 
 
-static inline void parse_mod_rm(void** other, u8 mod_rm, u8 width) {
+inline void Emu8086::parse_mod_rm(void** other, u8 mod_rm, u8 width) {
 	u8 mod = mod_rm>>6;
 	u8 rm = mod_rm&0x7;
 	s16 displacement;
@@ -260,7 +227,7 @@ static inline void parse_mod_rm(void** other, u8 mod_rm, u8 width) {
 	}
 }
 
-static inline void parse_mod_reg_rm(void** reg, void** other, u8 width) {
+inline void Emu8086::parse_mod_reg_rm(void** reg, void** other, u8 width) {
 	u8 val = memory[IP];
 	IP++;
 	u8 reg_id = (val>>3)&0x7;
@@ -268,7 +235,7 @@ static inline void parse_mod_reg_rm(void** reg, void** other, u8 width) {
 	parse_mod_rm(other, val, width);
 }
 
-int push(u16 val) {
+inline int Emu8086::push(u16 val) {
 	if (SP == 0) {
 		return 0; // error
 	}
@@ -277,7 +244,7 @@ int push(u16 val) {
 	return 1;
 }
 
-int pop(u16* val) {
+inline int Emu8086::pop(u16* val) {
 	if (SP >= 2*STACK_SIZE) {
 		return 0; // error
 	}
@@ -287,7 +254,7 @@ int pop(u16* val) {
 }
 
 
-static inline void add(void* dest, void* source, int width) {
+inline void Emu8086::add(void* dest, void* source, int width) {
 	s16 tmp;
 	s16 src;
 	if (width) {
@@ -316,7 +283,7 @@ static inline void add(void* dest, void* source, int width) {
 	}
 }
 
-static inline void _and(void* dest, void* source, int width) {
+inline void Emu8086::_and(void* dest, void* source, int width) {
 	// clear flags
 	SR &= ~(FLAG_C | FLAG_Z | FLAG_S | FLAG_O | FLAG_P);
 	// execute operation
@@ -330,7 +297,7 @@ static inline void _and(void* dest, void* source, int width) {
 }
 
 
-static inline void _xor(void* dest, void* source, int width) {
+inline void Emu8086::_xor(void* dest, void* source, int width) {
 	// clear flags
 	SR &= ~(FLAG_C | FLAG_Z | FLAG_S | FLAG_O | FLAG_P);
 	// execute operation
@@ -343,7 +310,7 @@ static inline void _xor(void* dest, void* source, int width) {
 	}
 }
 
-static inline void _or(void* dest, void* source, int width) {
+inline void Emu8086::_or(void* dest, void* source, int width) {
 	// clear flags
 	SR &= ~(FLAG_C | FLAG_Z | FLAG_S | FLAG_O | FLAG_P);
 	// execute operation
@@ -357,7 +324,7 @@ static inline void _or(void* dest, void* source, int width) {
 }
 
 
-static inline void sub(void* dest, void* source, int width) {
+inline void Emu8086::sub(void* dest, void* source, int width) {
 	s32 result;
 	if (width) {
 	 	result = (s32)(*((s16*)dest)) - (s32)(*((s16*)source));
@@ -381,7 +348,7 @@ static inline void sub(void* dest, void* source, int width) {
 	}
 }
 
-static inline void dec(void* dest, int width) {
+inline void Emu8086::dec(void* dest, int width) {
 	// don't change carry flag
 	u16 s = (SR & FLAG_C);
 	s16 one = 1;
@@ -394,7 +361,7 @@ static inline void dec(void* dest, int width) {
 	 SR |= s;
 }
 
-static inline void inc(void* dest, int width) {
+inline void Emu8086::inc(void* dest, int width) {
 	// don't change carry flag
 	u16 s = (SR & FLAG_C);
 	s16 one = 1;
@@ -407,7 +374,7 @@ static inline void inc(void* dest, int width) {
 	 SR |= s;
 }
 
-static inline void cmp(void* dest, void* source, int width) {
+inline void Emu8086::cmp(void* dest, void* source, int width) {
 	// only change flags according to sub, don't save result
 	if (width) {
 		u16 tmp = *((u16*)dest);
@@ -421,8 +388,7 @@ static inline void cmp(void* dest, void* source, int width) {
 }
 
 
-
-int and1(u8 direction, u8 width) {
+int Emu8086::and1(u8 direction, u8 width) {
 	void* dest;
 	void* source;
 	// get operands
@@ -431,7 +397,7 @@ int and1(u8 direction, u8 width) {
 	return 1;
 }
 
-int xor1(u8 direction, u8 width) {
+int Emu8086::xor1(u8 direction, u8 width) {
 	void* dest;
 	void* source;
 	// get operands
@@ -440,7 +406,7 @@ int xor1(u8 direction, u8 width) {
 	return 1;
 }
 
-int xor2(u8 direction, u8 width) {
+int Emu8086::xor2(u8 direction, u8 width) {
 	if (direction) {
 		return 0; // not implemented
 	}
@@ -459,7 +425,7 @@ int xor2(u8 direction, u8 width) {
 	return 1;
 }
 
-int and2(u8 direction, u8 width) {
+int Emu8086::and2(u8 direction, u8 width) {
 	if (direction) {
 		return 0; // command DAA not implemented
 	}else{
@@ -477,7 +443,7 @@ int and2(u8 direction, u8 width) {
 	}
 }
 
-int or1(u8 direction, u8 width) {
+int Emu8086::or1(u8 direction, u8 width) {
 	void* dest;
 	void* source;
 	// get operands
@@ -486,7 +452,7 @@ int or1(u8 direction, u8 width) {
 	return 1;
 }
 
-int cmp1(u8 direction, u8 width) {
+int Emu8086::cmp1(u8 direction, u8 width) {
 	void* dest;
 	void* source;
 	// get operands
@@ -495,7 +461,7 @@ int cmp1(u8 direction, u8 width) {
 	return 1;
 }
 
-int add1(u8 direction, u8 width) {
+int Emu8086::add1(u8 direction, u8 width) {
 	void* dest;
 	void* source;
 	// get operands
@@ -504,7 +470,7 @@ int add1(u8 direction, u8 width) {
 	return 1;
 }
 
-int cmp2(u8 direction, u8 width) {
+int Emu8086::cmp2(u8 direction, u8 width) {
 	if (direction) {
 		return 0; // command AAS not implemented
 	}
@@ -522,7 +488,7 @@ int cmp2(u8 direction, u8 width) {
 	return 1;
 }
 
-int mov1(u8 direction, u8 width) {
+int Emu8086::mov1(u8 direction, u8 width) {
 	void* dest;
 	void* source;
 	// get operands
@@ -536,7 +502,7 @@ int mov1(u8 direction, u8 width) {
 	return 1;
 }
 
-int sbb2(u8 direction, u8 width) {
+int Emu8086::sbb2(u8 direction, u8 width) {
 	if (direction) {
 		// PUSH or POP: ds
 		if (!width) {
@@ -552,8 +518,7 @@ int sbb2(u8 direction, u8 width) {
 	}
 }
 
-
-int add2(u8 direction, u8 width) {
+int Emu8086::add2(u8 direction, u8 width) {
 	if (direction) {
 		// PUSH es or POP es
 		if (!width) {
@@ -578,8 +543,7 @@ int add2(u8 direction, u8 width) {
 	return 1;
 }
 
-
-int sub2(u8 direction, u8 width) {
+int Emu8086::sub2(u8 direction, u8 width) {
 	if (direction) {
 		return 0; // not implemented
 	}
@@ -597,7 +561,7 @@ int sub2(u8 direction, u8 width) {
 	return 1;
 }
 
-int or2(u8 direction, u8 width) {
+int Emu8086::or2(u8 direction, u8 width) {
 	if (direction) {
 		// PUSH cs
 		if (!width) {
@@ -613,7 +577,7 @@ int or2(u8 direction, u8 width) {
 	}
 }
 
-int jz(u8 direction, u8 width) {
+int Emu8086::jz(u8 direction, u8 width) {
 	// jz, jnz, jbe, ja
 	s8 dest = (s8)(memory[IP]);
 	IP++;
@@ -634,7 +598,7 @@ int jz(u8 direction, u8 width) {
 	return 1;
 }
 
-int jo(u8 direction, u8 width) {
+int Emu8086::jo(u8 direction, u8 width) {
 	// jo, jno, jb, jnb
 	s8 dest = (s8)(memory[IP]);
 	IP++;
@@ -655,7 +619,7 @@ int jo(u8 direction, u8 width) {
 	return 1;
 }
 
-int js(u8 direction, u8 width) {
+int Emu8086::js(u8 direction, u8 width) {
 	// js, jns, jpe, jpo
 	s8 dest = (s8)(memory[IP]);
 	IP++;
@@ -676,7 +640,7 @@ int js(u8 direction, u8 width) {
 	return 1;
 }
 
-int jl(u8 direction, u8 width) {
+int Emu8086::jl(u8 direction, u8 width) {
 	// jl, jge, jle, jg
 	s8 dest = (s8)(memory[IP]);
 	IP++;
@@ -704,8 +668,7 @@ int jl(u8 direction, u8 width) {
 	return 1;
 }
 
-
-int jmp(u8 direction, u8 width) {
+int Emu8086::jmp(u8 direction, u8 width) {
 	s16 dest = 0;
 	if (direction) {
 		// jmp far or short
@@ -732,23 +695,23 @@ int jmp(u8 direction, u8 width) {
 	return 1;
 }
 
-int push1(u8 direction, u8 width) {
+int Emu8086::push1(u8 direction, u8 width) {
 	return push(*(((u16*)(&registers)) + ((direction << 1) | width)));
 }
 
-int push2(u8 direction, u8 width) {
+int Emu8086::push2(u8 direction, u8 width) {
 	return push(*(((u16*)(&registers)) + 4 + ((direction << 1) | width)));
 }
 
-int pop1(u8 direction, u8 width) {
+int Emu8086::pop1(u8 direction, u8 width) {
 	return pop(((u16*)(&registers)) + ((direction << 1) | width));
 }
 
-int pop2(u8 direction, u8 width) {
+int Emu8086::pop2(u8 direction, u8 width) {
 	return pop(((u16*)(&registers)) + 4 + ((direction << 1) | width));
 }
 
-int ret(u8 direction, u8 width) {
+int Emu8086::ret(u8 direction, u8 width) {
 	if (!direction) {
 		return 0; // invalid command
 	}
@@ -758,7 +721,7 @@ int ret(u8 direction, u8 width) {
 	return pop(&IP);
 }
 
-int iret(u8 direction, u8 width) {
+int Emu8086::iret(u8 direction, u8 width) {
 	if (direction && width) {
 		if (SP == 2*STACK_SIZE) {
 			return 2; // exit successful
@@ -770,7 +733,7 @@ int iret(u8 direction, u8 width) {
 	}
 }
 
-int mov_al(u8 direction, u8 width) {
+int Emu8086::mov_al(u8 direction, u8 width) {
 	void* address = memory + *((s16*)(memory+IP));
 	IP += 2;
 	void* reg = &AX;
@@ -793,8 +756,7 @@ int mov_al(u8 direction, u8 width) {
 	return 1;
 }
 
-
-int mov_l(u8 direction, u8 width) {
+int Emu8086::mov_l(u8 direction, u8 width) {
 	u8 val = memory[IP];
 	IP++;
 	if (!direction && !width) {
@@ -809,7 +771,7 @@ int mov_l(u8 direction, u8 width) {
 	return 1;
 }
 
-int les(u8 direction, u8 width) {
+int Emu8086::les(u8 direction, u8 width) {
 	if (!direction) {
 		// LES, LDS
 		return 0; // not implemented
@@ -829,7 +791,7 @@ int les(u8 direction, u8 width) {
 	return 1;
 }
 
-int grp1(u8 direction, u8 width) {
+int Emu8086::grp1(u8 direction, u8 width) {
 	u8 op = (memory[IP]>>3)&0x7;
 	void* reg;
 	u8 mod_rm = memory[IP];
@@ -866,7 +828,7 @@ int grp1(u8 direction, u8 width) {
 }
 
 
-int grp2(u8 direction, u8 width) {
+int Emu8086::grp2(u8 direction, u8 width) {
 //	DBG_OUT("grp2: \n");
 	u8 op = (memory[IP]>>3)&0x7;
 	void* reg;
@@ -1012,7 +974,7 @@ int grp2(u8 direction, u8 width) {
 }
 
 
-int grp4(u8 direction, u8 width) {
+int Emu8086::grp4(u8 direction, u8 width) {
 	if (!direction) {
 		return 0; // invalid command
 	}
@@ -1040,7 +1002,7 @@ int grp4(u8 direction, u8 width) {
 	}
 }
 
-int mov_general_purpose(u8 direction, u8 width) {
+int Emu8086::mov_general_purpose(u8 direction, u8 width) {
 	s16 val = *((s16*)(memory+IP));
 	IP += 2;
 	if (!direction && !width) {
@@ -1055,7 +1017,7 @@ int mov_general_purpose(u8 direction, u8 width) {
 	return 1;
 }
 
-int xchg1(u8 direction, u8 width) {
+int Emu8086::xchg1(u8 direction, u8 width) {
 	if (!direction && !width) {
 		// NOP
 		return 1;
@@ -1063,7 +1025,7 @@ int xchg1(u8 direction, u8 width) {
 	return 0; // command XCHG not implemented
 }
 
-int mov_special_purpose(u8 direction, u8 width) {
+int Emu8086::mov_special_purpose(u8 direction, u8 width) {
 	s16 val = *((s16*)(memory+IP));
 	IP += 2;
 	if (!direction && !width) {
@@ -1078,8 +1040,7 @@ int mov_special_purpose(u8 direction, u8 width) {
 	return 1;
 }
 
-
-int loop(u8 direction, u8 width) {
+int Emu8086::loop(u8 direction, u8 width) {
 	s8 dest = (s8)memory[IP];
 	IP++;
 	if (direction && !width) {
@@ -1100,19 +1061,19 @@ int loop(u8 direction, u8 width) {
 	return 0;
 }
 
-int inc1(u8 direction, u8 width) {
+int Emu8086::inc1(u8 direction, u8 width) {
 	u16* reg = (u16*)(&registers) + (direction?2:0) + (width?1:0);
 	inc(reg, 1);
 	return 1;
 }
 
-int inc2(u8 direction, u8 width) {
+int Emu8086::inc2(u8 direction, u8 width) {
 	u16* reg = (u16*)(&registers) + 4 + (direction?2:0) + (width?1:0);
 	inc(reg,width);
 	return 1;
 }
 
-int lods(u8 direction, u8 width) {
+int Emu8086::lods(u8 direction, u8 width) {
 	if (direction) {
 		return 0; // not implemented
 	}
@@ -1134,7 +1095,7 @@ int lods(u8 direction, u8 width) {
 	return 1;
 }
 
-int cmc(u8 direction, u8 width) {
+int Emu8086::cmc(u8 direction, u8 width) {
 	if (!direction && width) {
 		// CMC
 		u16 cf = (SR & FLAG_C);
@@ -1147,7 +1108,7 @@ int cmc(u8 direction, u8 width) {
 	return 0; // not implemented
 }
 
-int lea(u8 direction, u8 width) {
+int Emu8086::lea(u8 direction, u8 width) {
 	if (!direction && width) {
 		// LEA
 		void* reg;
@@ -1162,18 +1123,26 @@ int lea(u8 direction, u8 width) {
 }
 
 // array of function pointers to (partial) implemented opcodes resp. commands
-int (*const execute_opcode[64])(u8 direction, u8 width) = {
-	add1,add2,or1,or2,0,0,0,sbb2,
-	and1,and2,0,sub2,xor1,xor2,cmp1,cmp2,
-	inc1,inc2,0,0,push1,push2,pop1,pop2,
-	0,0,0,0,jo,jz,js,jl,
-	grp1,0,mov1,lea,xchg1,0,0,0,
-	mov_al,0,0,lods,mov_l,0,mov_general_purpose,mov_special_purpose,
-	ret,les,0,iret,grp2,0,0,0,
-	loop,0,jmp,in_out,0,cmc,0,grp4
+int (Emu8086::*Emu8086::execute_opcode[64])(u8 direction, u8 width) = {
+	&Emu8086::add1,&Emu8086::add2,&Emu8086::or1,&Emu8086::or2,
+	0,0,0,&Emu8086::sbb2,
+	&Emu8086::and1,&Emu8086::and2,0,&Emu8086::sub2,
+	&Emu8086::xor1,&Emu8086::xor2,&Emu8086::cmp1,&Emu8086::cmp2,
+	&Emu8086::inc1,&Emu8086::inc2,0,0,
+	&Emu8086::push1,&Emu8086::push2,&Emu8086::pop1,&Emu8086::pop2,
+	0,0,0,0,
+	&Emu8086::jo,&Emu8086::jz,&Emu8086::js,&Emu8086::jl,
+	&Emu8086::grp1,0,&Emu8086::mov1,&Emu8086::lea,
+	&Emu8086::xchg1,0,0,0,
+	&Emu8086::mov_al,0,0,&Emu8086::lods,
+	&Emu8086::mov_l,0,&Emu8086::mov_general_purpose,&Emu8086::mov_special_purpose,
+	&Emu8086::ret,&Emu8086::les,0,&Emu8086::iret,
+	&Emu8086::grp2,0,0,0,
+	&Emu8086::loop,0,&Emu8086::jmp,&Emu8086::in_out,
+	0,&Emu8086::cmc,0,&Emu8086::grp4
 };
 
-int x86_step() {
+int Emu8086::x86_step() {
 	// memory[IP]: current instruction
 	// check for prefix
 	switch (memory[IP]) {
@@ -1196,7 +1165,11 @@ int x86_step() {
 	u8 width      = (memory[IP]) & 0x01;
 	IP++;
 	if (execute_opcode[opcode]) {
-		return (execute_opcode[opcode])(direction, width);
+		return (this->*execute_opcode[opcode])(direction, width);
 	}
 	return 0; // error: invalid or unimplemented command
+}
+
+void Emu8086::query_opl_samples(unsigned long samples, int module) {
+	this->module->handler->Generate(samples, (unsigned long)module);
 }

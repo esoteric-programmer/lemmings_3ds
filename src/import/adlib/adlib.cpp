@@ -167,23 +167,6 @@ void Module::Init() {
 
 }; //namespace
 
-
-
-static Adlib::Module* module = 0;
-
-static void OPL_CallBack(unsigned long len) {
-	module->handler->Generate( len );
-}
-
-static unsigned long OPL_Read(unsigned long port,unsigned long iolen) {
-	return module->PortRead( port, iolen );
-}
-
-void OPL_Write(unsigned long port,unsigned long val,unsigned long iolen) {
-	module->PortWrite( port, val, iolen );
-}
-
-
 namespace Adlib {
 
 Module::Module( unsigned long sample_rate ) { //Section* configuration ) : Module_base(configuration) {
@@ -202,8 +185,6 @@ Module::Module( unsigned long sample_rate ) { //Section* configuration ) : Modul
 	handler = new DBOPL::Handler();
 	handler->Init( rate );
 	Init();
-	install_opl_handler(OPL_CallBack);
-	install_port_handler(OPL_Read, OPL_Write);
 }
 
 Module::~Module() {
@@ -213,14 +194,3 @@ Module::~Module() {
 }
 
 };	//Adlib Namespace
-
-
-void OPL_Init(unsigned long sample_rate) {
-	module = new Adlib::Module( sample_rate);
-}
-
-void OPL_ShutDown(){
-	delete module;
-	module = 0;
-
-}

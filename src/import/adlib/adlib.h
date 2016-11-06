@@ -92,7 +92,7 @@ public:
 	//Write to a specific register in the chip
 	virtual void WriteReg( u32 addr, u8 val ) = 0;
 	//Generate a certain amount of samples
-	virtual void Generate( unsigned long samples ) = 0;
+	virtual void Generate( unsigned long samples, unsigned long param ) = 0;
 	//Initialize at a specific sample rate and mode
 	virtual void Init( unsigned long rate ) = 0;
 	virtual ~Handler() {

@@ -1500,12 +1500,12 @@ void Handler::WriteReg( u32 addr, u8 val ) {
 	chip.WriteReg( addr, val );
 }
 
-void Handler::Generate( unsigned long samples ) {
+void Handler::Generate( unsigned long samples, unsigned long param ) {
 	s32 buffer[ 512 * 2 ];
 	if ( GCC_UNLIKELY(samples > 512) )
 		samples = 512;
 	chip.GenerateBlock2( samples, buffer );
-	add_sample( samples, buffer );
+	add_sample( samples, buffer, param );
 }
 
 void Handler::Init( unsigned long rate ) {

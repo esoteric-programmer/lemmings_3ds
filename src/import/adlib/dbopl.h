@@ -243,7 +243,7 @@ struct Chip {
 	void GenerateBlock2( unsigned long samples, s32* output );
 	void GenerateBlock3( unsigned long samples, s32* output );
 
-	void Generate( u32 samples );
+	void Generate( u32 samples, unsigned long param );
 	void Setup( u32 r );
 
 	Chip();
@@ -253,7 +253,7 @@ struct Handler : public Adlib::Handler {
 	DBOPL::Chip chip;
 	virtual u32 WriteAddr( u32 port, u8 val );
 	virtual void WriteReg( u32 addr, u8 val );
-	virtual void Generate( unsigned long samples );
+	virtual void Generate( unsigned long samples, unsigned long param );
 	virtual void Init( unsigned long rate );
 };
 

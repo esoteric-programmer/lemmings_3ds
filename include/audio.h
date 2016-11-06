@@ -3,6 +3,7 @@
 #include <3ds.h>
 
 void init_audio();
+void update_volume();
 int audio_error();
 int import_audio(u8 game);
 int is_custom_sound(u8 sound);
