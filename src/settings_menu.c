@@ -5,8 +5,6 @@
 #include "settings_menu.h"
 #include "draw.h"
 
-//#define MAX(x,y) ((x)>=(y)?(x):(y))
-
 const char* settings_menu_topics[] = {
 	"GAME MECHANICS",
 	"AUDIO",
@@ -171,6 +169,7 @@ void draw_settings_menu(
 		u8 top_offset,
 		u8 cur_topic,
 		u8 cur_point,
+		u8 blink,
 		u32** menu_values,
 		struct MainMenuData* menu_data) {
 	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
@@ -201,15 +200,19 @@ void draw_settings_menu(
 			}
 			DRAW_MENU(settings_menu_points[draw_topic][draw_line].name)
 			if (settings_menu_points[draw_topic][draw_line].type == 1) {
-				char spaces[21];
-				memset(spaces,' ',20);
-				spaces[20-strlen(settings_menu_points[draw_topic][draw_line].name)] = 0;
-				DRAW_MENU(spaces)
-				char name[20];
-				if (get_keys_name(name, menu_values[draw_topic][draw_line])) {
-					DRAW_MENU(name)
-				}else{
-					DRAW_MENU("---")
+				if (!blink || draw_topic != cur_topic || draw_line != cur_point) {
+					char spaces[20];
+					memset(spaces,' ',19);
+					spaces[19-strlen(
+							settings_menu_points[draw_topic][draw_line]
+								.name)] = 0;
+					DRAW_MENU(spaces)
+					char name[20];
+					if (get_keys_name(name, menu_values[draw_topic][draw_line])) {
+						DRAW_MENU(name)
+					}else{
+						DRAW_MENU("---")
+					}
 				}
 			}
 			DRAW_MENU_LINE("")
@@ -233,9 +236,10 @@ void draw_settings_menu(
 }
 
 int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
-
-	// TODO: init
+	// init
 	u8 redraw_selection = 1;
+	// TODO: don't use hard coded size of menu entries
+	//       malloc dynamically instaed
 	u32 gamemechanics_values[4];
 	u32 audio_values[2];
 	u32 key_bindings_values[19];
@@ -271,37 +275,93 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 	u8 cur_topic = 0;
 	u8 cur_point = 0;
 	u8 cur_line = 1;
+	u8 key_assignment = 0;
+	u32 modifier_mask = 0;
 	u32 kDown;
-	//u32 kHeld;
-	while (aptMainLoop()) {
+	u32 kHeld;
+	int dwn = 0;
+	int up = 0;
 
+	while (aptMainLoop()) {
 		hidScanInput();
 		kDown = hidKeysDown();
-		//kHeld = hidKeysHeld();
-		//kUp = hidKeysUp();
-		// hidTouchRead(&stylus);
-		if (redraw_selection) {
+		kHeld = hidKeysHeld();
+
+		if (redraw_selection || key_assignment) {
 			draw_settings_menu(
 					top_offset,
 					cur_topic,
 					cur_point,
+					key_assignment && osGetTime() % 1000 >= 500,
 					menu_values,
 					menu_data);
 			redraw_selection = 0;
 		}
+		if (key_assignment) {
+			if (kDown & KEY_TOUCH) {
+				// cancel assignment
+				key_assignment = 0;
+				redraw_selection = 1;
+				continue;
+			}
+			if (kDown & ~modifier_mask) {
+				// update other key settings (remove key)
+				// TODO: don't use hard coded positions of modifier keys...
+				u32 key_code = kDown | (kHeld & modifier_mask);
+				u32 remove_modifier = 0;
+				if (cur_point < 2 && menu_values[cur_topic][cur_point] != key_code) {
+					remove_modifier |= key_code;
+				}
+				u8 i;
+				for (i=0;settings_menu_points[cur_topic][i].value;i++) {
+					if (i<2) {
+						if (i == cur_point && key_code != menu_values[cur_topic][i]) {
+							remove_modifier |= menu_values[cur_topic][i];
+						}else if (i != cur_point && key_code == menu_values[cur_topic][i]){
+							remove_modifier |= menu_values[cur_topic][i];
+						}
+					}else{
+						if (menu_values[cur_topic][i] & remove_modifier) {
+							menu_values[cur_topic][i] = 0;
+						}
+					}
+					if (menu_values[cur_topic][i] == key_code) {
+						menu_values[cur_topic][i] = 0;
+					}
+				}
+				// assign key!
+				menu_values[cur_topic][cur_point] =
+						kDown | (kHeld & modifier_mask);
+				key_assignment = 0;
+				redraw_selection = 1;
+				continue;
+			}
+			begin_frame();
+			copy_from_backbuffer(TOP_SCREEN);
+			copy_from_backbuffer(BOTTOM_SCREEN);
+			end_frame();
+			continue;
+		}
 
-		if (kDown & KEY_DOWN) {
+		if ((kDown & KEY_DOWN) || dwn >= 20) {
+			if (dwn) {
+				dwn = 18;
+			}else{
+				dwn = 1;
+			}
 			if (cur_topic == topic) {
 				if (cur_point < 1) {
 					cur_point++;
 					cur_line++;
-					if (lines-1 > 26 && top_offset < lines-1-26 && top_offset < cur_line-24) {
+					if (lines-1 > 26
+							&& top_offset < lines-1-26
+							&& top_offset < cur_line-24) {
 						top_offset = cur_line-24;
 						if (top_offset > lines-1-26) {
 							top_offset = lines-1-26;
 						}
 					}
-				}else{
+				}else if (kDown & KEY_DOWN) {
 					cur_topic = 0;
 					cur_point = 0;
 					cur_line = 1;
@@ -315,7 +375,9 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 					cur_topic++;
 					cur_line+=(cur_topic==topic?1:2);
 				}
-				if (lines-1 > 26 && top_offset < lines-1-26 && top_offset < cur_line-24) {
+				if (lines-1 > 26
+						&& top_offset < lines-1-26
+						&& top_offset < cur_line-24) {
 					top_offset = cur_line-24;
 					if (top_offset > lines-1-26) {
 						top_offset = lines-1-26;
@@ -324,14 +386,19 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 			}
 			redraw_selection = 1;
 		}
-		if (kDown & KEY_UP) {
+		if ((kDown & KEY_UP) || up >= 20) {
+			if (up) {
+				up = 18;
+			}else{
+				up = 1;
+			}
 			if (cur_point) {
 				cur_point--;
 				cur_line--;
 				if (top_offset > 0 && top_offset+2 > cur_line) {
 					top_offset = cur_line-2;
 				}
-			}else if (cur_topic){
+			}else if (cur_topic) {
 				cur_line-=(cur_topic==topic?2:3);
 				cur_topic--;
 				cur_point = 0;
@@ -341,7 +408,7 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 				if (top_offset > 0 && top_offset+2 > cur_line) {
 					top_offset = cur_line-2;
 				}
-			}else{
+			}else if (kDown & KEY_UP) {
 				cur_topic = topic;
 				cur_point = 1;
 				cur_line = lines-1;
@@ -352,6 +419,16 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 				}
 			}
 			redraw_selection = 1;
+		}
+		if (kHeld & KEY_DOWN) {
+			dwn++;
+		} else if (!((kDown | kHeld) & KEY_DOWN)) {
+			dwn = 0;
+		}
+		if (kHeld & KEY_UP) {
+			up++;
+		} else if (!((kDown | kHeld) & KEY_UP)) {
+			up = 0;
 		}
 		if (kDown & KEY_A) {
 			if (cur_topic == topic) {
@@ -368,7 +445,17 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 						redraw_selection = 1;
 						break;
 					case 1:
-						// TODO
+						key_assignment = 1;
+						if (settings_menu_points[cur_topic][cur_point].value
+								== &settings.key_bindings[0].modifier
+								|| settings_menu_points[cur_topic][cur_point].value
+								== &settings.key_bindings[1].modifier) {
+							modifier_mask = 0;
+						}else{
+							// TODO: don't use hard coded positions of modifier keys...
+							//       find them instead...
+							modifier_mask = menu_values[2][0] | menu_values[2][1];
+						}
 						break;
 					default:
 						break;

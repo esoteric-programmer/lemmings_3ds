@@ -41,7 +41,6 @@ void event_hook(APT_HookType hook_type, void* param) {
 			suspended = 1;
 			break;
 		case APTHOOK_ONSUSPEND:
-			// TODO
 			break;
 		default:
 			break;
@@ -176,6 +175,18 @@ int main() {
 				(u16)import[i].num_of_level_per_difficulty;
 	}
 
+	// LEFTHANDED.DAT hack
+	char lh_fn[64];
+	sprintf(lh_fn,"%s/LEFTHANDED.DAT", PATH_ROOT);
+	FILE* lefthand = fopen(lh_fn,"r");
+	if (lefthand) {
+		settings.key_bindings[0].modifier = KEY_L;
+		settings.key_bindings[0].speed_up = KEY_R;
+		settings.key_bindings[0].scroll_left = KEY_CPAD_LEFT | KEY_L;
+		settings.key_bindings[0].scroll_right = KEY_CPAD_RIGHT | KEY_L;
+		fclose(lefthand);
+	}
+
 	// read save file
 	u8* progress = (u8*)malloc(overall_num_of_difficulties);
 	if (!progress) {
@@ -203,7 +214,7 @@ int main() {
 	}
 	if (game == LEMMING_GAMES) {
 		// no game data has been found
-		// TODO: display error message
+		// display error message
 		printf(CONSOLE_RED);
 		printf("\nTo run this game, you need to copy the files of\n");
 		printf("at least one DOS Lemmings game to your SD card.\n");
@@ -239,19 +250,6 @@ int main() {
 		}
 		gfxExit();
 		return 0; // error
-	}
-
-	// TODO: read configuration file
-	// LEFTHANDED.DAT hack; TODO: remove once configuration file is implemented
-	char lh_fn[64];
-	sprintf(lh_fn,"%s/LEFTHANDED.DAT", PATH_ROOT);
-	FILE* lefthand = fopen(lh_fn,"r");
-	if (lefthand) {
-		settings.key_bindings[0].modifier = KEY_L;
-		settings.key_bindings[0].speed_up = KEY_R;
-		settings.key_bindings[0].scroll_left = KEY_CPAD_LEFT | KEY_L;
-		settings.key_bindings[0].scroll_right = KEY_CPAD_RIGHT | KEY_L;
-		fclose(lefthand);
 	}
 
 	// initialize variables

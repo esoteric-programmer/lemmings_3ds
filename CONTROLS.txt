@@ -2,7 +2,7 @@ Main menu:
 
 A, START      start 1 player game
 B, X, SELECT  select level
-Y             enable/disable audio
+Y             enter settings menu
 UP, DOWN      change rating; switch between original Lemmings and "Oh no! More Lemmings"
 touch         touch at a lemming to trigger one of the actions above
 L + R         exit
@@ -15,6 +15,16 @@ LEFT, RIGHT   change rating
 B             cancel selection
 A, START      start 1 player game with selected level
 touch         no effect (sorry!)
+
+
+Settings menu:
+
+UP, DOWN      select menu item
+A             toggle checkbox or start key assignment
+B             exit menu without saving
+X             delete key binding
+START         save and exit menu
+touch         interrupt key assignment
 
 
 In game:
