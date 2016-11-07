@@ -1,5 +1,6 @@
 Version 0.5
 - Added settings menu
+- Bugfix
 
 Version 0.4
 - Added custom sounds and music

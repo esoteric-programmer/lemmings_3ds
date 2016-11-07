@@ -647,6 +647,7 @@ int draw_level(
 				// a) don't overwrite terrain or b) don't overwrite anything?
 
 				if ((OBJECT_DONT_OVERWRITE & level->obj[i].modifier)
+						&& !(OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier)
 						&& (level->terrain[xi+level->obj[i].x+1584*(level_y)]
 							& 0xF0)) {
 					continue;

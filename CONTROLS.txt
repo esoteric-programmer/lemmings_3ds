@@ -25,7 +25,7 @@ LEFT, RIGHT   select previous/next option (if supported by current menu point)
 B             exit menu without saving
 X             delete key binding
 START         save and exit menu
-touch         interrupt key assignment
+touch         cancel key assignment
 
 
 In game:
