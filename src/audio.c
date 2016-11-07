@@ -17,10 +17,10 @@
 
 // if the values below are too large, sound effects get delayed
 // if the values below are too small, jitters appear
-#define NUM_DSP_BUFFERS 10
+#define NUM_DSP_BUFFERS 15
 // note that OPL emulation does only generate a limited number of samples
 // each time it is called
-#define SAMPLES_PER_DSP_BUFFER 255
+#define SAMPLES_PER_DSP_BUFFER 256
 
 #define NUM_TUNE_BUFFERS 100
 #define SAMPLES_PER_TUNE_BUFFER 1024
@@ -214,9 +214,12 @@ void update_volume() {
 	if (m<0.0f) {
 		m=0.0f;
 	}
-	float mix_m[12] = {m,m,m,m,m,m,m,m,m,m,m,m};
-	ndspChnSetMix(0, mix_m); //adlib
-	ndspChnSetMix(2, mix_m); //wave
+	float mix[12];
+	for (i=0;i<12;i++) {
+		mix[i] = m;
+	}
+	ndspChnSetMix(0, mix); //adlib
+	ndspChnSetMix(2, mix); //wave
 	float s = settings.sfx_volume;
 	s /= 100.0f;
 	if (s>1.0f) {
@@ -225,10 +228,12 @@ void update_volume() {
 	if (s<0.0f) {
 		s=0.0f;
 	}
-	float mix_s[12] = {s,s,s,s,s,s,s,s,s,s,s,s};
-	ndspChnSetMix(1, mix_s); //adlib
+	for (i=0;i<12;i++) {
+		mix[i] = s;
+	}
+	ndspChnSetMix(1, mix); //adlib
 	for (i=0;i<NUM_DSP_SFX_CHANNELS;i++) {
-		ndspChnSetMix(3+i, mix_s); //wave
+		ndspChnSetMix(3+i, mix); //wave
 	}
 }
 
@@ -286,11 +291,12 @@ void prepare_music(u8 game, u8 lvl) {
 			PATH_ROOT,
 			import[game].custom_audio_path,
 			track);
-	if (!wave_open_file(&tune, tune_fn)) {
+	if (settings.audio_order == AUDIO_ORDER_ONLY_ADLIB
+			|| (adlib && settings.audio_order == AUDIO_ORDER_PREFER_ADLIB)
+			|| (!wave_open_file(&tune, tune_fn) && !(settings.audio_order == AUDIO_ORDER_ONLY_CUSTOM))) {
 		next_adlib_music = 0x0300+(u16)track;
 	}else{
 		next_adlib_music = 0x300;
-		ndspChnReset(2); // necessary?
 		ndspChnSetInterp(2, NDSP_INTERP_LINEAR);
 		ndspChnSetRate(2, tune.frequency);
 		if (tune.bitdepth == 8) {
@@ -335,7 +341,7 @@ void play_music() {
 	if (audio_error_occured) {
 		return;
 	}
-	if (next_adlib_music > 0x300) {
+	if (next_adlib_music > 0x300 && adlib) {
 		OPL_CallAdlib(next_adlib_music,0);
 		return;
 	}
@@ -375,7 +381,11 @@ void stop_audio() {
 
 int is_custom_sound(u8 sound) {
 	if (sound > 0 && sound <= 18) {
-		if (sound_effects[sound-1].data) {
+		if (settings.audio_order == AUDIO_ORDER_ONLY_ADLIB
+				|| (adlib && settings.audio_order == AUDIO_ORDER_PREFER_ADLIB)
+				|| (!sound_effects[sound-1].data && !(settings.audio_order == AUDIO_ORDER_ONLY_CUSTOM))) {
+			return 0;
+		}else{
 			return 1;
 		}
 	}
@@ -383,55 +393,56 @@ int is_custom_sound(u8 sound) {
 }
 
 void play_sound(u8 sound) {
-	int wave = 0;
 	if (audio_error_occured || !settings.sfx_volume) {
 		return;
 	}
-	if (sound > 0 && sound <= 18) {
-		if (currently_triggered_wave[sound-1]) {
-			return; // already triggered
+	if (sound == 0 || sound > 18) {
+		return;
+	}
+	if (currently_triggered_wave[sound-1]) {
+		return; // already triggered
+	}
+	currently_triggered_wave[sound-1] = 1;
+	if (settings.audio_order == AUDIO_ORDER_ONLY_ADLIB
+			|| (adlib && settings.audio_order == AUDIO_ORDER_PREFER_ADLIB)
+			|| (!sound_effects[sound-1].data && !(settings.audio_order == AUDIO_ORDER_ONLY_CUSTOM))) {
+		if (adlib) {
+			OPL_CallAdlib(0x0400+(u16)sound,1);
 		}
-		currently_triggered_wave[sound-1] = 1;
-		if (sound_effects[sound-1].data) {
-			wave = 1; // don't play adlib sound
-			int i;
-			for (i=0;i<NUM_DSP_SFX_CHANNELS;i++) {
-				if (!ndspChnIsPlaying(3+i)
-						&& (sound_effect_buffers[i].status == NDSP_WBUF_FREE
-							|| sound_effect_buffers[i].status == NDSP_WBUF_DONE)) {
-					// play sound
-					ndspChnWaveBufClear(3+i);
-					ndspChnReset(3+i);
-					ndspChnSetRate(3+i, sound_effects[sound-1].frequency);
-					if (sound_effects[sound-1].bitdepth == 8) {
-						if (sound_effects[sound-1].channels == 1) {
-							ndspChnSetFormat(3+i, NDSP_FORMAT_MONO_PCM8);
-						}else {
-							ndspChnSetFormat(3+i, NDSP_FORMAT_STEREO_PCM8);
-						}
-					}else{
-						if (sound_effects[sound-1].channels == 1) {
-							ndspChnSetFormat(3+i, NDSP_FORMAT_MONO_PCM16);
-						}else {
-							ndspChnSetFormat(3+i, NDSP_FORMAT_STEREO_PCM16);
-						}
+	} else if (sound_effects[sound-1].data) {
+		int i;
+		for (i=0;i<NUM_DSP_SFX_CHANNELS;i++) {
+			if (!ndspChnIsPlaying(3+i)
+					&& (sound_effect_buffers[i].status == NDSP_WBUF_FREE
+						|| sound_effect_buffers[i].status == NDSP_WBUF_DONE)) {
+				// play sound
+				ndspChnWaveBufClear(3+i);
+				ndspChnSetRate(3+i, sound_effects[sound-1].frequency);
+				if (sound_effects[sound-1].bitdepth == 8) {
+					if (sound_effects[sound-1].channels == 1) {
+						ndspChnSetFormat(3+i, NDSP_FORMAT_MONO_PCM8);
+					}else {
+						ndspChnSetFormat(3+i, NDSP_FORMAT_STEREO_PCM8);
 					}
-					sound_effect_buffers[i].status = NDSP_WBUF_FREE;
-					memset(&sound_effect_buffers[i], 0, sizeof(ndspWaveBuf));
-					sound_effect_buffers[i].looping = 0;
-					sound_effect_buffers[i].nsamples = sound_effects[sound-1].samples;
-					sound_effect_buffers[i].data_vaddr = sound_effects[sound-1].data;
-					DSP_FlushDataCache(
-							sound_effect_buffers[i].data_vaddr,
-							sound_effects[sound-1].size);
-					ndspChnWaveBufAdd(3+i, &sound_effect_buffers[i]);
-					return;
+				}else{
+					if (sound_effects[sound-1].channels == 1) {
+						ndspChnSetFormat(3+i, NDSP_FORMAT_MONO_PCM16);
+					}else {
+						ndspChnSetFormat(3+i, NDSP_FORMAT_STEREO_PCM16);
+					}
 				}
+				sound_effect_buffers[i].status = NDSP_WBUF_FREE;
+				memset(&sound_effect_buffers[i], 0, sizeof(ndspWaveBuf));
+				sound_effect_buffers[i].looping = 0;
+				sound_effect_buffers[i].nsamples = sound_effects[sound-1].samples;
+				sound_effect_buffers[i].data_vaddr = sound_effects[sound-1].data;
+				DSP_FlushDataCache(
+						sound_effect_buffers[i].data_vaddr,
+						sound_effects[sound-1].size);
+				ndspChnWaveBufAdd(3+i, &sound_effect_buffers[i]);
+				return;
 			}
 		}
-	}
-	if (!wave) {
-		OPL_CallAdlib(0x0400+(u16)sound,1);
 	}
 }
 

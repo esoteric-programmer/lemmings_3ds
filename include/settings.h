@@ -17,6 +17,11 @@ extern const char* PATH_ROOT;
 #define FADE_IN_DOSFRAMES     18
 #define FADE_OUT_DOSFRAMES    32
 
+#define AUDIO_ORDER_PREFER_CUSTOM 0
+#define AUDIO_ORDER_PREFER_ADLIB  1
+#define AUDIO_ORDER_ONLY_CUSTOM   2
+#define AUDIO_ORDER_ONLY_ADLIB    3
+
 extern struct Settings {
 	u8 glitch_nuke;
 	u8 glitch_entrance_pausing;
@@ -65,3 +70,4 @@ extern u8 settings_icon[];
 #define ABGR
 #endif
 #endif
+

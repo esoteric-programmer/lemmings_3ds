@@ -4,6 +4,7 @@
 #include <3ds.h>
 #include "settings_menu.h"
 #include "draw.h"
+#include "audio.h"
 
 const char* settings_menu_topics[] = {
 	"GAME MECHANICS",
@@ -12,47 +13,78 @@ const char* settings_menu_topics[] = {
 	0
 };
 
+struct SettingsValues {
+	const char* name;
+	u8 value;
+};
+
+struct SettingsValues volume[10] = {
+	{" Off",0},
+	{" 12%",12},
+	{" 25%",25},
+	{" 37%",37},
+	{" 50%",50},
+	{" 62%",62},
+	{" 75%",75},
+	{" 87%",87},
+	{"100%",100},
+	{0,0}
+};
+
+struct SettingsValues audio_source[5] = {
+	{"prefer custom",AUDIO_ORDER_PREFER_CUSTOM},
+	{"  only custom",AUDIO_ORDER_ONLY_CUSTOM},
+	{"  only adlib ",AUDIO_ORDER_ONLY_ADLIB},
+	{"prefer adlib ",AUDIO_ORDER_PREFER_ADLIB},
+	{0,0}
+};
+
 struct MenuPoint {
 	u8 type; // 0: check box; 1: key
 	const char* name;
 	void* value;
+	struct Selection {
+		u8 default_index;
+		struct SettingsValues* values;
+	} selection;
 };
 
 struct MenuPoint gamemechanics_points[] = {
-	{0, "Nuke glitch", &settings.glitch_nuke},
-	{0, "Entrance pausing glitch", &settings.glitch_entrance_pausing},
-	{0, "Mining one-way walls glitch", &settings.glitch_mining_right_oneway},
-	{0, "Shrugger glitch", &settings.glitch_shrugger},
-	{0, 0, 0}
+	{0, "Nuke glitch", &settings.glitch_nuke, {0,0}},
+	{0, "Entrance pausing glitch", &settings.glitch_entrance_pausing, {0,0}},
+	{0, "Mining one-way walls glitch", &settings.glitch_mining_right_oneway, {0,0}},
+	{0, "Shrugger glitch", &settings.glitch_shrugger, {0,0}},
+	{0, 0, 0, {0,0}}
 };
 
 struct MenuPoint audio_points[] = {
-		{0, "Music", &settings.music_volume},
-		{0, "Effects", &settings.sfx_volume},
-		{0, 0, 0}
+		{2, "Music volume", &settings.music_volume, {8,volume}},
+		{2, "Effects volume", &settings.sfx_volume, {8,volume}},
+		{2, "Audio source", &settings.audio_order, {0,audio_source}},
+		{0, 0, 0, {0,0}}
 };
 
 struct MenuPoint key_bindings_points[] = {
-		{1, "Modifier key 1", &settings.key_bindings[0].modifier},
-		{1, "Modifier key 2", &settings.key_bindings[1].modifier},
-		{1, "Move cursor up", &settings.key_bindings[0].cursor_up},
-		{1, "Move cursor down", &settings.key_bindings[0].cursor_down},
-		{1, "Move cursor left", &settings.key_bindings[0].cursor_left},
-		{1, "Move cursor right", &settings.key_bindings[0].cursor_right},
-		{1, "Cursor click", &settings.key_bindings[0].click},
-		{1, "Inc release rate", &settings.key_bindings[0].inc_rate},
-		{1, "Dec release rate", &settings.key_bindings[0].dec_rate},
-		{1, "Next skill", &settings.key_bindings[0].next_skill},
-		{1, "Prev skill", &settings.key_bindings[0].prev_skill},
-		{1, "Pause", &settings.key_bindings[0].pause},
-		{1, "Nuke", &settings.key_bindings[0].nuke},
-		{1, "Exit", &settings.key_bindings[0].exit},
-		{1, "Speed up", &settings.key_bindings[0].speed_up},
-		{1, "Nonprio lemming", &settings.key_bindings[0].non_prio},
-		{1, "Step one frame", &settings.key_bindings[0].step_one_frame},
-		{1, "Scroll left", &settings.key_bindings[0].scroll_left},
-		{1, "Scroll right", &settings.key_bindings[0].scroll_right},
-		{0, 0, 0}
+		{1, "Modifier key 1", &settings.key_bindings[0].modifier, {0,0}},
+		{1, "Modifier key 2", &settings.key_bindings[1].modifier, {0,0}},
+		{1, "Move cursor up", &settings.key_bindings[0].cursor_up, {0,0}},
+		{1, "Move cursor down", &settings.key_bindings[0].cursor_down, {0,0}},
+		{1, "Move cursor left", &settings.key_bindings[0].cursor_left, {0,0}},
+		{1, "Move cursor right", &settings.key_bindings[0].cursor_right, {0,0}},
+		{1, "Cursor click", &settings.key_bindings[0].click, {0,0}},
+		{1, "Inc release rate", &settings.key_bindings[0].inc_rate, {0,0}},
+		{1, "Dec release rate", &settings.key_bindings[0].dec_rate, {0,0}},
+		{1, "Next skill", &settings.key_bindings[0].next_skill, {0,0}},
+		{1, "Prev skill", &settings.key_bindings[0].prev_skill, {0,0}},
+		{1, "Pause", &settings.key_bindings[0].pause, {0,0}},
+		{1, "Nuke", &settings.key_bindings[0].nuke, {0,0}},
+		{1, "Exit", &settings.key_bindings[0].exit, {0,0}},
+		{1, "Speed up", &settings.key_bindings[0].speed_up, {0,0}},
+		{1, "Nonprio lemming", &settings.key_bindings[0].non_prio, {0,0}},
+		{1, "Step one frame", &settings.key_bindings[0].step_one_frame, {0,0}},
+		{1, "Scroll left", &settings.key_bindings[0].scroll_left, {0,0}},
+		{1, "Scroll right", &settings.key_bindings[0].scroll_right, {0,0}},
+		{0, 0, 0, {0,0}}
 };
 
 struct MenuPoint* settings_menu_points[] = {
@@ -199,14 +231,17 @@ void draw_settings_menu(
 				DRAW_MENU("] ")
 			}
 			DRAW_MENU(settings_menu_points[draw_topic][draw_line].name)
+			if (settings_menu_points[draw_topic][draw_line].type == 1
+					|| settings_menu_points[draw_topic][draw_line].type == 2) {
+				char spaces[20];
+				memset(spaces,' ',19);
+				spaces[19-strlen(
+						settings_menu_points[draw_topic][draw_line]
+							.name)] = 0;
+				DRAW_MENU(spaces)
+			}
 			if (settings_menu_points[draw_topic][draw_line].type == 1) {
 				if (!blink || draw_topic != cur_topic || draw_line != cur_point) {
-					char spaces[20];
-					memset(spaces,' ',19);
-					spaces[19-strlen(
-							settings_menu_points[draw_topic][draw_line]
-								.name)] = 0;
-					DRAW_MENU(spaces)
 					char name[20];
 					if (get_keys_name(name, menu_values[draw_topic][draw_line])) {
 						DRAW_MENU(name)
@@ -214,6 +249,27 @@ void draw_settings_menu(
 						DRAW_MENU("---")
 					}
 				}
+			}
+			if (settings_menu_points[draw_topic][draw_line].type == 2) {
+				u8 idx = settings_menu_points[draw_topic][draw_line].selection.default_index;
+				u8 i;
+				for (i=0;settings_menu_points[draw_topic][draw_line].selection.values[i].name;i++) {
+					if (settings_menu_points[draw_topic][draw_line].selection.values[i].value
+							== menu_values[draw_topic][draw_line]) {
+						idx = i;
+					}
+				}
+				if (idx) {
+					DRAW_MENU("< ")
+				}else{
+					DRAW_MENU("  ")
+				}
+				DRAW_MENU(settings_menu_points[draw_topic][draw_line].selection.values[idx].name)
+				if (idx+1 < i) {
+					DRAW_MENU(" >")
+				}/*else{
+					DRAW_MENU("  ")
+				}*/
 			}
 			DRAW_MENU_LINE("")
 		}
@@ -241,7 +297,7 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 	// TODO: don't use hard coded size of menu entries
 	//       malloc dynamically instaed
 	u32 gamemechanics_values[4];
-	u32 audio_values[2];
+	u32 audio_values[3];
 	u32 key_bindings_values[19];
 	u32* menu_values[3] = {
 		gamemechanics_values,
@@ -264,6 +320,10 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 					menu_values[topic][option] =
 							*(u32*)settings_menu_points[topic][option].value;
 					break;
+				case 2:
+					menu_values[topic][option] =
+							*(u8*)settings_menu_points[topic][option].value;
+					break;
 				default:
 					menu_values[topic][option] = 0;
 					break;
@@ -281,23 +341,18 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 	u32 kHeld;
 	int dwn = 0;
 	int up = 0;
+	int lft = 0;
+	int rght = 0;
 
 	while (aptMainLoop()) {
 		hidScanInput();
 		kDown = hidKeysDown();
 		kHeld = hidKeysHeld();
-
-		if (redraw_selection || key_assignment) {
-			draw_settings_menu(
-					top_offset,
-					cur_topic,
-					cur_point,
-					key_assignment && osGetTime() % 1000 >= 500,
-					menu_values,
-					menu_data);
-			redraw_selection = 0;
-		}
 		if (key_assignment) {
+			dwn = 0;
+			up = 0;
+			lft = 0;
+			rght = 0;
 			if (kDown & KEY_TOUCH) {
 				// cancel assignment
 				key_assignment = 0;
@@ -336,11 +391,40 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 				redraw_selection = 1;
 				continue;
 			}
+			draw_settings_menu(
+					top_offset,
+					cur_topic,
+					cur_point,
+					osGetTime() % 1000 >= 500,
+					menu_values,
+					menu_data);
+			redraw_selection = 0;
 			begin_frame();
 			copy_from_backbuffer(TOP_SCREEN);
 			copy_from_backbuffer(BOTTOM_SCREEN);
 			end_frame();
 			continue;
+		}
+
+		if (kHeld & KEY_DOWN) {
+			dwn++;
+		} else if (!((kDown | kHeld) & KEY_DOWN)) {
+			dwn = 0;
+		}
+		if (kHeld & KEY_UP) {
+			up++;
+		} else if (!((kDown | kHeld) & KEY_UP)) {
+			up = 0;
+		}
+		if (kHeld & KEY_LEFT) {
+			lft++;
+		} else if (!((kDown | kHeld) & KEY_LEFT)) {
+			lft = 0;
+		}
+		if (kHeld & KEY_RIGHT) {
+			rght++;
+		} else if (!((kDown | kHeld) & KEY_RIGHT)) {
+			rght = 0;
 		}
 
 		if ((kDown & KEY_DOWN) || dwn >= 20) {
@@ -420,16 +504,6 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 			}
 			redraw_selection = 1;
 		}
-		if (kHeld & KEY_DOWN) {
-			dwn++;
-		} else if (!((kDown | kHeld) & KEY_DOWN)) {
-			dwn = 0;
-		}
-		if (kHeld & KEY_UP) {
-			up++;
-		} else if (!((kDown | kHeld) & KEY_UP)) {
-			up = 0;
-		}
 		if (kDown & KEY_A) {
 			if (cur_topic == topic) {
 				if (cur_point == 0) {
@@ -441,7 +515,7 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 				switch (settings_menu_points[cur_topic][cur_point].type) {
 					case 0:
 						menu_values[cur_topic][cur_point] =
-								menu_values[cur_topic][cur_point]?0:100;
+								!menu_values[cur_topic][cur_point];
 						redraw_selection = 1;
 						break;
 					case 1:
@@ -457,8 +531,74 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 							modifier_mask = menu_values[2][0] | menu_values[2][1];
 						}
 						break;
+					case 2:
+						{
+							u8 idx = settings_menu_points[cur_topic][cur_point].selection.default_index;
+							u8 i;
+							for (i=0;settings_menu_points[cur_topic][cur_point].selection.values[i].name;i++) {
+								if (settings_menu_points[cur_topic][cur_point].selection.values[i].value
+										== menu_values[cur_topic][cur_point]) {
+									idx = i;
+								}
+							}
+							if (idx) {
+								idx = 0;
+							}else if (i>0){
+								idx = i-1;
+							}
+							menu_values[cur_topic][cur_point] =
+									settings_menu_points[cur_topic][cur_point].selection.values[idx].value;
+						}
+						redraw_selection = 1;
+						break;
 					default:
 						break;
+				}
+			}
+		}
+		if ((kDown & KEY_LEFT) || lft >= 20) {
+			if (lft) {
+				lft = 18;
+			}else{
+				lft = 1;
+			}
+			if (settings_menu_points[cur_topic][cur_point].type == 2) {
+				u8 idx = settings_menu_points[cur_topic][cur_point].selection.default_index;
+				u8 i;
+				for (i=0;settings_menu_points[cur_topic][cur_point].selection.values[i].name;i++) {
+					if (settings_menu_points[cur_topic][cur_point].selection.values[i].value
+							== menu_values[cur_topic][cur_point]) {
+						idx = i;
+					}
+				}
+				if (idx) {
+					idx--;
+					menu_values[cur_topic][cur_point] =
+							settings_menu_points[cur_topic][cur_point].selection.values[idx].value;
+					redraw_selection = 1;
+				}
+			}
+		}
+		if ((kDown & KEY_RIGHT) || rght >= 20) {
+			if (rght) {
+				rght = 18;
+			}else{
+				rght = 1;
+			}
+			if (settings_menu_points[cur_topic][cur_point].type == 2) {
+				u8 idx = settings_menu_points[cur_topic][cur_point].selection.default_index;
+				u8 i;
+				for (i=0;settings_menu_points[cur_topic][cur_point].selection.values[i].name;i++) {
+					if (settings_menu_points[cur_topic][cur_point].selection.values[i].value
+							== menu_values[cur_topic][cur_point]) {
+						idx = i;
+					}
+				}
+				if (idx+1 < i) {
+					idx++;
+					menu_values[cur_topic][cur_point] =
+							settings_menu_points[cur_topic][cur_point].selection.values[idx].value;
+					redraw_selection = 1;
 				}
 			}
 		}
@@ -476,7 +616,7 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 			return MENU_ACTION_EXIT;
 		}
 		if (kDown & KEY_START) {
-			// save settings
+			// update settings
 			for (topic = 0; settings_menu_points[topic]; topic++) {
 				u8 option;
 				for (option = 0;settings_menu_points[topic][option].value;option++) {
@@ -489,16 +629,31 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 							*(u32*)settings_menu_points[topic][option].value =
 									menu_values[topic][option];
 							break;
+						case 2:
+							*(u8*)settings_menu_points[topic][option].value =
+									menu_values[topic][option];
+							break;
 						default:
 							// error
 							break;
 					}
 				}
 			}
+			update_volume();
 			// save
 			write_savegame(savegame);
 			// exit menu
 			return MENU_ACTION_EXIT;
+		}
+		if (redraw_selection) {
+			draw_settings_menu(
+					top_offset,
+					cur_topic,
+					cur_point,
+					0,
+					menu_values,
+					menu_data);
+			redraw_selection = 0;
 		}
 		begin_frame();
 		copy_from_backbuffer(TOP_SCREEN);

@@ -20,7 +20,8 @@ touch         no effect (sorry!)
 Settings menu:
 
 UP, DOWN      select menu item
-A             toggle checkbox or start key assignment
+A             toggle checkbox, select first/last option, or start key assignment
+LEFT, RIGHT   select previous/next option (if supported by current menu point)
 B             exit menu without saving
 X             delete key binding
 START         save and exit menu
