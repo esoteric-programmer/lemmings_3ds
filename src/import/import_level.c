@@ -622,7 +622,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 				int j;
 				case 0:
 					for (j=0;j<4;j++) {
-						entrances->pos[j].x=objects[i].x + 24;
+						entrances->pos[j].x=objects[i].x + 25;
 						entrances->pos[j].y=objects[i].y + 14;
 					}
 					num_entrances++;
@@ -630,12 +630,12 @@ int read_level(u8 game, u8 id, struct Level* level) {
 				case 1:
 					if (import[game].ABBA_order) {
 						for (j=1;j<3;j++) {
-							entrances->pos[j].x=objects[i].x + 24;
+							entrances->pos[j].x=objects[i].x + 25;
 							entrances->pos[j].y=objects[i].y + 14;
 						}
 					}else{
 						for (j=0;j<2;j++) {
-							entrances->pos[1+2*j].x=objects[i].x + 24;
+							entrances->pos[1+2*j].x=objects[i].x + 25;
 							entrances->pos[1+2*j].y=objects[i].y + 14;
 						}
 					}
@@ -646,12 +646,12 @@ int read_level(u8 game, u8 id, struct Level* level) {
 						entrances->pos[3].x = entrances->pos[2].x;
 						entrances->pos[3].y = entrances->pos[2].y;
 					}
-					entrances->pos[2].x=objects[i].x + 24;
+					entrances->pos[2].x=objects[i].x + 25;
 					entrances->pos[2].y=objects[i].y + 14;
 					num_entrances++;
 					break;
 				case 3:
-					entrances->pos[3].x=objects[i].x + 24;
+					entrances->pos[3].x=objects[i].x + 25;
 					entrances->pos[3].y=objects[i].y + 14;
 					break;
 				default:
