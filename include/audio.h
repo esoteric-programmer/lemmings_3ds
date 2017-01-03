@@ -7,7 +7,7 @@ void update_volume();
 int audio_error();
 int import_audio(u8 game);
 int is_custom_sound(u8 sound);
-void next_music(u8 game);
+void next_music();
 void prepare_music(u8 game, u8 lvl);
 void play_music();
 void stop_audio();

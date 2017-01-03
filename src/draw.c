@@ -172,8 +172,8 @@ void copy_from_backbuffer(ScreenBuffer screen) {
 }
 
 void draw_lemmings_minimap(
-		struct Lemming[MAX_NUM_OF_LEMMINGS],
-		u32 color);
+		struct Level* level,
+		u32 highperf_palette[16]);
 
 void draw_single_lemming(
 		ScreenBuffer screen,
@@ -184,7 +184,8 @@ void draw_single_lemming(
 		struct Image* masks[23],
 		u32 palette[16],
 		s16 x_offset,
-		s16 y_offset);
+		s16 y_offset,
+		u8 player2);
 
 int clear(ScreenBuffer screen) {
 	if (!initialized) {
@@ -526,7 +527,6 @@ int draw_level(
 		u16 w,
 		u16 h,
 		struct Level* level,
-		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
 		struct MainInGameData* main_data,
 		u32* level_palette) {
 	if (!initialized) {
@@ -552,7 +552,7 @@ int draw_level(
 	if (y+h>dest->height) {
 		h = dest->height-y;
 	}
-	s16 x_offset = level->info.x_pos;
+	s16 x_offset = level->player[0].x_pos;
 	s16 y_offset = 0;
 	if (x_offset + w > 1584) {
 		if (w >= 1584) {
@@ -602,43 +602,43 @@ int draw_level(
 	u8 i;
 	for (i=0;i<32;i++) {
 		// process object!
-		if (!(level->obj[i].modifier & OBJECT_USED)) {
+		if (!(level->object_instances[i].modifier & OBJECT_USED)) {
 			continue;
 		}
-		struct Object* o = level->o[level->obj[i].type];
-		if (!o) {
+		struct ObjectType* obj_type = level->object_types[level->object_instances[i].type];
+		if (!obj_type) {
 			continue;
 		}
 
 		// copy image
-		for (yi=0;yi<o->height;yi++) {
+		for (yi=0;yi<obj_type->height;yi++) {
 			s16 draw_y, level_y;
-			if (OBJECT_UPSIDE_DOWN & level->obj[i].modifier) {
-				level_y = (s16)level->obj[i].y-yi+(s16)o->height-1;
+			if (OBJECT_UPSIDE_DOWN & level->object_instances[i].modifier) {
+				level_y = (s16)level->object_instances[i].y-yi+(s16)obj_type->height-1;
 			}else{
-				level_y = yi+(s16)level->obj[i].y;
+				level_y = yi+(s16)level->object_instances[i].y;
 			}
 			draw_y = level_y + y - y_offset;
 			if (draw_y < 0 || draw_y >= y+h) {
 				continue;
 			}
-			for (xi=0;xi<o->width;xi++) {
-				if (xi+level->obj[i].x < 0 || xi+level->obj[i].x >= 1584) {
+			for (xi=0;xi<obj_type->width;xi++) {
+				if (xi+level->object_instances[i].x < 0 || xi+level->object_instances[i].x >= 1584) {
 					continue;
 				}
-				if (level->obj[i].current_frame > o->end_frame) {
+				if (level->object_instances[i].current_frame > obj_type->end_frame) {
 					continue;
 				}
-				s16 draw_x = xi+ (s16)level->obj[i].x - x_offset + x;
+				s16 draw_x = xi+ (s16)level->object_instances[i].x - x_offset + x;
 				if (draw_x < 0 || draw_x >= x+w) {
 					continue;
 				}
 
-				u8 color = o->data[
-						level->obj[i].current_frame
-							* (u32)o->width
-							* (u32)o->height
-						+ yi * (u32)o->width
+				u8 color = obj_type->data[
+						level->object_instances[i].current_frame
+							* (u32)obj_type->width
+							* (u32)obj_type->height
+						+ yi * (u32)obj_type->width
 						+ xi];
 				if ((color & 0xF0) == 0) {
 					continue;
@@ -646,18 +646,18 @@ int draw_level(
 				// TODO: how to handle OBJECT_DONT_OVERWRITE?
 				// a) don't overwrite terrain or b) don't overwrite anything?
 
-				if ((OBJECT_DONT_OVERWRITE & level->obj[i].modifier)
-						&& !(OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier)
-						&& (level->terrain[xi+level->obj[i].x+1584*(level_y)]
+				if ((OBJECT_DONT_OVERWRITE & level->object_instances[i].modifier)
+						&& !(OBJECT_REQUIRE_TERRAIN & level->object_instances[i].modifier)
+						&& (level->terrain[xi+level->object_instances[i].x+1584*(level_y)]
 							& 0xF0)) {
 					continue;
 				}
-				if ((OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier)
-						&& !(level->terrain[xi+level->obj[i].x+1584*(level_y)]
+				if ((OBJECT_REQUIRE_TERRAIN & level->object_instances[i].modifier)
+						&& !(level->terrain[xi+level->object_instances[i].x+1584*(level_y)]
 							& 0xF0)) {
 					continue;
 				}
-				if (OBJECT_REQUIRE_TERRAIN & level->obj[i].modifier) {
+				if (OBJECT_REQUIRE_TERRAIN & level->object_instances[i].modifier) {
 					//1->5; 3->5; 4->4; ...
 					color = 0xF4 | (color&0x1);
 				}
@@ -671,11 +671,11 @@ int draw_level(
 			screen,
 			x,
 			y,
-			lemmings,
+			level,
 			main_data->lemmings_anim,
 			main_data->masks,
 			level_palette,
-			level->info.x_pos,
+			level->player[0].x_pos,
 			0);
 	return 1;
 }
@@ -702,64 +702,69 @@ void draw_highperf_text(
 	s16 y_offset = y;
 	s16 xi,yi;
 	while(1) {
-
-		int id = -1; // unsupported symbol
-		const u8* other = 0;
-		if (!text[i]) {
+		int id = -1; // other symbol
+		u32 code = 0;
+		s16 bytes = decode_utf8(&code, (const u8*)&text[i]);
+		if (bytes < 1 || !code) {
 			break;
 		}
-			if (text[i] == '\n') {
-				i++;
-				x_offset = x;
-				y_offset += 16;
-				continue;
-			}
-			if (text[i] == '%') {
-				id = 0;
-			}
-			if (text[i]>='0' && text[i]<='9') {
-				id = text[i]-'0'+1;
-			}
-			if (text[i] == '-') {
-				id = 11;
-			}
-			if (text[i]>='A' && text[i]<='Z') {
-				id = text[i]-'A'+12;
-			}
-			if (text[i]>='a' && text[i]<='z') {
-				id = text[i]-'a'+12;
-			}
-			if (text[i] == '.') {
-				other = highperf_font_dot;
-			}
-			if (text[i] == ',') {
-				other = highperf_font_comma;
-			}
-			if (text[i] == '?') {
-				other = highperf_font_questionmark;
-			}
-			if (text[i] == '!') {
-				other = highperf_font_exclamationmark;
-			}
-			if (text[i] == ':') {
-				other = highperf_font_colon;
-			}
-			if (text[i] == '(') {
-				other = highperf_font_bracket_l;
-			}
-			if (text[i] == ')') {
-				other = highperf_font_bracket_r;
-			}
-			if (text[i] == '\'' || text[i] == '`') {
-				other = highperf_font_apostrophe;
-			}
-			if (text[i] == '"') {
-				other = highperf_font_quote;
-			}
-			if (x_offset >= 40) {
-				i++;
-				continue;
-			}
+		const u8* other = 0; // space
+		if (code == '\n') {
+			i+=bytes;
+			x_offset = x;
+			y_offset += 16;
+			continue;
+		}
+		if (code != ' ') {
+			// initilize with unsupported symbol
+			other = highperf_font_questionmark;
+		}
+		if (code == '%') {
+			id = 0;
+		}
+		if (code>='0' && code<='9') {
+			id = code-'0'+1;
+		}
+		if (code == '-') {
+			id = 11;
+		}
+		if (code>='A' && code<='Z') {
+			id = code-'A'+12;
+		}
+		if (code>='a' && code<='z') {
+			id = code-'a'+12;
+		}
+		if (code == '.') {
+			other = highperf_font_dot;
+		}
+		if (code == ',') {
+			other = highperf_font_comma;
+		}
+		if (code == '?') {
+			other = highperf_font_questionmark;
+		}
+		if (code == '!') {
+			other = highperf_font_exclamationmark;
+		}
+		if (code == ':') {
+			other = highperf_font_colon;
+		}
+		if (code == '(') {
+			other = highperf_font_bracket_l;
+		}
+		if (code == ')') {
+			other = highperf_font_bracket_r;
+		}
+		if (code == '\'' || text[i] == '`') {
+			other = highperf_font_apostrophe;
+		}
+		if (code == '"') {
+			other = highperf_font_quote;
+		}
+		if (x_offset >= 40) {
+			i+=bytes;
+			continue;
+		}
 		// now draw character with index i
 		for (yi=0;yi<16 && yi+y_offset<dest->height;yi++) {
 			for (xi=8*x_offset;xi<8*(x_offset+1);xi++) {
@@ -789,7 +794,7 @@ void draw_highperf_text(
 				}
 			}
 		}
-		i++;
+		i+=bytes;
 		x_offset++;
 	}
 }
@@ -817,18 +822,22 @@ void draw_menu_text(
 		scaling = 16.0f;
 	}
 	while(1) {
-		int id = -1; // unsupported symbol
-		if (!text[i]) {
+		int id = -1; // space symbol
+		u32 code = 0;
+		s16 bytes = decode_utf8(&code, (const u8*)&text[i]);
+		if (bytes < 1 || !code) {
 			break;
 		}
-		if (text[i] == '\n') {
-			i++;
+		if (code == '\n') {
+			i+=bytes;
 			x_pos = x_offset;
 			y_offset += ((15.999f * scaling)+1.0f);
 			continue;
 		}
-		if (text[i] >= 33 && text[i] < 127) {
-			id = text[i]-33;
+		if (code >= 33 && code < 127) {
+			id = code-33;
+		}else if (code != ' ') {
+			id = '?'-33; // unsupported symbol
 		}
 		// now draw character with index i
 		if (id >= 0) {
@@ -842,7 +851,7 @@ void draw_menu_text(
 					palette,
 					scaling);
 		}
-		i++;
+		i+=bytes;
 		x_pos += ((15.999f * scaling)+1.0f);
 	}
 }
@@ -851,8 +860,6 @@ void draw_menu_text(
 int draw_toolbar(
 		struct MainInGameData* data,
 		struct Level* level,
-		struct LevelState* state,
-		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
 		const char* text,
 		u32* highperf_palette) {
 	if (!initialized) {
@@ -860,7 +867,7 @@ int draw_toolbar(
 	}
 	struct Buffer* dest = getScreenBuffer(BOTTOM_SCREEN);
 	s16 y = 160+32;
-	if (!dest->data || !data || !level || !state) {
+	if (!dest->data || !data || !level) {
 		return 0;
 	}
 	if (!highperf_palette) {
@@ -892,10 +899,10 @@ int draw_toolbar(
 
 	// number of available draw skills
 	u8 nums[10];
-	nums[0] = level->info.rate;
-	nums[1] = state->cur_rate;
+	nums[0] = level->rate;
+	nums[1] = level->cur_rate;
 	for (i=0;i<8;i++) {
-		nums[i+2] = level->info.skills[i];
+		nums[i+2] = level->player[0].skills[i];
 	}
 	for (i=0;i<10;i++) {
 		for (yi=0;yi<8 && yi+y+17<dest->height;yi++) {
@@ -927,11 +934,11 @@ int draw_toolbar(
 	}
 
 	// mark active_skill
-	if (state->selected_skill >= 8) {
-		state->selected_skill = 0;
+	if (level->player[0].selected_skill >= 8) {
+		level->player[0].selected_skill = 0;
 	}
 	for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
-		for (x=16*(state->selected_skill+2);x<16*(state->selected_skill+3);x++) {
+		for (x=16*(level->player[0].selected_skill+2);x<16*(level->player[0].selected_skill+3);x++) {
 			s16 screen_x = x + ((s16)dest->width-320)/2;
 			if (screen_x < 0 || screen_x >= dest->width) {
 				continue;
@@ -940,8 +947,8 @@ int draw_toolbar(
 				if (yi==0 || yi==23) {
 					SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 				}else{
-					if (x==16*(state->selected_skill+2)
-							|| x==16*(state->selected_skill+2)+15) {
+					if (x==16*(level->player[0].selected_skill+2)
+							|| x==16*(level->player[0].selected_skill+2)+15) {
 						SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 					}
 				}
@@ -969,7 +976,7 @@ int draw_toolbar(
 	}
 
 	// draw lemmings into minimap
-	draw_lemmings_minimap(lemmings,highperf_palette[2]);
+	draw_lemmings_minimap(level,highperf_palette);
 
 
 	// draw current view into minimap
@@ -980,7 +987,7 @@ int draw_toolbar(
 		view_rect_width = 103;
 	}
 	for (yi=0;yi<20;yi++) {
-		for (x=level->info.x_pos / 16;x<level->info.x_pos / 16 + view_rect_width; x++) {
+		for (x=level->player[0].x_pos / 16;x<level->player[0].x_pos / 16 + view_rect_width; x++) {
 			s16 screen_x = x + ((s16)dest->width-320)/2 + 209;
 			s16 screen_y = y + 18 + yi;
 			if (screen_x < 0 || screen_x >= dest->width || screen_y >= dest->height) {
@@ -990,8 +997,8 @@ int draw_toolbar(
 			if (yi==0 || yi==19) {
 				SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 			}else{
-				if (x==level->info.x_pos / 16
-						|| x==level->info.x_pos / 16 + view_rect_width - 1) {
+				if (x==level->player[0].x_pos / 16
+						|| x==level->player[0].x_pos / 16 + view_rect_width - 1) {
 					SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 				}
 			}
@@ -1001,64 +1008,79 @@ int draw_toolbar(
 	return 1; // all fine
 }
 
-void draw_lemmings_minimap(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS], u32 color) {
+void draw_lemmings_minimap(struct Level* level, u32 highperf_palette[16]) {
 	if (!initialized) {
 		return;
 	}
 	s16 y = 160+32;
 	struct Buffer* dest = getScreenBuffer(BOTTOM_SCREEN);
-	int i;
-	if (!lemmings) {
+	int i, p;
+	if (!level) {
 		return; // error
 	}
-	for (i=0;i<80;i++) {
-		if (lemmings[i].removed || lemmings[i].current_action >= 18) {
-			continue;
+	for (p=0;p<level->num_players;p++) {
+		u8 color = 2;
+		if (level->num_players > 1 && p == 0) {
+			// color: blue (instead of green)
+			color = 1;
 		}
-		if (lemmings[i].y >= 160 || lemmings[i].x >= 1664) { // or: 1584?
-			continue;
-		}
+		for (i=0;i<80;i++) {
+			if (level->player[p].lemmings[i].removed
+					|| level->player[p].lemmings[i].current_action >= 18) {
+				continue;
+			}
+			if (level->player[p].lemmings[i].y >= 160
+					|| level->player[p].lemmings[i].x >= 1664) { // or: 1584?
+				continue;
+			}
 
-		s16 minimap_x = 209 + (lemmings[i].x>=0?lemmings[i].x:0)/16;
-		s16 minimap_y = y + 17 + (lemmings[i].y>=16?lemmings[i].y:16)/8;
-		SET_PIXEL(dest, minimap_x, minimap_y, color); // green
+			s16 minimap_x = 209
+					+ (level->player[p].lemmings[i].x>=0?
+							level->player[p].lemmings[i].x:0)/16;
+			s16 minimap_y = y + 17
+					+ (level->player[p].lemmings[i].y>=16?
+							level->player[p].lemmings[i].y:16)/8;
+			SET_PIXEL(dest, minimap_x, minimap_y, highperf_palette[color]); // green (or blue)
+		}
 	}
 }
 
-u8 draw_lemmings(
+void draw_lemmings(
 		ScreenBuffer screen,
 		s16 x,
 		s16 y,
-		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
+		struct Level* level,
 		struct Image* lemmings_anim[337],
 		struct Image* masks[23],
 		u32 palette[16],
 		s16 x_offset,
 		s16 y_offset) {
 	if (!initialized) {
-		return 0;
+		return;
 	}
-	int i;
-	u8 ret = 0;
-	if (!lemmings) {
-		return ret; // error
+	int i, p;
+	if (!level) {
+		return; // error
 	}
-	for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
-		if (lemmings[i].removed || lemmings[i].current_action >= 18) {
+	for (p=0;p<level->num_players;p++) {
+		for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
+			if (level->player[p].lemmings[i].removed
+					|| level->player[p].lemmings[i].current_action >= 18) {
 			continue;
+			}
+			draw_single_lemming(
+					screen,
+					x,
+					y,
+					&level->player[p].lemmings[i],
+					lemmings_anim,
+					masks,palette,
+					x_offset,
+					y_offset,
+					p);
 		}
-		ret++;
-		draw_single_lemming(
-				screen,
-				x,
-				y,
-				lemmings+i,
-				lemmings_anim,
-				masks,palette,
-				x_offset,
-				y_offset);
 	}
-	return ret;
+	return;
 }
 
 // particle: 0-79
@@ -1090,7 +1112,18 @@ void draw_single_lemming(
 		struct Image* masks[23],
 		u32 palette[16],
 		s16 x_offset,
-		s16 y_offset) {
+		s16 y_offset,
+		u8 player2) {
+	// swaps color 1 with color 2 if player2 is set
+	u8 i;
+	u8 swap_pal[16];
+	for (i=0;i<16;i++) {
+		swap_pal[i] = i;
+	}
+	if (player2) {
+		swap_pal[1] = 2;
+		swap_pal[2] = 1;
+	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!lem || !lemmings_anim || !palette || !dest->data) {
 		return;
@@ -1120,7 +1153,6 @@ void draw_single_lemming(
 	}
 	if (im_idx >= 337) {
 		// draw explosion particles
-		u8 i;
 		if (im_idx - 337 > 50) {
 			return;
 		}
@@ -1137,7 +1169,7 @@ void draw_single_lemming(
 				if (y_pos < y || y_pos >= dest->height) {
 					continue;
 				}
-				SET_PIXEL(dest, x_pos, y_pos, palette[c & 0x0F]);
+				SET_PIXEL(dest, x_pos, y_pos, palette[swap_pal[c & 0x0F]]);
 			}
 		}
 		return;
@@ -1156,7 +1188,7 @@ void draw_single_lemming(
 			if (im->data[xi+yi*im->width] & 0xF0) {
 				// draw pixel
 				SET_PIXEL(dest, xi+x_pos, yi+y_pos,
-					palette[im->data[xi+yi*im->width] & 0x0F]);
+					palette[swap_pal[im->data[xi+yi*im->width] & 0x0F]]);
 			}
 		}
 	}

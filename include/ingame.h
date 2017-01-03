@@ -20,8 +20,8 @@ struct LevelResult {
 
 // returns: percentage saved
 struct LevelResult run_level(
-		u8 game,
-		u8 lvl,
+		struct Level* level,
+		const char* level_id,
 		struct MainMenuData* menu_data,
 		struct MainInGameData* main_data);
 

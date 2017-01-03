@@ -175,18 +175,6 @@ int main() {
 				(u16)import[i].num_of_level_per_difficulty;
 	}
 
-	// LEFTHANDED.DAT hack
-	char lh_fn[64];
-	sprintf(lh_fn,"%s/LEFTHANDED.DAT", PATH_ROOT);
-	FILE* lefthand = fopen(lh_fn,"r");
-	if (lefthand) {
-		settings.key_bindings[0].modifier = KEY_L;
-		settings.key_bindings[0].speed_up = KEY_R;
-		settings.key_bindings[0].scroll_left = KEY_CPAD_LEFT | KEY_L;
-		settings.key_bindings[0].scroll_right = KEY_CPAD_RIGHT | KEY_L;
-		fclose(lefthand);
-	}
-
 	// read save file
 	u8* progress = (u8*)malloc(overall_num_of_difficulties);
 	if (!progress) {
@@ -325,7 +313,6 @@ int main() {
 				default:
 					die(1); // error
 			}
-			
 		}
 
 		if (menu_selection == MENU_ERROR) {
@@ -339,7 +326,15 @@ int main() {
 				write_savegame(&savegame);
 			}
 			while(1) {
-				struct LevelResult lev_result = run_level(game, lvl, menu_data, main_data);
+				char level_id[32];
+				struct Level* level = init_level_from_dat(game, lvl, level_id);
+				if (!level) {
+					die(1);
+					break;
+				}
+				struct LevelResult lev_result = run_level(level, level_id, menu_data, main_data);
+				free_objects(level->object_types);
+				free(level);
 				if (lev_result.exit_reason == LEVEL_ERROR) {
 					// an error occured
 					// error code may be coded in lev_result.lvl
@@ -352,6 +347,7 @@ int main() {
 				}
 
 				// process result
+				lev_result.lvl = lvl;
 				// find out whether level has been solved successful
 				if (lev_result.percentage_rescued >= lev_result.percentage_needed) {
 					// increment lvl counter to read next level

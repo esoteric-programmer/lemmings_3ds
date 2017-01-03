@@ -9,7 +9,7 @@
 #define MENU_ACTION_EXIT                        1
 #define MENU_ACTION_START_SINGLE_PLAYER         2
 #define MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER  3
-#define MENU_ACTION_SETTINGS                    4 // not implemented yet
+#define MENU_ACTION_SETTINGS                    4
 #define MENU_ACTION_LEVEL_SELECTED              5
 #define RESULT_ACTION_NEXT                      6
 #define RESULT_ACTION_CANCEL                    7

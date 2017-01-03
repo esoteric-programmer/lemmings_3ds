@@ -47,5 +47,5 @@ struct GroundInfo {
 	struct LevelPalette palette;
 };
 
-int read_ground_data(struct GroundInfo* ret, FILE* in);
+int read_ground_data(struct GroundInfo* ret, void* ground_data);
 #endif

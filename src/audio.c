@@ -262,14 +262,17 @@ int import_audio(u8 game) {
 	return 1; // success
 }
 
-
-void next_music(u8 game) {
-	cur_song = (cur_song + 1) % import[game].num_of_songs;
+u8 current_game = 0xFF;
+void next_music() {
+	if (current_game < LEMMING_GAMES) {
+		cur_song = (cur_song + 1) % import[current_game].num_of_songs;
+	}
 }
 
 u16 next_adlib_music = 0x300;
 void prepare_music(u8 game, u8 lvl) {
 	u8 track;
+	current_game = game;
 	int i;
 	play_wave_tune = 0;
 	last_preloaded_tunebuffer = -1;

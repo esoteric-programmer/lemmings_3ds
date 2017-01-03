@@ -1,11 +1,12 @@
 #include <malloc.h>
 #include <string.h>
 #include <3ds.h>
+#include "settings.h"
 #include "import_level.h"
 #include "gamespecific.h"
 #include "decode.h"
 #include "import_ground.h"
-#include "settings.h"
+#include "audio.h"
 
 struct Image {
 	u16 width;
@@ -76,33 +77,27 @@ int decompress_rle(s8* in, s8* out, u16 out_length, u16 max_in_length) {
 	return in_pos; // success
 }
 
-int read_vgagr(
-		u8 game,
-		FILE* ground_file,
-		FILE* vgagr_file,
+int parse_vgagr(
+		void* ground_data,
+		struct Data* vgagr_s0,
+		struct Data* vgagr_s1,
 		u32 palette[16],
 		struct Image* terrain_img[64],
-		struct Object* objects[16]) {
+		struct ObjectType* objects[16]) {
 	struct GroundInfo info;
 	int ter;
 	int obj;
 	int i;
 
-	if (!ground_file || !vgagr_file || !palette || ! terrain_img || !objects) {
+	if (!ground_data || !vgagr_s0 || !vgagr_s1 || !palette || ! terrain_img || !objects) {
 		return 0; // error
 	}
 
 	memset(terrain_img,0,64*sizeof(void*));
 	memset(objects, 0,16*sizeof(void*));
-	for (i=0;i<7;i++) {
-		palette[i] = import[game].ingame_palette[i];
-	}
 
-	read_ground_data(&info, ground_file);
-	struct Data* dec = decompress_cur_section(vgagr_file);
-	if (!dec) {
-		return 0; // error
-	}
+	read_ground_data(&info, ground_data);
+	struct Data* dec = vgagr_s0;
 
 	for (i=0;i<8;i++) {
 		palette[i+8] = info.palette.vga_custom[i];
@@ -132,8 +127,7 @@ int read_vgagr(
 				info.terrain_info[ter].mask_loc - info.terrain_info[ter].image_loc);
 	}
 
-	free(dec);
-	dec = decompress_cur_section(vgagr_file);
+	dec = vgagr_s1;
 	if (!dec) {
 		return 0; // error
 	}
@@ -147,7 +141,8 @@ int read_vgagr(
 		if (!data_size || !img_length) {
 			continue;
 		}
-		objects[obj] = (struct Object*)malloc(sizeof(struct Object)+frames*img_length*sizeof(u32));
+		objects[obj] = (struct ObjectType*)malloc(
+				sizeof(struct ObjectType)+frames*img_length*sizeof(u32));
 		if (!objects[obj]) {
 			// ERROR!
 			// TODO
@@ -180,7 +175,6 @@ int read_vgagr(
 		}
 	}
 
-	free(dec);
 	return 1; // success
 }
 
@@ -194,7 +188,7 @@ void free_terrain(struct Image* terrain_img[64]) {
 	}
 }
 
-void free_objects(struct Object* objects[16]) {
+void free_objects(struct ObjectType* objects[16]) {
 	int i;
 	for (i=0;i<16;i++) {
 		if (objects[i] != 0) {
@@ -270,7 +264,11 @@ int read_level_names(u8 game, char* names) {
 
 	// now copy from unordered_names to names
 	int j;
-	for (j=0;j<(int)import[game].num_of_difficulties * (int)import[game].num_of_level_per_difficulty; j++) {
+	for (
+			j=0;
+			j < (int)import[game].num_of_difficulties
+					* (int)import[game].num_of_level_per_difficulty;
+			j++) {
 		char* name = names+33*j;
 		memcpy(name, unordered_names+33*(import[game].level_position[j]),33);
 		int i = 32;
@@ -293,36 +291,95 @@ int read_level_names(u8 game, char* names) {
 	return 1;
 }
 
+int read_graphic_set(
+		const char* graphic_set_path, // PATH_ROOT / import[game]
+		struct Data** vgagr_s0,
+		struct Data** vgagr_s1,
+		struct Data** vgaspec,
+		void* ground_data,
+		void* level) {
+	if (!vgagr_s0 || !vgagr_s1 || !vgaspec) {
+		return 0;
+	}
+	*vgagr_s0 = 0;
+	*vgagr_s1 = 0;
+	*vgaspec = 0;
+	char groundname[64];
+	char vgrgrname[64];
+	char vgaspecname[64];
+	FILE* ground_file = 0;
+	FILE* vgagr_file = 0;
+	if (((u8*)level)[26] || ((u8*)level)[28]) {
+		// invalid graphic set or invalid extended set
+		return 0;
+	}
 
-int read_level(u8 game, u8 id, struct Level* level) {
+	/* read graphic set */
+	sprintf(groundname,"%s/GROUND%uO.DAT",graphic_set_path,((u8*)level)[27]);
+	sprintf(vgrgrname,"%s/VGAGR%u.DAT",graphic_set_path,((u8*)level)[27]);
+	ground_file = fopen(groundname,"rb");
+	if (!ground_file) {
+		return 0;
+	}
+	if (fread(ground_data,1,1056,ground_file) != 1056) {
+		fclose(ground_file);
+		return 0;
+	}
+	fclose(ground_file);
+	vgagr_file = fopen(vgrgrname,"rb");
+	if (!vgagr_file) {
+		return 0;
+	}
+	/* read vgagr sections */
+	*vgagr_s0 = decompress_cur_section(vgagr_file);
+	if (!*vgagr_s0) {
+		return 0; // error
+	}
+	*vgagr_s1 = decompress_cur_section(vgagr_file);
+	if (!*vgagr_s1) {
+		free(*vgagr_s0);
+		*vgagr_s0 = 0;
+		return 0; // error
+	}
+	fclose(vgagr_file);
+	/* vgaspec? */
+	if (((u8*)level)[29]) {
+		sprintf(vgaspecname,"%s/VGASPEC%u.DAT",
+				graphic_set_path,((u8*)level)[29]-1);
+		FILE* extended_file = fopen(vgaspecname,"rb");
+		*vgaspec = decompress_cur_section(extended_file);
+		fclose(extended_file);
+		if (!*vgaspec) {
+			free(*vgagr_s0);
+			free(*vgagr_s1);
+			*vgagr_s0 = 0;
+			*vgagr_s1 = 0;
+			return 0;
+		}
+		if ((*vgaspec)->size < 40) {
+			free(*vgagr_s0);
+			free(*vgagr_s1);
+			free(*vgaspec);
+			*vgagr_s0 = 0;
+			*vgagr_s1 = 0;
+			*vgaspec = 0;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int read_level_from_compressed_file(
+		u8 game,
+		u8 id,
+		void* level) {
 	u8 levelposition = import[game].level_position[id];
 	u8 level_file = (levelposition & 0x78) >> 3;
 	u8 level_nr = (levelposition & 0x07);
 	u8 modified = ((levelposition & 0x80)?1:0);
 	char levelfilename[64];
 	FILE* levelfile = 0;
-	FILE* ground_file = 0;
-	FILE* vgagr_file = 0;
 	struct Data* dec = 0;
-	int i;
-	char groundname[64];
-	char vgrgrname[64];
-	struct Image* terrain_img[64];
-	u16 graphic_set = 0;
-	u16 extended_graphic_set = 0;
-
-	if (!level) {
-		return 0; // error
-	}
-	memset(level,0,sizeof(struct Level));
-
-	u8* terrain = level->terrain;
-	struct Object** terrain_obj = level->o;
-	struct ObjectInstance* objects = level->obj;
-	u32* palette = level->palette;
-	struct Entrances* entrances = &(level->entrances);
-	u8* object_map = level->object_map;
-
 	sprintf(levelfilename,"%s/%s/%s%03d.DAT",
 			PATH_ROOT,import[game].path,import[game].level_dat_prefix,level_file);
 	levelfile = fopen(levelfilename,"rb");
@@ -337,8 +394,7 @@ int read_level(u8 game, u8 id, struct Level* level) {
 		return 0;
 	}
 	if (modified) {
-		// apply modifier
-		// TODO: check whether modifier can be applied? (only original)
+		/* apply modifier */
 		char oddtable_fn[64];
 		sprintf(oddtable_fn,"%s/%s/ODDTABLE.DAT",PATH_ROOT,import[game].path);
 		FILE* oddtable = fopen(oddtable_fn,"rb");
@@ -353,135 +409,124 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			return 0;
 		}
 	}
+	memcpy(level,dec->data,2048);
+	free(dec);
+	return 1;
+}
 
 
-	if (dec->data[26] != 0 || (u8)dec->data[27] > 4) {
-		// invalid graphic set
-		free(dec);
-		return 0; // error
+int parse_level(
+		void* level,
+		void* ground_data,
+		struct Data* vgagr_s0,
+		struct Data* vgagr_s1,
+		struct Data* vgaspec,
+		const u32* ingame_palette,
+		u8 ABBA_order,
+		u8 players,
+		struct Level* output) {
+	int i;
+	if (!vgagr_s0 || !vgagr_s1 || !ground_data || !level || !output) {
+		return 0;
 	}
-	if ((u8)dec->data[28] != 0 || (u8)dec->data[29] > 4) {
-		// invalid extended graphic set
-		free(dec);
-		return 0; // error
-	}
-	graphic_set = dec->data[27];
-	extended_graphic_set = dec->data[29];
+	memset(output,0,sizeof(struct Level));
+	output->num_players = players;
 
-	level->info.x_pos = ((u8)dec->data[24]);
-	level->info.x_pos <<= 8;
-	level->info.x_pos |= ((u8)dec->data[25]);
-	if (level->info.x_pos > 1264) {
-		level->info.x_pos = 1264;
+	u8* terrain = output->terrain;
+	struct ObjectType** object_types = output->object_types;
+	struct ObjectInstance* objects = output->object_instances;
+	u8* object_map = output->object_map;
+	u32* palette = output->palette;
+	for (i=0;i<7;i++) {
+		palette[i] = ingame_palette[i];
 	}
-	if (level->info.x_pos % 8 >= 4) {
-		level->info.x_pos -= level->info.x_pos%8;
-		level->info.x_pos++;
-	}else{
-		level->info.x_pos -= level->info.x_pos%8;
+	struct Image* terrain_img[64];
+	if (!parse_vgagr(
+			ground_data,
+			vgagr_s0,
+			vgagr_s1,
+			palette,
+			terrain_img,
+			object_types)) {
+		return 0;
 	}
 
-	level->info.rate = dec->data[1];
-	level->info.lemmings = dec->data[3];
-	level->info.to_rescue = dec->data[5];
-	level->info.percentage_needed = ((u16)level->info.to_rescue)*100 / (u16)level->info.lemmings;
-	level->info.minutes = dec->data[7];
-	if ((u8)dec->data[30] == 0xFF && (u8)dec->data[31] == 0xFF) {
-		level->info.speed_up = 1;
+	for (i=0; i<output->num_players; i++) {
+		output->player[i].cursor.x = 142; // TODO: SCREEN_WIDTH/2 - 18 ??
+		output->player[i].cursor.y = 92;
+		output->player[i].x_pos = ((u8*)level)[24];
+		output->player[i].x_pos <<= 8;
+		output->player[i].x_pos |= ((u8*)level)[25];
+		if (output->player[i].x_pos > 1264) {
+			output->player[i].x_pos = 1264;
+		}
+		if (output->player[i].x_pos % 8 >= 4) {
+			output->player[i].x_pos -= output->player[i].x_pos%8;
+			output->player[i].x_pos++;
+		}else{
+			output->player[i].x_pos -= output->player[i].x_pos%8;
+		}
+		output->player[i].max_lemmings = ((u8*)level)[3];
+		int j;
+		for (j=0;j<8;j++) {
+			output->player[i].skills[j] = ((u8*)level)[9+2*j];
+		}
 	}
-	for (i=0;i<8;i++) {
-		level->info.skills[i] = dec->data[9+2*i];
+
+	output->cur_rate = (output->rate = ((u8*)level)[1]);
+	output->fade_in = FADE_IN_DOSFRAMES;
+	output->next_lemming_countdown = 20;
+	output->percentage_needed = ((u16)((u8*)level)[5])*100 / (u16)output->player[0].max_lemmings;
+	output->frames_left = ((u8*)level)[7] * 60 * FPS;
+	if (((u8*)level)[30] == 0xFF && ((u8*)level)[31] == 0xFF) {
+		output->speed_up = 1;
 	}
-	memcpy(level->info.name,dec->data+2016,32);
+	memcpy(output->name,((u8*)level)+2016,32);
 	// cut off level name at the end (not at the beginning, because we want to keep original alignment of level name)
 	i = 32;
-	while (i > 0 && level->info.name[i-1] == ' ') {
+	while (i > 0 && output->name[i-1] == ' ') {
 		i--;
 	}
-	level->info.name[i] = 0;
+	output->name[i] = 0;
 
 
-	/* read graphic set */
-	sprintf(groundname,"%s/%s/GROUND%dO.DAT",PATH_ROOT,import[game].path,graphic_set);
-	sprintf(vgrgrname,"%s/%s/VGAGR%d.DAT",PATH_ROOT,import[game].path,graphic_set);
-	ground_file = fopen(groundname,"rb");
-	if (!ground_file) {
-		free(dec);
-		return 0;
-	}
-	vgagr_file = fopen(vgrgrname,"rb");
-	if (!vgagr_file) {
-		fclose(ground_file);
-		free(dec);
-		return 0;
-	}
-	if (!read_vgagr(game, ground_file, vgagr_file, palette, terrain_img, terrain_obj)) {
-		// error reading level
-		fclose(ground_file);
-		fclose(vgagr_file);
-		free(dec);
-		return 0;
-	}
-	fclose(ground_file);
-	fclose(vgagr_file);
-
-
-	if (extended_graphic_set != 0) {
-		struct Data* extended = 0;
-		// decompress extended graphic set
-		// TODO: only allowed for original lemmings!! -> check
-		sprintf(levelfilename,"%s/%s/VGASPEC%d.DAT",
-				PATH_ROOT,import[game].path,extended_graphic_set-1);
-		FILE* extended_file = fopen(levelfilename,"rb");
-		extended = decompress_cur_section(extended_file);
-		fclose(extended_file);
-		if (!extended) {
-			free(dec);
-			return 0;
-		}
-		if (extended->size < 40) {
-			free(dec);
-			return 0;
-		}
+	if (vgaspec) {
+		// parse extended graphic set
 		// read palette... ignore first entry (which should be 0x00)
 		// TODO: overwrite palette[0] with first entry??
 		palette[8] = 0x007C78;
 		for (i=1;i<8;i++) {
-			palette[i+8] = (u32)((u8)extended->data[3*i+2])*255/63;
+			palette[i+8] = (u32)((u8)vgaspec->data[3*i+2])*255/63;
 			palette[i+8]<<=8;
-			palette[i+8] |= ((u32)((u8)extended->data[3*i+1]))*255/63;
+			palette[i+8] |= ((u32)((u8)vgaspec->data[3*i+1]))*255/63;
 			palette[i+8]<<=8;
-			palette[i+8] |= ((u32)((u8)extended->data[3*i+0]))*255/63;
+			palette[i+8] |= ((u32)((u8)vgaspec->data[3*i+0]))*255/63;
 		}
 		palette[7] = palette[8];
 
 		s8* chunk = (s8*)malloc(19200);
 		if (!chunk) {
-			free(dec);
-			free(extended);
 			return 0;
 		}
 		memset(chunk,0,19200);
 		u8* chunk_img = (u8*)malloc(38400*sizeof(u8));
 		if (!chunk_img) {
-			free(dec);
-			free(extended);
 			free(chunk);
 			return 0;
 		}
 		u16 chunk_offset = 40;
 		for (i=0;i<4;i++) { //iterate over chunks
 			int j;
-			if (extended->size <= chunk_offset ){
+			if (vgaspec->size <= chunk_offset ){
 				break;
 			}
-			chunk_offset += decompress_rle(extended->data+chunk_offset, chunk, 14400, extended->size-chunk_offset);
+			chunk_offset += decompress_rle(vgaspec->data+chunk_offset, chunk, 14400, vgaspec->size-chunk_offset);
 			for (j=0;j<4800;j++) {
 				// 0->0, 1->9, 2->10, ..., 7->15
 				chunk[14400+j] = (chunk[j] | chunk[4800+j] | chunk[9600+j]);
 			}
-			while ((u8)extended->data[chunk_offset] != 0x80
-					&& chunk_offset < extended->size) {
+			while ((u8)vgaspec->data[chunk_offset] != 0x80
+					&& chunk_offset < vgaspec->size) {
 				chunk_offset++;
 			}
 			chunk_offset++;
@@ -499,14 +544,12 @@ int read_level(u8 game, u8 id, struct Level* level) {
 		}
 		free(chunk_img);
 		free(chunk);
-		free(extended);
-		extended = 0;
 	} else {
 		/* draw graphic set terrain objects */
 		for (i=0;i<400;i++) {
-			u16 x_pos_tmp = (u8)dec->data[0x120+4*i];
+			u16 x_pos_tmp = ((u8*)level)[0x120+4*i];
 			x_pos_tmp <<= 8;
-			x_pos_tmp |= (u8)dec->data[0x120+4*i+1];
+			x_pos_tmp |= ((u8*)level)[0x120+4*i+1];
 			if (x_pos_tmp == 0xFFFF) {
 				//continue;
 				break;
@@ -514,16 +557,16 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			u8 flags = (u8)((s16)(x_pos_tmp >> 12));
 			s16 x_pos = (u16)(x_pos_tmp & 0x7FF);
 			x_pos -= 16;
-			s16 y_pos = (u8)dec->data[0x120+4*i+2];
+			s16 y_pos = ((u8*)level)[0x120+4*i+2];
 			y_pos <<= 1;
-			y_pos += ((dec->data[0x120+4*i+3]&0x80)?1:0);
+			y_pos += ((((u8*)level)[0x120+4*i+3]&0x80)?1:0);
 			if (y_pos >= 0x100) {
 				y_pos -= 516;
 			} else {
 				y_pos -= 4;
 			}
-			u8 terrain_id = dec->data[0x120+4*i+3] & 0x3F;
-			// if (dec->data[0x120+4*i+3] & 0x40) { TODO: what does this cause? }
+			u8 terrain_id = ((u8*)level)[0x120+4*i+3] & 0x3F;
+			// if (((u8*)level)[0x120+4*i+3] & 0x40) { TODO: what does this cause? }
 			if (terrain_img[terrain_id] == 0) {
 				continue;
 			}
@@ -552,10 +595,10 @@ int read_level(u8 game, u8 id, struct Level* level) {
 
 	// read STEEL - TODO: also for VGASPEC levels? TODO: break after empty object (4 times 0x00)?
 	for (i=0;i<32;i++) {
-		s16 x_pos = (s16)((u8)dec->data[0x760+4*i]) * 2 + ((dec->data[0x760+4*i+1]&0x80)?1:0) - 4;
-		s16 y_pos = (dec->data[0x760+4*i+1] & 0x7F);
-		s16 width = (((u8)dec->data[0x760+4*i+2]) >> 4)+1;
-		s16 height = (dec->data[0x760+4*i+2] & 0x0F) + 1;
+		s16 x_pos = (s16)(((u8*)level)[0x760+4*i]) * 2 + ((((u8*)level)[0x760+4*i+1]&0x80)?1:0) - 4;
+		s16 y_pos = (((u8*)level)[0x760+4*i+1] & 0x7F);
+		s16 width = ((((u8*)level)[0x760+4*i+2]) >> 4)+1;
+		s16 height = (((u8*)level)[0x760+4*i+2] & 0x0F) + 1;
 		s16 x,y;
 		for (y=0;y<height;y++) {
 			if (y_pos + y < 0 || y_pos + y >= 160/4) {
@@ -574,15 +617,15 @@ int read_level(u8 game, u8 id, struct Level* level) {
 	for (i=0;i<32;i++) {
 		// read object
 
-		u16 modifier = (u8)dec->data[0x20+8*i+6];
+		u16 modifier = ((u8*)level)[0x20+8*i+6];
 		modifier <<= 8;
-		modifier |= (u8)dec->data[0x20+8*i+7];
+		modifier |= ((u8*)level)[0x20+8*i+7];
 
 		if ((modifier & 0xF) != 0xF) {
 			//break;
 			continue; // unset
 		}
-		if ((u8)dec->data[0x20+8*i+5] > 0x0F || dec->data[0x20+8*i+4] != 0) {
+		if (((u8*)level)[0x20+8*i+5] > 0x0F || ((u8*)level)[0x20+8*i+4] != 0) {
 			// error!
 			continue;
 		}
@@ -592,24 +635,24 @@ int read_level(u8 game, u8 id, struct Level* level) {
 				((modifier & 0x80)?OBJECT_UPSIDE_DOWN:0) | 
 				((modifier & 0x8000)?OBJECT_DONT_OVERWRITE:0) | 
 				((modifier & 0x4000)?OBJECT_REQUIRE_TERRAIN:0);
-		objects[i].type = dec->data[0x20+8*i+5] & 0x0F;
+		objects[i].type = ((u8*)level)[0x20+8*i+5] & 0x0F;
 		objects[i].current_frame = 0;
-		if (terrain_obj[objects[i].type]) {
+		if (object_types[objects[i].type]) {
 			// TODO: use start_frame instead?
-			objects[i].current_frame = terrain_obj[objects[i].type]->preview_frame;
+			objects[i].current_frame = object_types[objects[i].type]->preview_frame;
 		}
 
 
-		s16 x_pos = dec->data[0x20+8*i];
+		s16 x_pos = ((u8*)level)[0x20+8*i];
 		x_pos <<= 8;
-		x_pos |= (u8)dec->data[0x20+8*i+1];
+		x_pos |= ((u8*)level)[0x20+8*i+1];
 		if (!x_pos) {
 			objects[i].modifier = 0;
 		}
 		x_pos -= 16;
-		s16 y_pos = dec->data[0x20+8*i+2];
+		s16 y_pos = ((u8*)level)[0x20+8*i+2];
 		y_pos <<= 8;
-		y_pos |= (u8)dec->data[0x20+8*i+3];
+		y_pos |= ((u8*)level)[0x20+8*i+3];
 
 		x_pos -= x_pos%8 - 8*((x_pos / 4)%2);
 
@@ -622,48 +665,48 @@ int read_level(u8 game, u8 id, struct Level* level) {
 				int j;
 				case 0:
 					for (j=0;j<4;j++) {
-						entrances->pos[j].x=objects[i].x + 25;
-						entrances->pos[j].y=objects[i].y + 14;
+						output->entrances[j].x=objects[i].x + 25;
+						output->entrances[j].y=objects[i].y + 14;
 					}
 					num_entrances++;
 					break;
 				case 1:
-					if (import[game].ABBA_order) {
+					if (ABBA_order && output->num_players == 1) {
 						for (j=1;j<3;j++) {
-							entrances->pos[j].x=objects[i].x + 25;
-							entrances->pos[j].y=objects[i].y + 14;
+							output->entrances[j].x=objects[i].x + 25;
+							output->entrances[j].y=objects[i].y + 14;
 						}
 					}else{
 						for (j=0;j<2;j++) {
-							entrances->pos[1+2*j].x=objects[i].x + 25;
-							entrances->pos[1+2*j].y=objects[i].y + 14;
+							output->entrances[1+2*j].x=objects[i].x + 25;
+							output->entrances[1+2*j].y=objects[i].y + 14;
 						}
 					}
 					num_entrances++;
 					break;
 				case 2:
-					if (import[game].ABBA_order) {
-						entrances->pos[3].x = entrances->pos[2].x;
-						entrances->pos[3].y = entrances->pos[2].y;
+					if (ABBA_order && output->num_players == 1) {
+						output->entrances[3].x = output->entrances[2].x;
+						output->entrances[3].y = output->entrances[2].y;
 					}
-					entrances->pos[2].x=objects[i].x + 25;
-					entrances->pos[2].y=objects[i].y + 14;
+					output->entrances[2].x=objects[i].x + 25;
+					output->entrances[2].y=objects[i].y + 14;
 					num_entrances++;
 					break;
 				case 3:
-					entrances->pos[3].x=objects[i].x + 25;
-					entrances->pos[3].y=objects[i].y + 14;
+					output->entrances[3].x=objects[i].x + 25;
+					output->entrances[3].y=objects[i].y + 14;
 					break;
 				default:
 					break;
 			}
 		} else {
 			// TODO: UPSIDE-DOWN-OBJECTS: CHANGE TRIGGER AREA?????
-			u8 trigger = terrain_obj[objects[i].type]->trigger;
-			s16 trig_x = terrain_obj[objects[i].type]->trigger_x;
-			s16 trig_y = terrain_obj[objects[i].type]->trigger_y;
-			s16 trig_w = terrain_obj[objects[i].type]->trigger_width;
-			s16 trig_h = terrain_obj[objects[i].type]->trigger_height;
+			u8 trigger = object_types[objects[i].type]->trigger;
+			s16 trig_x = object_types[objects[i].type]->trigger_x;
+			s16 trig_y = object_types[objects[i].type]->trigger_y;
+			s16 trig_w = object_types[objects[i].type]->trigger_width;
+			s16 trig_h = object_types[objects[i].type]->trigger_height;
 			trig_w = (trig_w?trig_w:256);
 			trig_h = (trig_h?trig_h:256);
 			trig_y--; // TODO: really?
@@ -702,28 +745,154 @@ int read_level(u8 game, u8 id, struct Level* level) {
 			}
 		}
 	}
-	free(dec);
 	return 1; //success
+
 }
 
-void init_level_state(struct LevelState* state, struct Level* level) {
-	if (!state || !level) {
-		return;
+
+int read_level(
+		u8 game,
+		u8 id,
+		void* level,
+		void* ground_data,
+		struct Data** vgagr_s0,
+		struct Data** vgagr_s1,
+		struct Data** vgaspec) {
+	if (!vgagr_s0 || !vgagr_s1 || !vgaspec || !ground_data || !level) {
+		return 0; // error
 	}
-	memset(state, 0, sizeof(struct LevelState));
-	state->frames_left = level->info.minutes * 60 * FPS;
-	state->paused = 0;
-	state->opening_counter = 0;
-	state->cur_rate = level->info.rate;
-	state->selected_skill = 0;
-	state->cursor.x = 142; // TODO: SCREEN_WIDTH/2 - 18 ??
-	state->cursor.y = 92;
-	state->entrances_open = 0;
-	state->fade_out = 0;
-	state->fade_in = FADE_IN_DOSFRAMES;
-	state->nuking = 0;
-	state->timer_assign = 0;
-	state->next_lemming_id = 0;
-	state->next_lemming_countdown = 20;
-	state->frame_step_forward = 0;
+	if (!read_level_from_compressed_file(
+			game,
+			id,
+			level)) {
+		return 0;
+	}
+	char graphic_set_path[64];
+	sprintf(graphic_set_path,"%s/%s",PATH_ROOT,import[game].path);
+	return read_graphic_set(
+			graphic_set_path,
+			vgagr_s0,
+			vgagr_s1,
+			vgaspec,
+			ground_data,
+			level);
+}
+
+int read_level_file(
+		const char* path,
+		const char* filename,
+		void* level,
+		void* ground_data,
+		struct Data** vgagr_s0,
+		struct Data** vgagr_s1,
+		struct Data** vgaspec) {
+	if (!level || !ground_data || !vgagr_s0 || !vgagr_s1 || !vgaspec) {
+		return 0; // error
+	}
+	if (strlen(path) + strlen(filename) + 2 > 64 || strlen(path) + 12 + 2 > 64) {
+		return 0; // filename too long
+	}
+	char levelfilename[64];
+	sprintf(levelfilename,"%s/%s",path,filename);
+	FILE* levelfile = fopen(levelfilename, "rb");
+	if (!levelfile) {
+		return 0;
+	}
+	if (2048 != fread(level, 1, 2048, levelfile)) {
+		fclose(levelfile);
+		return 0;
+	}
+	fclose(levelfile);
+	return read_graphic_set(
+			path,
+			vgagr_s0,
+			vgagr_s1,
+			vgaspec,
+			ground_data,
+			level);
+}
+
+
+struct Level* init_level_from_dat(u8 game, u8 lvl, char* level_id) {
+	struct Level* level = (struct Level*)malloc(sizeof(struct Level));
+	if (!level){
+		return 0; // error
+	}
+	memset(level,0,sizeof(struct Level));
+	void* level_data = malloc(2048);
+	if (!level_data) {
+		free(level);
+		return 0; // error
+	}
+	void* ground_data = malloc(1056);
+	if (!ground_data) {
+		free(level);
+		free(level_data);
+		return 0; // error
+	}
+	struct Data* vgagr_s0 = 0;
+	struct Data* vgagr_s1 = 0;
+	struct Data* vgaspec = 0;
+
+	if (!read_level(
+			game,
+			lvl,
+			level_data,
+			ground_data,
+			&vgagr_s0,
+			&vgagr_s1,
+			&vgaspec)) {
+		free(level);
+		free(level_data);
+		free(ground_data);
+		return 0; // error
+	}
+	u8 res = parse_level(
+			level_data,
+			ground_data,
+			vgagr_s0,
+			vgagr_s1,
+			vgaspec,
+			import[game].ingame_palette,
+			import[game].ABBA_order,
+			1,
+			level);
+	if (vgagr_s0) {
+		free(vgagr_s0);
+		vgagr_s0 = 0;
+	}
+	if (vgagr_s1) {
+		free(vgagr_s1);
+		vgagr_s1 = 0;
+	}
+	if (vgaspec) {
+		free(vgaspec);
+		vgaspec = 0;
+	}
+	free(level_data);
+	level_data = 0;
+	free(ground_data);
+	ground_data = 0;
+	if (!res) {
+		free_objects(level->object_types);
+		free(level);
+		return 0; // error
+	}
+
+	// write level id, e.g. FUN13
+	if (level_id) {
+		u8 level_no;
+		if (import[game].num_of_level_per_difficulty > 1) {
+			level_no = (lvl%import[game].num_of_level_per_difficulty)+1;
+		}else{
+			level_no = lvl+1;
+		}
+		sprintf(
+				level_id,
+				"%s%2u",
+				import[game].difficulties[lvl/import[game].num_of_level_per_difficulty],
+				level_no);
+	}
+	prepare_music(game, lvl);
+	return level;
 }

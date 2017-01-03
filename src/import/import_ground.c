@@ -3,43 +3,62 @@
 #include "settings.h"
 #include "import_ground.h"
 
-static inline void read_object_info(struct ObjectInfo* ret, FILE* in) {
-	fread(&(ret->animation_flags),2,1,in);
-	fread(&(ret->start_animation_frame_index),1,1,in);
-	fread(&(ret->end_animation_frame_index),1,1,in);
-	fread(&(ret->width),1,1,in);
-	fread(&(ret->height),1,1,in);
-	fread(&(ret->animation_frame_data_size),2,1,in);
-	fread(&(ret->mask_offset_from_image),2,1,in);
-	fread(&(ret->unknown1),2,1,in);
-	fread(&(ret->unknown2),2,1,in);
-	fread(&(ret->trigger_left),2,1,in);
-	fread(&(ret->trigger_top),2,1,in);
-	fread(&(ret->trigger_width),1,1,in);
-	fread(&(ret->trigger_height),1,1,in);
-	fread(&(ret->trigger_effect_id),1,1,in);
-	fread(&(ret->animation_frames_base_loc),2,1,in);
-	fread(&(ret->preview_image_index),2,1,in);
-	fread(&(ret->unknown3),2,1,in);
-	fread(&(ret->trap_sound_effect_id),1,1,in);
+inline u8 read_u8(void** in) {
+	u16 ret = *(u8*)*in;
+	*(u8**)in += 1;
+	return ret;
 }
 
-static inline void read_terrain_info(struct TerrainInfo* ret, FILE* in) {
-	fread(&(ret->width),1,1,in);
-	fread(&(ret->height),1,1,in);
-	fread(&(ret->image_loc),2,1,in);
-	fread(&(ret->mask_loc),2,1,in);
-	fread(&(ret->unknown1),2,1,in);
+inline u16 read_u16(void** in) {
+	u16 ret = *(u16*)*in;
+	*(u16**)in += 1;
+	return ret;
 }
 
-static inline void read_palette(struct LevelPalette* ret, FILE* in) {
+inline void read_object_info(struct ObjectInfo* ret, void** in) {
+	ret->animation_flags = read_u16(in);
+	ret->start_animation_frame_index = read_u8(in);
+	ret->end_animation_frame_index = read_u8(in);
+	ret->width = read_u8(in);
+	ret->height = read_u8(in);
+	ret->animation_frame_data_size = read_u16(in);
+	ret->mask_offset_from_image = read_u16(in);
+	ret->unknown1 = read_u16(in);
+	ret->unknown2 = read_u16(in);
+	ret->trigger_left = read_u16(in);
+	ret->trigger_top = read_u16(in);
+	ret->trigger_width = read_u8(in);
+	ret->trigger_height = read_u8(in);
+	ret->trigger_effect_id = read_u8(in);
+	ret->animation_frames_base_loc = read_u16(in);
+	ret->preview_image_index = read_u16(in);
+	ret->unknown3 = read_u16(in);
+	ret->trap_sound_effect_id = read_u8(in);
+}
+
+inline void read_terrain_info(struct TerrainInfo* ret, void** in) {
+	ret->width = read_u8(in);
+	ret->height = read_u8(in);
+	ret->image_loc = read_u16(in);
+	ret->mask_loc = read_u16(in);
+	ret->unknown1 = read_u16(in);
+}
+
+inline void read_palette(struct LevelPalette* ret, void** in) {
 	int i;
-	fread(ret->ega_custom,1,8,in);
-	fread(ret->ega_standard,1,8,in);
-	fread(ret->ega_preview,1,8,in);
+	for (i=0;i<8;i++) {
+		ret->ega_custom[i] = read_u8(in);
+	}
+	for (i=0;i<8;i++) {
+		ret->ega_standard[i] = read_u8(in);
+	}
+	for (i=0;i<8;i++) {
+		ret->ega_preview[i] = read_u8(in);
+	}
 	for (i=0;i<8;i++) {
 		ret->vga_custom[i] = 0;
-		fread(ret->vga_custom+i,1,3,in);
+		memcpy(&ret->vga_custom[i],*in,3);
+		*(u8**)in += 3;
 		#ifdef ABGR
 		ret->vga_custom[i]=(((ret->vga_custom[i] >> 16) * 255 / 63) << 8) | ((((ret->vga_custom[i] & 0xFF00) >> 8) * 255 / 63) << 16) | (((ret->vga_custom[i] & 0xFF) * 255 / 63) << 24) | 0x000000FF;
 		#else
@@ -48,7 +67,8 @@ static inline void read_palette(struct LevelPalette* ret, FILE* in) {
 	}
 	for (i=0;i<8;i++) {
 		ret->vga_standard[i] = 0;
-		fread(ret->vga_standard+i,1,3,in);
+		memcpy(&ret->vga_standard[i],*in,3);
+		*(u8**)in += 3;
 		#ifdef ABGR
 		ret->vga_standard[i]=(((ret->vga_standard[i] >> 16) * 255 / 63) << 8) | ((((ret->vga_standard[i] & 0xFF00) >> 8) * 255 / 63) << 16) | (((ret->vga_standard[i] & 0xFF) * 255 / 63) << 24) | 0x000000FF;
 		#else
@@ -57,7 +77,8 @@ static inline void read_palette(struct LevelPalette* ret, FILE* in) {
 	}
 	for (i=0;i<8;i++) {
 		ret->vga_preview[i] = 0;
-		fread(ret->vga_preview+i,1,3,in);
+		memcpy(&ret->vga_preview[i],*in,3);
+		*(u8**)in += 3;
 		#ifdef ABGR
 		ret->vga_preview[i]=(((ret->vga_preview[i] >> 16) * 255 / 63) << 8) | ((((ret->vga_preview[i] & 0xFF00) >> 8) * 255 / 63) << 16) | (((ret->vga_preview[i] & 0xFF) * 255 / 63) << 24) | 0x000000FF;
 		#else
@@ -67,21 +88,18 @@ static inline void read_palette(struct LevelPalette* ret, FILE* in) {
 }
 
 // read all
-int read_ground_data(struct GroundInfo* ret, FILE* in) {
+int read_ground_data(struct GroundInfo* ret, void* ground_data) {
 	int i;
-	if (ret == 0 || in == 0) {
+	if (ret == 0 || ground_data == 0) {
 		return 0;
 	}
+	void* in = ground_data;
 	for (i=0;i<16;i++) {
-		read_object_info(ret->object_info+i,in);
+		read_object_info(&ret->object_info[i],&in);
 	}
 	for (i=0;i<64;i++) {
-		read_terrain_info(ret->terrain_info+i,in);
+		read_terrain_info(&ret->terrain_info[i],&in);
 	}
-	read_palette(&(ret->palette),in);
-
-	if (feof(in)) {
-		return 0; // TODO: add better checks for success (also in subroutines)
-	}
+	read_palette(&ret->palette,&in);
 	return 1;
 }

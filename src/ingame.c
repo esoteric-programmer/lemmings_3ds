@@ -57,8 +57,6 @@ struct InputState {
 
 int read_io(
 		struct Level* level,
-		struct LevelState* state,
-		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
 		struct InputState* io_state) {
 	u32 kDown;
 	u32 kHeld;
@@ -77,45 +75,45 @@ int read_io(
 		return 0; //exit game
 	}
 	if (action & ACTION_MOVE_CURSOR_RIGHT) {
-		state->cursor.x += 2;
+		level->player[0].cursor.x += 2;
 	}
 	if (action & ACTION_MOVE_CURSOR_LEFT) {
-		state->cursor.x -= 2;
+		level->player[0].cursor.x -= 2;
 	}
 	if (action & ACTION_MOVE_CURSOR_UP) {
-		state->cursor.y -= 2;
+		level->player[0].cursor.y -= 2;
 	}
 	if (action & ACTION_MOVE_CURSOR_DOWN) {
-		state->cursor.y += 2;
+		level->player[0].cursor.y += 2;
 	}
 	if (action & ACTION_MOVE_CURSOR_PARAM) {
-		state->cursor.x += params[0].dx;
-		state->cursor.y += params[0].dy;
+		level->player[0].cursor.x += params[0].dx;
+		level->player[0].cursor.y += params[0].dy;
 	}
-	if (state->cursor.y < 0) {
-		state->cursor.y = 0;
+	if (level->player[0].cursor.y < 0) {
+		level->player[0].cursor.y = 0;
 	}
-	if (state->cursor.y >= 200) {
-		state->cursor.y = 200;
+	if (level->player[0].cursor.y >= 200) {
+		level->player[0].cursor.y = 200;
 	}
-	if (state->cursor.x < 0) {
-		state->cursor.x = 0;
+	if (level->player[0].cursor.x < 0) {
+		level->player[0].cursor.x = 0;
 	}
-	if (state->cursor.x >= SCREEN_WIDTH) {
-		state->cursor.x = SCREEN_WIDTH-1;
+	if (level->player[0].cursor.x >= SCREEN_WIDTH) {
+		level->player[0].cursor.x = SCREEN_WIDTH-1;
 	}
-	if (state->cursor.x == 0 && state->cursor.y < 160) {
+	if (level->player[0].cursor.x == 0 && level->player[0].cursor.y < 160) {
 		action |= ACTION_SCROLL_LEFT;
 	}
-	if (state->cursor.x == SCREEN_WIDTH-1 && state->cursor.y < 160) {
+	if (level->player[0].cursor.x == SCREEN_WIDTH-1 && level->player[0].cursor.y < 160) {
 		action |= ACTION_SCROLL_RIGHT;
 	}
 	if (((kDown | kHeld) & KEY_TOUCH) &&
 			stylus.py >= BOTTOM_SCREEN_Y_OFFSET &&
 			stylus.py < 200 + BOTTOM_SCREEN_Y_OFFSET &&
 			stylus.px < SCREEN_WIDTH) {
-		state->cursor.x = stylus.px;
-		state->cursor.y = (s16)stylus.py - BOTTOM_SCREEN_Y_OFFSET;
+		level->player[0].cursor.x = stylus.px;
+		level->player[0].cursor.y = (s16)stylus.py - BOTTOM_SCREEN_Y_OFFSET;
 		if (kDown & KEY_TOUCH) {
 			action |= ACTION_CURSOR_CLICK;
 			action |= ACTION_CURSOR_HOLD;
@@ -123,16 +121,16 @@ int read_io(
 			action |= ACTION_CURSOR_HOLD;
 		}
 	}
-	if (state->cursor.x >= SCREEN_WIDTH) {
-		state->cursor.x = SCREEN_WIDTH-1;
+	if (level->player[0].cursor.x >= SCREEN_WIDTH) {
+		level->player[0].cursor.x = SCREEN_WIDTH-1;
 	}
-	if (state->cursor.y > 200-7) {
-		state->cursor.y = 200-7;
+	if (level->player[0].cursor.y > 200-7) {
+		level->player[0].cursor.y = 200-7;
 	}
 	if (action & (ACTION_CURSOR_CLICK | ACTION_CURSOR_HOLD)) {
-		if (state->cursor.y >= 176 && state->cursor.y < 200) {
+		if (level->player[0].cursor.y >= 176 && level->player[0].cursor.y < 200) {
 			// clicked at panel
-			switch (state->cursor.x / 16) {
+			switch (level->player[0].cursor.x / 16) {
 				case  0:
 					// decrement rate
 					action |= ACTION_DEC_RATE;
@@ -197,64 +195,64 @@ int read_io(
 				default:
 					{
 						// touched at minimap
-						s16 new_x_pos = (state->cursor.x - 13*16) * 16;
+						s16 new_x_pos = (level->player[0].cursor.x - 13*16) * 16;
 						new_x_pos -= SCREEN_WIDTH / 2;
 						if (new_x_pos < 0) {
 							new_x_pos = 0;
 						}else if (new_x_pos >= 1584 - SCREEN_WIDTH) {
 							new_x_pos = (SCREEN_WIDTH <= 1584?1584 - SCREEN_WIDTH:0);
 						}
-						level->info.x_pos = new_x_pos;
+						level->player[0].x_pos = new_x_pos;
 					}
 			}
 		}
 	}
 	if (action & ACTION_PAUSE) {
-		state->paused = !state->paused;
+		level->paused = !level->paused;
 		io_state->time_since_nuke_pressed = 0;
 	}
 	if (action & ACTION_NEXT_SKILL) {
-		state->selected_skill = (state->selected_skill+1)%8;
+		level->player[0].selected_skill = (level->player[0].selected_skill+1)%8;
 		play_sound(0x01);
 	}
 	if (action & ACTION_PREV_SKILL) {
-		if (state->selected_skill > 0) {
-			state->selected_skill--;
+		if (level->player[0].selected_skill > 0) {
+			level->player[0].selected_skill--;
 		}else{
-			state->selected_skill = 7;
+			level->player[0].selected_skill = 7;
 		}
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_CIMBER) {
-		state->selected_skill = 0;
+		level->player[0].selected_skill = 0;
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_FLOATER) {
-		state->selected_skill = 1;
+		level->player[0].selected_skill = 1;
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_BOMBER) {
-		state->selected_skill = 2;
+		level->player[0].selected_skill = 2;
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_BLOCKER) {
-		state->selected_skill = 3;
+		level->player[0].selected_skill = 3;
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_BUILDER) {
-		state->selected_skill = 4;
+		level->player[0].selected_skill = 4;
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_BASHER) {
-		state->selected_skill = 5;
+		level->player[0].selected_skill = 5;
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_MINER) {
-		state->selected_skill = 6;
+		level->player[0].selected_skill = 6;
 		play_sound(0x01);
 	}
 	if (action & ACTION_SELECT_SKILL_DIGGER) {
-		state->selected_skill = 7;
+		level->player[0].selected_skill = 7;
 		play_sound(0x01);
 	}
 	if (action & ACTION_INC_RATE) {
@@ -269,10 +267,10 @@ int read_io(
 				inc = step_width_running();
 			}
 		}
-		if (state->cur_rate+inc < 100) {
-			state->cur_rate += inc;
+		if (level->cur_rate+inc < 100) {
+			level->cur_rate += inc;
 		} else {
-			state->cur_rate = 99;
+			level->cur_rate = 99;
 		}
 	}
 	if (action & ACTION_DEC_RATE) {
@@ -287,59 +285,59 @@ int read_io(
 				dec = step_width_running();
 			}
 		}
-		if (state->cur_rate > dec+1) {
-			state->cur_rate -= dec;
+		if (level->cur_rate > dec+1) {
+			level->cur_rate -= dec;
 		} else {
-			state->cur_rate = 1;
+			level->cur_rate = 1;
 		}
-		if (state->cur_rate < level->info.rate) {
-			state->cur_rate = level->info.rate;
+		if (level->cur_rate < level->rate) {
+			level->cur_rate = level->rate;
 		}
 	}
 	if (!(action & (ACTION_INC_RATE | ACTION_DEC_RATE))) {
 		io_state->change_rate_hold = 0;
 	}
-	if (!state->paused && (action & (ACTION_NUKE | ACTION_NUKE_IMMEDIATELY))) {
+	if (!level->paused && (action & (ACTION_NUKE | ACTION_NUKE_IMMEDIATELY))) {
 		if ((action & ACTION_NUKE_IMMEDIATELY)
 				|| (io_state->time_since_nuke_pressed
 					&& io_state->time_since_nuke_pressed < 45)) {
-			nuke(state,level);
+			nuke(&level->player[0]);
 		}else{
 			io_state->time_since_nuke_pressed = 1;
 		}
 	}
 	if (action & ACTION_SCROLL_RIGHT) {
-		level->info.x_pos+=3;
-		if (level->info.x_pos > 1584-SCREEN_WIDTH) {
+		level->player[0].x_pos+=3;
+		if (level->player[0].x_pos > 1584-SCREEN_WIDTH) {
 			if (1584>SCREEN_WIDTH) {
-				level->info.x_pos = 1584-SCREEN_WIDTH;
+				level->player[0].x_pos = 1584-SCREEN_WIDTH;
 			} else {
-				level->info.x_pos = 0;
+				level->player[0].x_pos = 0;
 			}
 		}
 	}
 	if (action & ACTION_SCROLL_LEFT) {
-		if ((s16)level->info.x_pos >= 3) {
-			level->info.x_pos-=3;
+		if ((s16)level->player[0].x_pos >= 3) {
+			level->player[0].x_pos-=3;
 		}else{
-			level->info.x_pos = 0;
+			level->player[0].x_pos = 0;
 		}
 	}
 	if (action & ACTION_SCROLL_PARAM) {
 		s16 x = params[1].dx;
 		if (x < 0) {
-			if ((s16)level->info.x_pos >= -x) {
-				level->info.x_pos+=x;
+			if ((s16)level->player[0].x_pos >= -x) {
+				level->player[0].x_pos+=x;
 			}else{
-				level->info.x_pos = 0;
+				level->player[0].x_pos = 0;
 			}
 	}else{
-			level->info.x_pos+=x;
-			if (level->info.x_pos > 1584-SCREEN_WIDTH) {
+			level->player[0].x_pos+=x;
+			if (level->player[0].x_pos > 1584-SCREEN_WIDTH) {
 				if (1584>SCREEN_WIDTH) {
-					level->info.x_pos = 1584-SCREEN_WIDTH;
+					level->player[0].x_pos = 1584-SCREEN_WIDTH;
 				} else {
-					level->info.x_pos = 0;
+					level->player[0].x_pos = 0;
 				}
 			}
 		}
@@ -350,8 +348,8 @@ int read_io(
 		io_state->speed_up = 0;
 	}
 	if (action & ACTION_QUIT) {
-		if (!state->fade_out) {
-			state->fade_out = 1;
+		if (!level->fade_out) {
+			level->fade_out = 1;
 		}
 	}
 	if (action & ACTION_NONPRIORIZED_LEMMING) {
@@ -361,151 +359,142 @@ int read_io(
 	}
 	struct Lemming* lem1 = 0;
 	struct Lemming* lem2 = 0;
-	if (state->cursor.y < 160) {
+	if (level->player[0].cursor.y < 160) {
 		s16 l1idx = -1;
 		s16 l2idx = -1;
 		select_lemming(
-				lemmings,
-				(s16)level->info.x_pos + state->cursor.x,
-				state->cursor.y,
+				level->player[0].lemmings,
+				(s16)level->player[0].x_pos + level->player[0].cursor.x,
+				level->player[0].cursor.y,
 				(action & ACTION_NONPRIORIZED_LEMMING)?1:0,
 				&l1idx,
 				&l2idx);
 		if (l1idx >= 0 && l1idx < MAX_NUM_OF_LEMMINGS) {
-			lem1 = lemmings+l1idx;
+			lem1 = &level->player[0].lemmings[l1idx];
 			if (l2idx >= 0 && l2idx < MAX_NUM_OF_LEMMINGS) {
-				lem2 = lemmings+l2idx;
+				lem2 = &level->player[0].lemmings[l2idx];
 			}
 		}
 	}
 
 	if (action & ACTION_CURSOR_CLICK) {
 		if (lem1) {
-			if (level->info.skills[state->selected_skill]) {
-				if (assign_skill(state->selected_skill, lem1, lem2, level)) {
-					level->info.skills[state->selected_skill]--;
+			if (level->player[0].skills[level->player[0].selected_skill]) {
+				if (assign_skill(level->player[0].selected_skill, lem1, lem2, level)) {
+					level->player[0].skills[level->player[0].selected_skill]--;
 				}
 			}
 		}
 	}
-	if (!state->paused) {
+	if (!level->paused) {
 		if (io_state->time_since_nuke_pressed) {
 			io_state->time_since_nuke_pressed++;
 		}
 	}else {
 		if (action & ACTION_STEP_FRAME) {
-			state->frame_step_forward++;
+			level->frame_step_forward++;
 		}
 	}
 	return 1;
 }
 
 int level_step(
-		u8 game,
-		u8 lvl,
 		struct MainInGameData* main_data,
-		struct Level* level,
-		struct LevelState* state,
-		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]) {
-	if (settings.glitch_entrance_pausing || !state->paused || state->frame_step_forward) {
-		if (state->opening_counter <= 55) {
-			state->opening_counter++;
+		struct Level* level) {
+	if (settings.glitch_entrance_pausing || !level->paused || level->frame_step_forward) {
+		if (level->opening_counter <= 55) {
+			level->opening_counter++;
 			// do action depending on _new:
-			if (state->opening_counter == 15) {
+			if (level->opening_counter == 15) {
 				// play sound: lets go
 				play_sound(0x03);
-			}else if (state->opening_counter == 35) {
+			}else if (level->opening_counter == 35) {
 				// play sound: opening entrance
 				play_sound(0x02);
 				// start opening of entrances;
-				state->entrances_open = 1;
-			}else if (state->opening_counter == 55) {
+				level->entrances_open = 1;
+			}else if (level->opening_counter == 55) {
 				// start background music
 				play_music();
 			}
 		}
 	}
 
-	if (state->fade_in) {
-		state->fade_in--;
-	}else if (state->fade_out) {
-		state->fade_out++;
-		if (state->fade_out > FADE_OUT_DOSFRAMES) {
+	if (level->fade_in) {
+		level->fade_in--;
+	}else if (level->fade_out) {
+		level->fade_out++;
+		if (level->fade_out > FADE_OUT_DOSFRAMES) {
 			// exit
 			return 0;
 		}
 	}
 
-	if (!state->paused || state->frame_step_forward) {
+	if (!level->paused || level->frame_step_forward) {
 		int i;
-		if (state->frame_step_forward) {
-			state->frame_step_forward--;
+		if (level->frame_step_forward) {
+			level->frame_step_forward--;
 		}
-		if (state->entrances_open) {
-			add_lemming(lemmings,
-					level,
-					state);
+		if (level->entrances_open) {
+			add_lemming(level);
 		}
-		if (state->frames_left > 0 && !state->fade_out) {
-			state->frames_left--;
+		if (level->frames_left > 0 && !level->fade_out) {
+			level->frames_left--;
 		}
-		update_lemmings(lemmings,level,state,main_data->masks);
+		update_lemmings(level,main_data->masks);
 		for (i=0;i<32;i++) {
 			// process object!
-			if (!(level->obj[i].modifier & OBJECT_USED)) {
+			struct ObjectType* obj_type = level->object_types[level->object_instances[i].type];
+			if (!(level->object_instances[i].modifier & OBJECT_USED) || !obj_type) {
 				continue;
 			}
-			if (level->obj[i].type == 1) {
+			if (level->object_instances[i].type == 1) {
 				// start
-				if (state->entrances_open) {
-					struct Object* o = level->o[level->obj[i].type];
-					if (o && level->obj[i].current_frame) {
-						level->obj[i].current_frame++;
-						if (level->obj[i].current_frame >= o->end_frame) {
-							level->obj[i].current_frame = 0;
+				if (level->entrances_open) {
+					if (level->object_instances[i].current_frame) {
+						level->object_instances[i].current_frame++;
+						if (level->object_instances[i].current_frame >= obj_type->end_frame) {
+							level->object_instances[i].current_frame = 0;
 						}
 					}
 				}
 				continue;
 			}
-			struct Object* o = level->o[level->obj[i].type];
-			if (!o) {
-				continue;
-			}
-			if (o->trigger == 4 && !level->obj[i].current_frame) {
+			if (obj_type->trigger == 4 && !level->object_instances[i].current_frame) {
 				// trap...
 				continue;
 			}
-			level->obj[i].current_frame++;
-			if (level->obj[i].current_frame >= o->end_frame) {
-				level->obj[i].current_frame = o->start_frame; // TODO: set to 0 instead?
+			level->object_instances[i].current_frame++;
+			if (level->object_instances[i].current_frame >= obj_type->end_frame) {
+				level->object_instances[i].current_frame = obj_type->start_frame; // TODO: set to 0 instead?
 			}
 		}
 	}
-	if (count_lemmings(lemmings) + lemmings_left(state,level->info.lemmings) == 0
-			|| state->frames_left == 0) {
-		if (!state->fade_out) {
-			state->fade_out = 1;
+	u8 lem_left = 0;
+	u16 p;
+	for (p=0; p<level->num_players; p++) {
+		lem_left += count_lemmings(level->player[p].lemmings) + lemmings_left(&level->player[p]);
+	}
+	if (lem_left == 0 || level->frames_left == 0) {
+		if (!level->fade_out) {
+			level->fade_out = 1;
 		}
 	}
 	return 1;
 }
 
 void render_level_frame(
-		u8 game,
-		u8 lvl,
+		const char* level_id, // e.g. FUN 14
 		struct MainInGameData* main_data,
 		struct Level* level,
-		struct LevelState* state,
-		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
 		struct InputState* io_state) {
 	// compute fading
 	float fade = 1.0;
-	if (state->fade_in) {
-		fade = ((float)(FADE_IN_DOSFRAMES-state->fade_in))
+	if (level->fade_in) {
+		fade = ((float)(FADE_IN_DOSFRAMES-level->fade_in))
 				/ ((float)FADE_IN_DOSFRAMES);
-	}else if (state->fade_out) {
-		fade = ((float)(FADE_OUT_DOSFRAMES-state->fade_out))
+	}else if (level->fade_out) {
+		fade = ((float)(FADE_OUT_DOSFRAMES-level->fade_out))
 				/ ((float)FADE_OUT_DOSFRAMES);
 	}
 	u32 level_palette_faded[16];
@@ -524,7 +513,6 @@ void render_level_frame(
 			320,
 			160,
 			level,
-			lemmings,
 			main_data,
 			level_palette_faded);
 
@@ -535,18 +523,18 @@ void render_level_frame(
 	tmp_text[9] = 0;
 	u8 n_lem = 0;
 	struct Lemming* lem1 = 0;
-	if (state->cursor.y < 160) {
+	if (level->player[0].cursor.y < 160) {
 		s16 l1idx = -1;
 		s16 l2idx = -1;
 		n_lem = select_lemming(
-				lemmings,
-				(s16)level->info.x_pos + state->cursor.x,
-				state->cursor.y,
+				level->player[0].lemmings,
+				(s16)level->player[0].x_pos + level->player[0].cursor.x,
+				level->player[0].cursor.y,
 				io_state->nonprio_lem,
 				&l1idx,
 				&l2idx);
 		if (l1idx >= 0 && l1idx < MAX_NUM_OF_LEMMINGS) {
-			lem1 = lemmings+l1idx;
+			lem1 = &level->player[0].lemmings[l1idx];
 		}
 	}
 	const char* lem_desc = get_lemming_description(lem1);
@@ -559,13 +547,13 @@ void render_level_frame(
 		}
 		sprintf(tmp_text+7,"%2u",n_lem<99?n_lem:99);
 	}
-	int min = (state->frames_left+FPS-1)/FPS/60;
-	int sec = (state->frames_left+FPS-1)/FPS%60;
+	int min = (level->frames_left+FPS-1)/FPS/60;
+	int sec = (level->frames_left+FPS-1)/FPS%60;
 	u16 percentage = 0;
-	if (level->info.lemmings != 0) {
-		percentage = (100*(u16)level->rescued) / ((u16)level->info.lemmings);
+	if (level->player[0].max_lemmings != 0) {
+		percentage = (100*(u16)level->player[0].rescued[0]) / ((u16)level->player[0].max_lemmings);
 	}
-	u8 num_lems = count_lemmings(lemmings);
+	u8 num_lems = count_lemmings(level->player[0].lemmings);
 	sprintf(text,"%s     OUT%2u    IN%3u%%  TIME %d-%02d",
 			tmp_text,num_lems<99?num_lems:99,
 			percentage<100?percentage:100,
@@ -573,8 +561,6 @@ void render_level_frame(
 	draw_toolbar(
 			main_data,
 			level,
-			state,
-			lemmings,
 			text,
 			highperf_palette_faded);
 	clear_rectangle(
@@ -587,8 +573,8 @@ void render_level_frame(
 
 	draw(
 			BOTTOM_SCREEN,
-			state->cursor.x-7,
-			state->cursor.y-7+BOTTOM_SCREEN_Y_OFFSET,
+			level->player[0].cursor.x-7,
+			level->player[0].cursor.y-7+BOTTOM_SCREEN_Y_OFFSET,
 			lem1?cursor_active_data:cursor_data,
 			14,
 			14,
@@ -596,22 +582,16 @@ void render_level_frame(
 
 	clear_rectangle(BOTTOM_SCREEN,0,0,SCREEN_WIDTH,BOTTOM_SCREEN_Y_OFFSET);
 	char above_text[100];
-	const char* lvl_name_stripped = level->info.name;
+	const char* lvl_name_stripped = level->name;
 	while (*lvl_name_stripped == ' ') {
 		lvl_name_stripped++;
 	}
-	u8 level_no;
-	if (import[game].num_of_level_per_difficulty > 1) {
-		level_no = (lvl%import[game].num_of_level_per_difficulty)+1;
-	}else{
-		level_no = lvl+1;
-	}
 	sprintf(above_text,
-			"%s%2u %s\n                     You need %3u%% of %2u",
-			import[game].difficulties[lvl/import[game].num_of_level_per_difficulty],
-			level_no,
-			lvl_name_stripped,level->info.percentage_needed,
-			level->info.lemmings);
+			"%s%s%s\n                     You need %3u%% of %2u",
+			level_id?level_id:"",
+			level_id?" ":"",
+			lvl_name_stripped,level->percentage_needed,
+			level->player[0].max_lemmings);
 	draw_highperf_text(
 			BOTTOM_SCREEN,
 			0,
@@ -628,16 +608,14 @@ void render_level_frame(
 			400,
 			160,
 			level,
-			lemmings,
 			main_data);
 	*/
 	end_frame();
 }
 
-
 struct LevelResult run_level(
-		u8 game,
-		u8 lvl,
+		struct Level* level,
+		const char* level_id,
 		struct MainMenuData* menu_data,
 		struct MainInGameData* main_data) {
 	// show black screen while loading
@@ -645,41 +623,26 @@ struct LevelResult run_level(
 	clear(BOTTOM_SCREEN);
 	end_frame();
 
-	// initialize level
-	struct LevelResult result = { 0xFF, 0, 0xFF, LEVEL_ERROR };
-	struct Level* level = (struct Level*)malloc(sizeof(struct Level));
-	if (!level){
-		return result; // error
-	}
-	memset(level,0,sizeof(struct Level));
-
 	struct InputState io_state;
 	memset(&io_state,0,sizeof(struct InputState));
-	struct LevelState state;
-	memset(&state,0,sizeof(struct LevelState));
-	struct Lemming lemmings[MAX_NUM_OF_LEMMINGS];
-	if (!read_level(game, lvl, level)) {
-		free_objects(level->o);
-		free(level);
-		return result; // error
-	}
-	init_level_state(&state,level);
+
+	// initialize level
+	struct LevelResult result = { 0xFF, 0, 0xFF, LEVEL_ERROR };
+
 	main_data->high_perf_palette[7] = level->palette[8];
-	init_lemmings(lemmings);
+	init_lemmings(level);
 
-
-	if (level->info.x_pos >= (SCREEN_WIDTH-320)/2) {
-		level->info.x_pos -= (SCREEN_WIDTH-320)/2;
+	if (level->player[0].x_pos >= (SCREEN_WIDTH-320)/2) {
+		level->player[0].x_pos -= (SCREEN_WIDTH-320)/2;
 	}else{
-		level->info.x_pos = 0;
+		level->player[0].x_pos = 0;
 	}
-	if (SCREEN_WIDTH < 1584 && level->info.x_pos + SCREEN_WIDTH >= 1584) {
-		level->info.x_pos = 1584 - SCREEN_WIDTH;
+	if (SCREEN_WIDTH < 1584 && level->player[0].x_pos + SCREEN_WIDTH >= 1584) {
+		level->player[0].x_pos = 1584 - SCREEN_WIDTH;
 	}
 	if (SCREEN_WIDTH >= 1584) {
-		level->info.x_pos = 0;
+		level->player[0].x_pos = 0;
 	}
-	prepare_music(game, lvl);
 
 	u64 next_frame = osGetTime();
 	u64 next_input = next_frame;
@@ -704,10 +667,8 @@ struct LevelResult run_level(
 			}
 			next_input += INPUT_SAMPLING_MILLIS;
 
-			if (!read_io(level, &state, lemmings, &io_state)) {
+			if (!read_io(level, &io_state)) {
 				result.exit_reason = LEVEL_EXIT_GAME;
-				free_objects(level->o);
-				free(level);
 				return result;
 			}
 		}while(1);
@@ -727,19 +688,15 @@ struct LevelResult run_level(
 			}
 			if (io_state.speed_up) {
 				next_frame += MS_PER_FRAME_SPEED_UP;
-			}else if (level->info.speed_up){
+			}else if (level->speed_up){
 				next_frame += MS_PER_FRAME_SUPERLEM;
 			}else{
 				next_frame += MS_PER_FRAME;
 			}
 
 			if (!level_step(
-					game,
-					lvl,
 					main_data,
-					level,
-					&state,
-					lemmings)) { // simulate one DOS frame (one step)
+					level)) { // simulate one DOS frame (one step)
 				next_frame = 0;
 				break;
 			}
@@ -747,42 +704,35 @@ struct LevelResult run_level(
 
 		// draw frame
 		render_level_frame(
-					game,
-					lvl,
+					level_id,
 					main_data,
 					level,
-					&state,
-					lemmings,
 					&io_state);
 	}
 	stop_audio();
 	if (!apt_result) {
 		result.exit_reason = LEVEL_EXIT_GAME;
-		free_objects(level->o);
-		free(level);
 		return result;
 	}
 
-	result.lvl = lvl;
-	if ((u16)level->info.lemmings > 0) {
-		result.percentage_rescued = ((u16)level->rescued)*100
-				/ (u16)level->info.lemmings;
+	if ((u16)level->player[0].max_lemmings > 0) {
+		result.percentage_rescued = ((u16)level->player[0].rescued[0])*100
+				/ (u16)level->player[0].max_lemmings;
 	}else{
 		result.percentage_rescued = 0;
 	}
-	result.percentage_needed = level->info.percentage_needed;
+	result.percentage_needed = level->percentage_needed;
 
 	if (result.percentage_rescued >= result.percentage_needed) {
-		next_music(game);
+		next_music();
 	}
 
-	if (!state.frames_left) {
+	if (!level->frames_left) {
 		result.exit_reason = LEVEL_TIMEOUT;
 	}else{
 		result.exit_reason = LEVEL_NO_LEMMINGS_LEFT;
 	}
-	free_objects(level->o);
-	free(level);
+
 	return result;
 }
 

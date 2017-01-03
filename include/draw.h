@@ -51,7 +51,6 @@ int draw_level(
 		u16 w,
 		u16 h,
 		struct Level* level,
-		struct Lemming lemmings[MAX_NUM_OF_LEMMINGS],
 		struct MainInGameData* main_data,
 		u32* palette);
 
@@ -79,17 +78,15 @@ void draw_menu_text(
 int draw_toolbar(
 		struct MainInGameData* data,
 		struct Level* level,
-		struct LevelState* state,
-		struct Lemming[MAX_NUM_OF_LEMMINGS],
 		const char* text,
 		u32* highperf_palette);
 
-// return number of lemmings drawn
-u8 draw_lemmings(
+// draw lemmings of all players (only 2 players supported)
+void draw_lemmings(
 		ScreenBuffer screen,
 		s16 x,
 		s16 y,
-		struct Lemming[MAX_NUM_OF_LEMMINGS],
+		struct Level* level,
 		struct Image* lemmings_anim[337],
 		struct Image* masks[23],
 		u32 palette[16],
