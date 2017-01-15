@@ -5,6 +5,7 @@
 #include "main_data.h"
 #include "level.h"
 #include "lemming_data.h"
+#include "control.h"
 
 typedef enum
 {
@@ -50,6 +51,7 @@ int draw_level(
 		s16 y,
 		u16 w,
 		u16 h,
+		s16 x_offset,
 		struct Level* level,
 		struct MainInGameData* main_data,
 		u32* palette);
@@ -78,8 +80,10 @@ void draw_menu_text(
 int draw_toolbar(
 		struct MainInGameData* data,
 		struct Level* level,
+		struct InputState* io_state,
 		const char* text,
-		u32* highperf_palette);
+		u32* highperf_palette,
+		u8 player);
 
 // draw lemmings of all players (only 2 players supported)
 void draw_lemmings(

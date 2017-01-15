@@ -7,20 +7,23 @@
 #define LEMMINGS_DIR "/lemmings" // if it does not exist, "." will be used instead
 extern const char* PATH_ROOT;
 
-#define MAX_NUM_OF_LEMMINGS   80
-#define FPS                   17 // dosframes per second (for time counter in level)
-#define SCREEN_WIDTH         320
-#define MS_PER_FRAME          71 // duration of frame in milliseconds
-#define MS_PER_FRAME_SUPERLEM 28 // frame duration in "introducing superlemming"
-#define INPUT_SAMPLING_MILLIS 25 // affects cursor speed and so on...
-#define MS_PER_FRAME_SPEED_UP 20
-#define FADE_IN_DOSFRAMES     18
-#define FADE_OUT_DOSFRAMES    32
+#define MAX_NUM_OF_LEMMINGS       80
+#define FPS                       17 // dosframes per second (for time counter in level)
+#define SCREEN_WIDTH             320
+#define MS_PER_FRAME              71 // duration of frame in milliseconds
+#define MS_PER_FRAME_SUPERLEM     28 // frame duration in "introducing superlemming"
+#define INPUT_SAMPLING_MILLIS     25 // affects cursor speed and so on...
+#define MS_PER_FRAME_SPEED_UP     20
+#define FADE_IN_DOSFRAMES         18
+#define FADE_OUT_DOSFRAMES        32
+#define AMIGA_BACKGROUND  0x000030FF
 
-#define AUDIO_ORDER_PREFER_CUSTOM 0
-#define AUDIO_ORDER_PREFER_ADLIB  1
-#define AUDIO_ORDER_ONLY_CUSTOM   2
-#define AUDIO_ORDER_ONLY_ADLIB    3
+#define COMMON_NUKE_FRAME_INTERVAL (FPS * 10) // player must respond to nuke request within 15 seconds
+
+#define AUDIO_ORDER_PREFER_CUSTOM  0
+#define AUDIO_ORDER_PREFER_ADLIB   1
+#define AUDIO_ORDER_ONLY_CUSTOM    2
+#define AUDIO_ORDER_ONLY_ADLIB     3
 
 extern struct Settings {
 	u8 glitch_nuke;
@@ -37,6 +40,7 @@ extern struct Settings {
 	u8 dblclick_exit; // not implemented yet
 	u8 skip_unavailable_skills; // not implemented yet
 	u8 zoom_mode_active; // not implemented yet
+	u8 amiga_background; // 0 = no (black); 1 = yes (dark blue)
 	struct KeyBindings {
 		u32 modifier;
 		u32 click;

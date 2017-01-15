@@ -324,19 +324,18 @@ u8 lemmings_left(struct LevelPlayer* player_state) {
 	return (left<left2?left:left2);
 }
 
-void add_lemming(struct Level* level) {
+int add_lemming(struct Level* level) {
 	if (!level || !level->num_players) {
-		return;
+		return 0;
 	}
 	if (!level->next_lemming_countdown) {
-		return;
+		return 0;
 	}
 	level->next_lemming_countdown--;
 	if (level->next_lemming_countdown != 0) {
-		return;
+		return 0;
 	}
-	u8 player = level->num_players;
-	player = (level->lemming_last_player + 1) % level->num_players;
+	u8 player = (level->lemming_last_player + 1) % level->num_players;
 	u8 try_lemming_player;
 	for (try_lemming_player = 0; try_lemming_player < level->num_players; try_lemming_player++) {
 		if (lemmings_left(&level->player[player])) {
@@ -345,13 +344,18 @@ void add_lemming(struct Level* level) {
 		player = (player + 1) % level->num_players;
 	}
 	if (try_lemming_player == level->num_players) {
-		return;
+		return 0;
 	}
 	u8 id = level->player[player].next_lemming_id;
 	level->player[player].lemmings[id].removed = 0;
 	level->player[player].lemmings[id].timer = 0;
-	level->player[player].lemmings[id].x = level->entrances[id & 0x03].x;
-	level->player[player].lemmings[id].y = level->entrances[id & 0x03].y;
+	if (level->num_players == 1) {
+		level->player[player].lemmings[id].x = level->entrances[id & 0x03].x;
+		level->player[player].lemmings[id].y = level->entrances[id & 0x03].y;
+	}else{
+		level->player[player].lemmings[id].x = level->entrances[(player+1) & 0x03].x;
+		level->player[player].lemmings[id].y = level->entrances[(player+1) & 0x03].y;
+	}
 	level->player[player].lemmings[id].look_right = (player==0?1:0);
 	level->player[player].lemmings[id].abilities = 0;
 	level->player[player].lemmings[id].float_index = 0;
@@ -360,6 +364,7 @@ void add_lemming(struct Level* level) {
 	level->player[player].lemmings[id].start_digging = 0;
 	level->player[player].lemmings[id].object_below = 0;
 	level->player[player].lemmings[id].object_in_front = 0;
+	level->player[player].lemmings[id].player = player;
 	memset(level->player[player].lemmings[id].saved_object_map,0,9);
 	set_lemaction(&level->player[player].lemmings[id], LEMACTION_FALL);
 	level->player[player].next_lemming_id++;
@@ -370,6 +375,7 @@ void add_lemming(struct Level* level) {
 		n += 256;
 	}
 	level->next_lemming_countdown = n/2+4;
+	return 1;
 }
 
 void nuke(struct LevelPlayer* player) {
@@ -734,7 +740,7 @@ int lemming_exit(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	}
 	lem->frame_offset++;
 	if (lem->frame_offset == 8) {
-		level->player[0].rescued[0]++;
+		level->player[lem->exit_counts_for].rescued[lem->player]++;
 		lem->removed = 1;
 	}
 	return 0;
@@ -918,7 +924,10 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 		if (below == OBJECT_STEEL ||
 				(below == OBJECT_ONEWAY_LEFT && lem->look_right) ||
 				(below == OBJECT_ONEWAY_RIGHT
-					&& (settings.glitch_mining_right_oneway || !lem->look_right))) {
+					&& (
+					(settings.glitch_mining_right_oneway
+					&& level->num_players == 1)
+					|| !lem->look_right))) {
 			if (below == OBJECT_STEEL) {
 				// play sound: hit steel
 				play_sound(0x0A);
@@ -1051,12 +1060,15 @@ void process_interactive_objects(struct Lemming* lem, struct Level* level) {
 	lem->object_in_front = read_object_map(level,lem->x+(lem->look_right?8:-8),lem->y-8);
 	switch (lem->object_below & 0x0F) {
 		case OBJECT_EXIT:
+		{
+			lem->exit_counts_for = (lem->object_below >> 4);
 			if (lem->current_action != LEMACTION_FALL) {
 				set_lemaction(lem, LEMACTION_EXIT);
 				// play sound: yippieh
 				play_sound(0x10);
 			}
 			break;
+		}
 		case OBJECT_FORCE_LEFT:
 			lem->look_right = 0;
 			break;
@@ -1065,7 +1077,7 @@ void process_interactive_objects(struct Lemming* lem, struct Level* level) {
 			break;
 		case OBJECT_TRAP:
 		{
-			struct ObjectInstance* trap = level->object_instances + (lem->object_below >> 4);
+			struct ObjectInstance* trap = &level->object_instances[lem->object_below >> 4];
 			if (trap->current_frame == 0) {
 				trap->current_frame++;
 				lem->removed = 1;
@@ -1220,7 +1232,7 @@ int assign_climb(struct Lemming* lem1, struct Lemming* lem2, struct Level* level
 			lem1->current_action != LEMACTION_EXPLODE) {
 		lem1->abilities |= LEMABILITY_CLIMB;
 		if (lem1->current_action == LEMACTION_SHRUG) {
-			if (settings.glitch_shrugger) {
+			if (settings.glitch_shrugger && level->num_players == 1) {
 				lem1->current_action = LEMACTION_WALK; // this triggers a bug of the original game since draw_action is not updated
 			}else{
 				set_lemaction(lem1,LEMACTION_WALK);
@@ -1311,7 +1323,7 @@ int assign_build(struct Lemming* lem1, struct Lemming* lem2, struct Level* level
 	}
 	if (assign) {
 		set_lemaction(lem2, LEMACTION_BUILD);
-		return 1;
+		return 2;
 	}
 	return 0;
 }
@@ -1356,7 +1368,7 @@ int assign_mine(struct Lemming* lem1, struct Lemming* lem2, struct Level* level)
 		return 0;
 	}
 	set_lemaction(lem,LEMACTION_MINE);
-	return 1;
+	return (lem==lem1?1:2);
 }
 
 int assign_dig(struct Lemming* lem1, struct Lemming* lem2, struct Level* level) {
@@ -1384,7 +1396,7 @@ int assign_dig(struct Lemming* lem1, struct Lemming* lem2, struct Level* level) 
         case LEMACTION_BASH:
         case LEMACTION_MINE:
             set_lemaction(lem2, LEMACTION_DIG);
-            return 1;
+            return 2;
         default:
             return 0;
     }
@@ -1430,7 +1442,7 @@ int assign_bash(struct Lemming* lem1, struct Lemming* lem2, struct Level* level)
 		return 0;
 	}
 	set_lemaction(lem,LEMACTION_BASH);
-	return 1;
+	return (lem==lem1?1:2);
 }
 
 int count_lemmings(struct Lemming lemmings[MAX_NUM_OF_LEMMINGS]) {

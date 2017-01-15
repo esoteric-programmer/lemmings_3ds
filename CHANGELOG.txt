@@ -1,3 +1,7 @@
+Version 0.6 alpha
+- Added 2 player mode via 3DS local wifi connection
+- In-game background color can be switched to dark blue (AMIGA style)
+
 Version 0.5.1
 - Fixed lemming start position
 

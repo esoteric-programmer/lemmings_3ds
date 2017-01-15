@@ -15,6 +15,7 @@ struct Settings settings = {
 	1, // exit requires double click of button
 	0, // skip unavailable skills
 	0, // zoom mode
+	0, // amiga background
 	{
 		{
 			KEY_R,

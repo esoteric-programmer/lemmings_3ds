@@ -28,17 +28,6 @@
 #define LEM_MAX_Y 163 // LEMMING_MAX_Y
 #define LEM_MAX_FALLING 60 // MAX_FALLDISTANCECOUNT
 
-#define OBJECT_EXIT 1
-#define OBJECT_FORCE_LEFT 2
-#define OBJECT_FORCE_RIGHT 3
-#define OBJECT_TRAP 4
-#define OBJECT_WATER 5
-#define OBJECT_FIRE 6
-#define OBJECT_ONEWAY_LEFT 7
-#define OBJECT_ONEWAY_RIGHT 8
-#define OBJECT_STEEL 9
-#define OBJECT_BLOCKER 10
-
 struct Lemming {
 	u8 removed;
 	u8 current_action;
@@ -59,5 +48,7 @@ struct Lemming {
 	u8 object_below;
 	u8 object_in_front;
 	u8 saved_object_map[9];
+	u8 exit_counts_for; // player id the exiting lemming counts for
+	u8 player; // owner of this lemming
 };
 #endif

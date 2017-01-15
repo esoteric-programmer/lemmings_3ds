@@ -4,6 +4,18 @@
 #include "settings.h"
 #include "lemming_data.h"
 
+// object effects
+#define OBJECT_EXIT 1
+#define OBJECT_FORCE_LEFT 2
+#define OBJECT_FORCE_RIGHT 3
+#define OBJECT_TRAP 4
+#define OBJECT_WATER 5
+#define OBJECT_FIRE 6
+#define OBJECT_ONEWAY_LEFT 7
+#define OBJECT_ONEWAY_RIGHT 8
+#define OBJECT_STEEL 9
+#define OBJECT_BLOCKER 10
+
 struct ObjectType {
 	u16 flags;
 	u16 width;
@@ -35,15 +47,14 @@ struct ObjectInstance {
 struct LevelPlayer {
 	u8 max_lemmings;
 	u8 skills[8];
-	u8 selected_skill;
 	u16 x_pos;
-	struct {s16 x; s16 y;} cursor;
 	u8 nuking;
 	u8 timer_assign;
 	u8 next_lemming_id;
 	// player one's lemmings and player two's lemmings that used the exit
 	// of that player this LevelPlayer struct corresponds to.
 	u8 rescued[2];
+	u16 request_common_nuke; // multiplayer only. set when player wants to nuke. count down each frame, so the other player must request nuking in the same time slot
 	struct Lemming lemmings[MAX_NUM_OF_LEMMINGS];
 };
 

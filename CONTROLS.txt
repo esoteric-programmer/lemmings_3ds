@@ -1,7 +1,7 @@
 Main menu:
 
 A, START      start 1 player game
-B, X, SELECT  select level
+B, X, SELECT  start 2 player game
 Y             enter settings menu
 UP, DOWN      change rating; switch between original Lemmings and "Oh no! More Lemmings"
 touch         touch at a lemming to trigger one of the actions above
@@ -32,14 +32,15 @@ In game:
 
 C-PAD         move cursor
 A             click at cursor position
-B             pause/resume
+B             pause/resume (not in 2 player game)
 X             select next skill
 Y             select previous skill
-D UP          increase release rate
-D DOWN        decrease release rate
-D RIGHT       step one frame while game is paused
-L             time runs 3 times faster while held down
+D UP          increase release rate (not in 2 player game)
+D DOWN        decrease release rate (not in 2 player game)
+D RIGHT       step one frame while game is paused (not in 2 player game)
+L             time runs 3 times faster while held down (not in 2 player game)
 R + C-PAD     scroll horizontal
 SELECT        highlight/select non-priorized lemming
 START         press twice to nuke level (give up); does not work while game is paused
-touch         move cursor to touch position and click
+              in 2 player game, both players must nuke the level at the same time
+touch         move cursor to touch position and click there

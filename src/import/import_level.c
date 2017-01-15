@@ -429,6 +429,11 @@ int parse_level(
 	if (!vgagr_s0 || !vgagr_s1 || !ground_data || !level || !output) {
 		return 0;
 	}
+	u8 swap_exits = 0;
+	if (players > 1) {
+		swap_exits = (ABBA_order?1:0);
+		ABBA_order = 0;
+	}
 	memset(output,0,sizeof(struct Level));
 	output->num_players = players;
 
@@ -439,6 +444,9 @@ int parse_level(
 	u32* palette = output->palette;
 	for (i=0;i<7;i++) {
 		palette[i] = ingame_palette[i];
+	}
+	if (settings.amiga_background) {
+		palette[0] = AMIGA_BACKGROUND;
 	}
 	struct Image* terrain_img[64];
 	if (!parse_vgagr(
@@ -452,8 +460,6 @@ int parse_level(
 	}
 
 	for (i=0; i<output->num_players; i++) {
-		output->player[i].cursor.x = 142; // TODO: SCREEN_WIDTH/2 - 18 ??
-		output->player[i].cursor.y = 92;
 		output->player[i].x_pos = ((u8*)level)[24];
 		output->player[i].x_pos <<= 8;
 		output->player[i].x_pos |= ((u8*)level)[25];
@@ -614,6 +620,7 @@ int parse_level(
 	}
 
 	int num_entrances = 0;
+	u8 player_exit = swap_exits; // player the next exit belongs to
 	for (i=0;i<32;i++) {
 		// read object
 
@@ -712,11 +719,19 @@ int parse_level(
 			trig_y--; // TODO: really?
 			if (trigger) {
 				trigger &= 0x0F;
-				if (trigger == 4) {
+				if (trigger == OBJECT_TRAP) {
 					if (i<16) {
 						trigger |= i<<4;
 					}else{
 						trigger = 0;
+					}
+				}
+				if (trigger == OBJECT_EXIT) {
+					trigger |= (player_exit++)<<4;
+					if (players) {
+						player_exit %= players;
+					}else{
+						player_exit = 0;
 					}
 				}
 			}
@@ -778,9 +793,27 @@ int read_level(
 			level);
 }
 
+u8 count_custom_levels(const char* path) {
+	if (!path) {
+		return 0;
+	}
+	u8 cnt;
+	char levelfilename[64];
+	for (cnt = 1; cnt < 100; cnt++) {
+		sprintf(levelfilename,"%s/%s/%02u.lvl",
+				PATH_ROOT,path,cnt);
+		FILE* in = fopen(levelfilename, "rb");
+		if (!in) {
+			break;
+		}
+		fclose(in);
+	}
+	return cnt-1;
+}
+
 int read_level_file(
-		const char* path,
 		const char* filename,
+		const char* ressource_path,
 		void* level,
 		void* ground_data,
 		struct Data** vgagr_s0,
@@ -789,12 +822,7 @@ int read_level_file(
 	if (!level || !ground_data || !vgagr_s0 || !vgagr_s1 || !vgaspec) {
 		return 0; // error
 	}
-	if (strlen(path) + strlen(filename) + 2 > 64 || strlen(path) + 12 + 2 > 64) {
-		return 0; // filename too long
-	}
-	char levelfilename[64];
-	sprintf(levelfilename,"%s/%s",path,filename);
-	FILE* levelfile = fopen(levelfilename, "rb");
+	FILE* levelfile = fopen(filename, "rb");
 	if (!levelfile) {
 		return 0;
 	}
@@ -804,7 +832,7 @@ int read_level_file(
 	}
 	fclose(levelfile);
 	return read_graphic_set(
-			path,
+			ressource_path,
 			vgagr_s0,
 			vgagr_s1,
 			vgaspec,

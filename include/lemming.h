@@ -9,7 +9,7 @@
 extern const int action_image_offsets[18][2];
 
 void init_lemmings(struct Level* level);
-void add_lemming(struct Level* level);
+int add_lemming(struct Level* level);
 u8 lemmings_left(struct LevelPlayer* player_state); // get number of lemmings that did not have entered the level yet.
 void nuke(struct LevelPlayer* player);
 

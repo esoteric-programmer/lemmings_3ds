@@ -20,6 +20,7 @@
 #include "menu.h"
 #include "main.h"
 #include "settings_menu.h"
+#include "view_networks.h"
 
 const char* PATH_ROOT = LEMMINGS_DIR;
 
@@ -313,6 +314,26 @@ int main() {
 				default:
 					die(1); // error
 			}
+		}
+		if (menu_selection == MENU_ACTION_START_MULTI_PLAYER) {
+			//int result =
+			int result;
+			do {
+				result = view_networks(menu_data, main_data);
+				switch (result) {
+					case MENU_EXIT_GAME:
+						menu_selection = MENU_EXIT_GAME;
+						break;
+					case MENU_ACTION_EXIT:
+						break;
+					case MENU_HOST_GAME:
+						result = host_game(menu_data, main_data);
+						break;
+					case MENU_ERROR:
+					default:
+						die(1); // error
+				}
+			}while(result == MENU_ACTION_START_MULTI_PLAYER);
 		}
 
 		if (menu_selection == MENU_ERROR) {

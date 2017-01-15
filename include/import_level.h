@@ -13,10 +13,12 @@ int read_level(
 		struct Data** vgagr_s0,
 		struct Data** vgagr_s1,
 		struct Data** vgaspec);
+// count number of available custom files in specific folder
+u8 count_custom_levels(const char* path);
 // import custom level (from uncompressed lvl file)
 int read_level_file(
-		const char* path,
 		const char* filename,
+		const char* ressource_path,
 		void* level,
 		void* ground_data,
 		struct Data** vgagr_s0,

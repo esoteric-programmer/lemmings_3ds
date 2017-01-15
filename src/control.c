@@ -1,6 +1,9 @@
 #include <string.h>
+#include <stdlib.h> // rand()
 #include "control.h"
 #include "settings.h"
+#include "audio.h"
+#include "lemming.h"
 
 s16 cpad_to_movement(circlePosition circle_pos, u32 key);
 
@@ -258,3 +261,510 @@ s16 cpad_to_movement(circlePosition circle_pos, u32 key) {
 	}
 	return ret;
 }
+
+void init_io_state(struct InputState* io_state, u16 x_pos) {
+	if (!io_state) {
+		return;
+	}
+	memset(io_state,0,sizeof(struct InputState));
+	io_state->cursor.x = 142; // TODO: SCREEN_WIDTH/2 - 18 ??
+	io_state->cursor.y = 92;
+	io_state->x_pos = x_pos;
+	if (io_state->x_pos >= (SCREEN_WIDTH-320)/2) {
+		io_state->x_pos -= (SCREEN_WIDTH-320)/2;
+	}else{
+		io_state->x_pos = 0;
+	}
+	if (SCREEN_WIDTH < 1584 && io_state->x_pos + SCREEN_WIDTH >= 1584) {
+		io_state->x_pos = 1584 - SCREEN_WIDTH;
+	}
+	if (SCREEN_WIDTH >= 1584) {
+		io_state->x_pos = 0;
+	}
+}
+
+int add_action(struct InputState* io_state, enum Action action, u8 param, u8 param2, u8 param3) {
+	if (!io_state) {
+		return 0; // error
+	}
+	if (io_state->num_actions >= MAX_ACTION_QUEUE_SIZE) {
+		return 0; // no space left in queue
+	}
+	io_state->action_queue[io_state->num_actions].action = action;
+	io_state->action_queue[io_state->num_actions].param = param;
+	io_state->action_queue[io_state->num_actions].param2 = param2;
+	io_state->action_queue[io_state->num_actions].param3 = param3;
+	io_state->num_actions++;
+	return 1;
+}
+
+// returns step width on rate changing
+// step_width_start(): single/first click
+// step_width_running(): mouse button held down
+// the implementation below simulates the behaviour of the DOS game
+// in my DOSBox environment. only from observation, not from disassembly.
+u8 step_width_start() {
+	if (rand()%2 == 0) {
+		if (rand()%2==0) {
+			return 1;
+		}else{
+			return 4;
+		}
+	}else{
+		if (rand()%3==0) {
+			if (rand()%7==0) {
+				return 0;
+			}else{
+				return 2;
+			}
+		}else{
+			return 3;
+		}
+	}
+}
+u8 step_width_running() {
+	return rand()%3?4:3;
+}
+
+int read_io(struct Level* level, struct InputState* io_state, u8 player) {
+	u32 kDown;
+	u32 kHeld;
+	touchPosition stylus;
+	circlePosition circle_pos;
+	circlePosition params[2] = {{0,0}, {0,0}};
+	hidScanInput();
+	kDown = hidKeysDown();
+	kHeld = hidKeysHeld();
+	//kUp = hidKeysUp();
+	hidTouchRead(&stylus);
+	hidCircleRead(&circle_pos);
+	// circle_pos = cpad_to_movement(circle_pos);
+	u64 action = get_action(kDown, kHeld, circle_pos, params);
+	if (action & ACTION_QUIT_GAME) {
+		return 0; //exit game
+	}
+	if (action & ACTION_MOVE_CURSOR_RIGHT) {
+		io_state->cursor.x += 2;
+	}
+	if (action & ACTION_MOVE_CURSOR_LEFT) {
+		io_state->cursor.x -= 2;
+	}
+	if (action & ACTION_MOVE_CURSOR_UP) {
+		io_state->cursor.y -= 2;
+	}
+	if (action & ACTION_MOVE_CURSOR_DOWN) {
+		io_state->cursor.y += 2;
+	}
+	if (action & ACTION_MOVE_CURSOR_PARAM) {
+		io_state->cursor.x += params[0].dx;
+		io_state->cursor.y += params[0].dy;
+	}
+	if (io_state->cursor.y < 0) {
+		io_state->cursor.y = 0;
+	}
+	if (io_state->cursor.y >= 200) {
+		io_state->cursor.y = 200;
+	}
+	if (io_state->cursor.x < 0) {
+		io_state->cursor.x = 0;
+	}
+	if (io_state->cursor.x >= SCREEN_WIDTH) {
+		io_state->cursor.x = SCREEN_WIDTH-1;
+	}
+	if (io_state->cursor.x == 0 && io_state->cursor.y < 160) {
+		action |= ACTION_SCROLL_LEFT;
+	}
+	if (io_state->cursor.x == SCREEN_WIDTH-1 && io_state->cursor.y < 160) {
+		action |= ACTION_SCROLL_RIGHT;
+	}
+	if (((kDown | kHeld) & KEY_TOUCH) &&
+			stylus.py >= BOTTOM_SCREEN_Y_OFFSET &&
+			stylus.py < 200 + BOTTOM_SCREEN_Y_OFFSET &&
+			stylus.px < SCREEN_WIDTH) {
+		io_state->cursor.x = stylus.px;
+		io_state->cursor.y = (s16)stylus.py - BOTTOM_SCREEN_Y_OFFSET;
+		if (kDown & KEY_TOUCH) {
+			action |= ACTION_CURSOR_CLICK;
+			action |= ACTION_CURSOR_HOLD;
+		}else{
+			action |= ACTION_CURSOR_HOLD;
+		}
+	}
+	if (io_state->cursor.x >= SCREEN_WIDTH) {
+		io_state->cursor.x = SCREEN_WIDTH-1;
+	}
+	if (io_state->cursor.y > 200-7) {
+		io_state->cursor.y = 200-7;
+	}
+	if (action & (ACTION_CURSOR_CLICK | ACTION_CURSOR_HOLD)) {
+		if (io_state->cursor.y >= 176 && io_state->cursor.y < 200) {
+			// clicked at panel
+			switch (io_state->cursor.x / 16) {
+				case  0:
+					// decrement rate
+					action |= ACTION_DEC_RATE;
+					break;
+				case 1:
+					// increment rate
+					action |= ACTION_INC_RATE;
+					break;
+				case 2:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_CIMBER;
+					}
+					break;
+				case 3:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_FLOATER;
+					}
+					break;
+				case 4:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_BOMBER;
+					}
+					break;
+				case 5:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_BLOCKER;
+					}
+					break;
+				case 6:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_BUILDER;
+					}
+					break;
+				case 7:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_BASHER;
+					}
+					break;
+				case 8:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_MINER;
+					}
+					break;
+				case 9:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_SELECT_SKILL_DIGGER;
+					}
+					break;
+				case 10:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_PAUSE;
+					}
+					break;
+				case 11:
+					if (action & ACTION_CURSOR_CLICK) {
+						action |=  ACTION_NUKE;
+					}
+					break;
+				case 12:
+					// nothing
+					break;
+				default:
+					{
+						// touched at minimap
+						s16 new_x_pos = (io_state->cursor.x - 13*16) * 16;
+						new_x_pos -= SCREEN_WIDTH / 2;
+						if (new_x_pos < 0) {
+							new_x_pos = 0;
+						}else if (new_x_pos >= 1584 - SCREEN_WIDTH) {
+							new_x_pos = (SCREEN_WIDTH <= 1584?1584 - SCREEN_WIDTH:0);
+						}
+						io_state->x_pos = new_x_pos;
+					}
+			}
+		}
+	}
+	if (action & ACTION_PAUSE) {
+		add_action(io_state, ACTIONQUEUE_TOGGLE_PAUSE, 0, 0, 0);
+		io_state->time_since_nuke_pressed = 0;
+	}
+	if (action & ACTION_NEXT_SKILL) {
+		io_state->skill = (io_state->skill+1)%8;
+		play_sound(0x01);
+	}
+	if (action & ACTION_PREV_SKILL) {
+		if (io_state->skill > 0) {
+			io_state->skill--;
+		}else{
+			io_state->skill = 7;
+		}
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_CIMBER) {
+		io_state->skill = 0;
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_FLOATER) {
+		io_state->skill = 1;
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_BOMBER) {
+		io_state->skill = 2;
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_BLOCKER) {
+		io_state->skill = 3;
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_BUILDER) {
+		io_state->skill = 4;
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_BASHER) {
+		io_state->skill = 5;
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_MINER) {
+		io_state->skill = 6;
+		play_sound(0x01);
+	}
+	if (action & ACTION_SELECT_SKILL_DIGGER) {
+		io_state->skill = 7;
+		play_sound(0x01);
+	}
+	if (action & ACTION_INC_RATE) {
+		s8 inc = 0;
+		if (!io_state->change_rate_hold) {
+			inc = step_width_start();
+			io_state->change_rate_hold++;
+		}else{
+			io_state->change_rate_hold++;
+			if (io_state->change_rate_hold % 12 == 0) {
+				io_state->change_rate_hold = 6;
+				inc = step_width_running();
+			}
+		}
+		add_action(io_state, ACTIONQUEUE_CHANGE_RATE, (u8)inc, 0, 0);
+	}
+	if (action & ACTION_DEC_RATE) {
+		s8 dec = 0;
+		if (!io_state->change_rate_hold) {
+			dec = step_width_start();
+			io_state->change_rate_hold++;
+		}else{
+			io_state->change_rate_hold++;
+			if (io_state->change_rate_hold % 12 == 0) {
+				io_state->change_rate_hold = 6;
+				dec = step_width_running();
+			}
+		}
+		add_action(io_state, ACTIONQUEUE_CHANGE_RATE, (u8)(-dec), 0, 0);
+	}
+	if (!(action & (ACTION_INC_RATE | ACTION_DEC_RATE))) {
+		io_state->change_rate_hold = 0;
+	}
+	if (!level->paused && (action & (ACTION_NUKE | ACTION_NUKE_IMMEDIATELY))) {
+		if ((action & ACTION_NUKE_IMMEDIATELY)
+				|| (io_state->time_since_nuke_pressed
+					&& io_state->time_since_nuke_pressed < 45)) {
+			add_action(io_state, ACTIONQUEUE_NUKE, 0, 0, 0);
+		}else{
+			io_state->time_since_nuke_pressed = 1;
+		}
+	}
+	if (action & ACTION_SCROLL_RIGHT) {
+		io_state->x_pos+=3;
+		if (io_state->x_pos > 1584-SCREEN_WIDTH) {
+			if (1584>SCREEN_WIDTH) {
+				io_state->x_pos = 1584-SCREEN_WIDTH;
+			} else {
+				io_state->x_pos = 0;
+			}
+		}
+	}
+	if (action & ACTION_SCROLL_LEFT) {
+		if ((s16)io_state->x_pos >= 3) {
+			io_state->x_pos-=3;
+		}else{
+			io_state->x_pos = 0;
+		}
+	}
+	if (action & ACTION_SCROLL_PARAM) {
+		s16 x = params[1].dx;
+		if (x < 0) {
+			if ((s16)io_state->x_pos >= -x) {
+				io_state->x_pos+=x;
+			}else{
+				io_state->x_pos = 0;
+			}
+	}else{
+			io_state->x_pos+=x;
+			if (io_state->x_pos > 1584-SCREEN_WIDTH) {
+				if (1584>SCREEN_WIDTH) {
+					io_state->x_pos = 1584-SCREEN_WIDTH;
+				} else {
+					io_state->x_pos = 0;
+				}
+			}
+		}
+	}
+	if (action & ACTION_SPEED_UP) {
+		io_state->speed_up = 1;
+	}else{
+		io_state->speed_up = 0;
+	}
+	if (action & ACTION_QUIT) {
+		add_action(io_state, ACTIONQUEUE_NUKE, 1, 0, 0);
+	}
+	if (action & ACTION_NONPRIORIZED_LEMMING) {
+		io_state->nonprio_lem = 1;
+	}else{
+		io_state->nonprio_lem = 0;
+	}
+	struct Lemming* lem1 = 0;
+	struct Lemming* lem2 = 0;
+	if (io_state->cursor.y < 160) {
+		s16 l1idx = -1;
+		s16 l2idx = -1;
+		select_lemming(
+				level->player[player].lemmings,
+				(s16)io_state->x_pos + io_state->cursor.x,
+				io_state->cursor.y,
+				(action & ACTION_NONPRIORIZED_LEMMING)?1:0,
+				&l1idx,
+				&l2idx);
+		if (l1idx >= 0 && l1idx < MAX_NUM_OF_LEMMINGS) {
+			lem1 = &level->player[player].lemmings[l1idx];
+			if (l2idx >= 0 && l2idx < MAX_NUM_OF_LEMMINGS) {
+				lem2 = &level->player[player].lemmings[l2idx];
+			}
+		}
+	}
+
+	if (action & ACTION_CURSOR_CLICK) {
+		if (lem1) {
+			u8 param2 = 0xFF;
+			if (lem2) {
+				param2 = lem2 - level->player[player].lemmings;
+			}
+			add_action(io_state, ACTIONQUEUE_ASSIGN_SKILL, lem1 - level->player[player].lemmings, param2, io_state->skill);
+		}
+	}
+	if (!level->paused) {
+		if (io_state->time_since_nuke_pressed) {
+			io_state->time_since_nuke_pressed++;
+		}
+	}else {
+		if (action & ACTION_STEP_FRAME) {
+			add_action(io_state, ACTIONQUEUE_FRAME_FORWARD, 1, 0, 0);
+		}
+	}
+	return 1;
+}
+
+int process_action_queue(
+		struct ActionQueue* action_queue,
+		u8 num_actions,
+		struct Level* level,
+		u8 player_id,
+		u8 multiplayer) {
+	int changes = 0;
+	// apply actions from action_queue
+	u8 i;
+	for (i=0; i<num_actions; i++) {
+		switch (action_queue[i].action) {
+			case ACTIONQUEUE_NUKE:
+				if (!action_queue[i].param) {
+					if (!multiplayer) {
+						nuke(&level->player[player_id]);
+					}else{
+						// request nuke in 2p mode
+						level->player[player_id].request_common_nuke = COMMON_NUKE_FRAME_INTERVAL;
+						u8 p;
+						u8 start_nuking = 1;
+						for (p=0;p<level->num_players;p++) {
+							if (!level->player[p].request_common_nuke) {
+								start_nuking = 0;
+								break;
+							}
+						}
+						if (start_nuking) {
+							for (p=0;p<level->num_players;p++) {
+								nuke(&level->player[p]);
+							}
+						}
+					}
+				}else{
+					if (!level->fade_out && !multiplayer) {
+						level->fade_out = 1;
+					}else{
+						action_queue[i].action = ACTIONQUEUE_NOP;
+					}
+				}
+				break;
+			case ACTIONQUEUE_ASSIGN_SKILL:
+				{
+					struct Lemming* lem1 = &level->player[player_id].lemmings[action_queue[i].param];
+					struct Lemming* lem2 = 0;
+					if (action_queue[i].param2 < MAX_NUM_OF_LEMMINGS) {
+						lem2 = &level->player[player_id].lemmings[action_queue[i].param2];
+					}
+					if (level->player[player_id].skills[action_queue[i].param3]) {
+						u8 lem = assign_skill(action_queue[i].param3, lem1, lem2, level);
+						if (lem) {
+							level->player[player_id].skills[action_queue[i].param3]--;
+							changes = 1;
+							if (lem == 2) {
+								action_queue[i].param = action_queue[i].param2;
+							}
+							action_queue[i].param2 = 0;
+						}else{
+							action_queue[i].action = ACTIONQUEUE_NOP;
+						}
+					} else {
+						action_queue[i].action = ACTIONQUEUE_NOP;
+					}
+				}
+				break;
+			case ACTIONQUEUE_TOGGLE_PAUSE:
+				if (!multiplayer) {
+					level->paused = !level->paused;
+				}else{
+					action_queue[i].action = ACTIONQUEUE_NOP;
+				}
+				break;
+			case ACTIONQUEUE_FRAME_FORWARD:
+				if (!multiplayer) {
+					s8 inc = (s8)action_queue[i].param;
+					if (inc >= 0) {
+						level->frame_step_forward += inc;
+					}else{
+						// NOT IMPLEMENTED YET
+						action_queue[i].action = ACTIONQUEUE_NOP;
+					}
+				}else{
+					action_queue[i].action = ACTIONQUEUE_NOP;
+				}
+				break;
+			case ACTIONQUEUE_CHANGE_RATE:
+				if (!multiplayer) {
+					s8 inc = (s8)action_queue[i].param;
+					if (inc >= 0) {
+						if (level->cur_rate+inc < 100) {
+							level->cur_rate += inc;
+						}else{
+							level->cur_rate = 99;
+						}
+					}else{
+						if (level->cur_rate + inc >= level->rate) {
+							level->cur_rate += inc;
+						} else {
+							level->cur_rate = level->rate;
+						}
+					}
+				}else{
+					action_queue[i].action = ACTIONQUEUE_NOP;
+				}
+				break;
+			case ACTIONQUEUE_NOP:
+			default:
+				// no action or invalid action in queue
+				action_queue[i].action = ACTIONQUEUE_NOP;
+				break;
+		}
+	}
+	return changes;
+}
+

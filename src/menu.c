@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "gamespecific.h"
 #include "import_main.h"
+#include "2p_button.h"
 
 #define MAX(x,y) ((x)>=(y)?(x):(y))
 
@@ -96,15 +97,16 @@ int level_select_menu(
 		kHeld = hidKeysHeld();
 		//kUp = hidKeysUp();
 		// hidTouchRead(&stylus);
-		if (redraw_selection) {
-			select_level(
-					*game,
-					menu_data,
-					progress+progress_offset,
-					cur_lev,
-					top,
-					level_names+33*level_names_offset);
-			redraw_selection = 0;
+
+		if (kHeld & KEY_DOWN) {
+			dwn++;
+		} else if (!((kDown | kHeld) & KEY_DOWN)) {
+			dwn = 0;
+		}
+		if (kHeld & KEY_UP) {
+			up++;
+		} else if (!((kDown | kHeld) & KEY_UP)) {
+			up = 0;
 		}
 
 		if (kDown & KEY_B) {
@@ -175,18 +177,6 @@ int level_select_menu(
 			}
 			redraw_selection = 1;
 		}
-
-		if (kHeld & KEY_DOWN) {
-			dwn++;
-		} else if (!((kDown | kHeld) & KEY_DOWN)) {
-			dwn = 0;
-		}
-		if (kHeld & KEY_UP) {
-			up++;
-		} else if (!((kDown | kHeld) & KEY_UP)) {
-			up = 0;
-		}
-
 		if (kDown & KEY_LEFT) {
 			if (cur_lev/import[*game].num_of_level_per_difficulty > 0) {
 				cur_lev = import[*game].num_of_level_per_difficulty
@@ -226,11 +216,8 @@ int level_select_menu(
 							level_names_offset += import[i].num_of_difficulties
 									* import[i].num_of_level_per_difficulty;
 						}
-
-						continue;
 					}
 				}
-
 			}
 		}
 		if (kDown & KEY_RIGHT) {
@@ -272,8 +259,6 @@ int level_select_menu(
 							level_names_offset += import[i].num_of_difficulties
 									* import[i].num_of_level_per_difficulty;
 						}
-
-						continue;
 					}
 				}
 			}
@@ -286,6 +271,17 @@ int level_select_menu(
 				*lvl = cur_lev;
 				return MENU_ACTION_LEVEL_SELECTED;
 			}
+		}
+
+		if (redraw_selection) {
+			select_level(
+					*game,
+					menu_data,
+					progress+progress_offset,
+					cur_lev,
+					top,
+					level_names+33*level_names_offset);
+			redraw_selection = 0;
 		}
 		begin_frame();
 		copy_from_backbuffer(TOP_SCREEN);
@@ -361,6 +357,43 @@ int draw_main_menu(
 			64,
 			31,
 			menu_data->palette);
+
+	// draw 2p button
+	switch (game) {
+		case LEMMINGS_DEMO:
+		case ORIGINAL_LEMMINGS:
+		case OH_NO_DEMO:
+		case OH_NO_MORE_LEMMINGS:
+			draw(
+					BOTTOM_SCREEN_BACK,
+					174+11,
+					40+27,
+					main_menu_button_2p,
+					93,
+					27,
+					menu_data->palette);
+			break;
+		case HOLIDAY_LEMMINGS_91:
+		case HOLIDAY_LEMMINGS_92:
+		case HOLIDAY_93_DEMO:
+		case HOLIDAY_LEMMINGS_93:
+		case HOLIDAY_94_DEMO:
+		case HOLIDAY_LEMMINGS_94:
+			draw(
+					BOTTOM_SCREEN_BACK,
+					174+11,
+					40+25,
+					main_menu_xmas_button_2p,
+					93,
+					27,
+					menu_data->palette);
+			break;
+			break;
+		default:
+			// invalid / not supported
+			break;
+	}
+	
 /*
 	if (!audio_error() && (settings.sfx_volume || settings.music_volume)) {
 		int picture_id = (!settings.music_volume?9:8);
@@ -433,11 +466,11 @@ int main_menu(
 		}
 
 		if (kDown & (KEY_A | KEY_START)) {
-			return MENU_ACTION_START_SINGLE_PLAYER;
+			return MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER; // MENU_ACTION_START_SINGLE_PLAYER;
 		}
 
 		if (kDown & (KEY_B | KEY_SELECT | KEY_X)) {
-			return MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER;
+			return MENU_ACTION_START_MULTI_PLAYER; // MENU_ACTION_SELECT_LEVEL_SINGLE_PLAYER;
 		}
 
 		if (kDown & KEY_Y) {

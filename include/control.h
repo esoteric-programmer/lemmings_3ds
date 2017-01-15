@@ -1,6 +1,7 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 #include <3ds.h>
+#include "level.h"
 
 #define ACTION_MOVE_CURSOR_RIGHT     (1<< 0)
 #define ACTION_MOVE_CURSOR_LEFT      (1<< 1)
@@ -33,5 +34,49 @@
 #define ACTION_QUIT_GAME             (1<<28)
 #define ACTION_STEP_FRAME            (1<<29)
 
+#define BOTTOM_SCREEN_Y_OFFSET 32
+
+#define MAX_ACTION_QUEUE_SIZE 3
+struct ActionQueue {
+	enum Action {
+		ACTIONQUEUE_NOP, // no action
+		ACTIONQUEUE_NUKE, // 0 = nuke; 1 = exit immediately
+		ACTIONQUEUE_ASSIGN_SKILL, // to Lemming with id stored in param (lem1) or param2 (lem2); skill stored in param3
+		ACTIONQUEUE_TOGGLE_PAUSE,
+		ACTIONQUEUE_FRAME_FORWARD, // (s8)param: number of frames (handling of negative values not implemented yet)
+		ACTIONQUEUE_CHANGE_RATE // (s8)param = changing
+	} action;
+	u8 param;
+	u8 param2;
+	u8 param3;
+};
+
+struct InputState {
+	// number of (input-)frames since user pressed a button
+	// to change the release rate of lemmings
+	u8 change_rate_hold;
+	// time elapsed since user pressed the nuke button the last time.
+	// 0 if this is long ago.
+	u8 time_since_nuke_pressed;
+	u8 speed_up;
+	u8 nonprio_lem;
+	u8 skill;
+	struct {s16 x; s16 y;} cursor;
+	u16 x_pos;
+	u8 num_actions; // number of actions in queue
+	struct ActionQueue action_queue[MAX_ACTION_QUEUE_SIZE];
+};
+
 u64 get_action(u32 kDown, u32 kHeld, circlePosition cpad, circlePosition* params);
+void init_io_state(struct InputState* io_state, u16 x_pos);
+int add_action(struct InputState* io_state, enum Action action, u8 param, u8 param2, u8 param3);
+int read_io(struct Level* level, struct InputState* io_state, u8 player);
+int process_action_queue(
+		// actions to perform (invalid actions will be replaced by ACTIONQUEUE_NOP)
+		struct ActionQueue* action_queue,
+		u8 num_actions,
+		struct Level* level,
+		u8 player_id,
+		// if multiplayer is set, some actions will be disabled
+		u8 multiplayer);
 #endif

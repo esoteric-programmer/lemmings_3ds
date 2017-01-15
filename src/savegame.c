@@ -20,6 +20,8 @@ void read_savegame(struct SaveGame* savegame) {
 		memset(savegame->progress+offset,0,import[i].num_of_difficulties);
 		offset += import[i].num_of_difficulties;
 	}
+	savegame->multiplayer_progress[0] = 0;
+	savegame->multiplayer_progress[1] = 0;
 
 	sprintf(savefile_fn,"%s/SAVEGAME.DAT", PATH_ROOT);
 	FILE* savefile = fopen(savefile_fn,"rb");
@@ -56,7 +58,7 @@ void read_savegame(struct SaveGame* savegame) {
 		}
 		// read data
 		if (fread(
-						savegame->progress+offset,
+						&savegame->progress[offset],
 						1,
 						import[i].num_of_difficulties,
 						savefile)
@@ -65,6 +67,9 @@ void read_savegame(struct SaveGame* savegame) {
 			break;
 		}
 		offset += import[i].num_of_difficulties;
+	}
+	if (version > 3) {
+		fread(savegame->multiplayer_progress,1,2,savefile);
 	}
 	settings.sfx_volume = 100;
 	settings.music_volume = 100;
@@ -99,6 +104,9 @@ void read_savegame(struct SaveGame* savegame) {
 		fread(&settings.dblclick_exit,1,1,savefile);
 		fread(&settings.skip_unavailable_skills,1,1,savefile);
 		fread(&settings.zoom_mode_active,1,1,savefile);
+		if (version > 3) {
+			fread(&settings.amiga_background,1,1,savefile);
+		}
 		for (i=0;i<2;i++) {
 			fread(&settings.key_bindings[i].modifier,1,4,savefile);
 			fread(&settings.key_bindings[i].click,1,4,savefile);
@@ -153,6 +161,7 @@ void write_savegame(struct SaveGame* savegame) {
 				savefile);
 		offset += import[i].num_of_difficulties;
 	}
+	fwrite(savegame->multiplayer_progress,1,2,savefile);
 	fwrite(&settings.sfx_volume,1,1,savefile);
 	fwrite(&settings.music_volume,1,1,savefile);
 	fwrite(&savegame->last_game,1,1,savefile);
@@ -169,6 +178,7 @@ void write_savegame(struct SaveGame* savegame) {
 	fwrite(&settings.dblclick_exit,1,1,savefile);
 	fwrite(&settings.skip_unavailable_skills,1,1,savefile);
 	fwrite(&settings.zoom_mode_active,1,1,savefile);
+	fwrite(&settings.amiga_background,1,1,savefile);
 	for (i=0;i<2;i++) {
 		fwrite(&settings.key_bindings[i].modifier,1,4,savefile);
 		fwrite(&settings.key_bindings[i].click,1,4,savefile);

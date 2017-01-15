@@ -526,6 +526,7 @@ int draw_level(
 		s16 y,
 		u16 w,
 		u16 h,
+		s16 x_offset,
 		struct Level* level,
 		struct MainInGameData* main_data,
 		u32* level_palette) {
@@ -552,7 +553,6 @@ int draw_level(
 	if (y+h>dest->height) {
 		h = dest->height-y;
 	}
-	s16 x_offset = level->player[0].x_pos;
 	s16 y_offset = 0;
 	if (x_offset + w > 1584) {
 		if (w >= 1584) {
@@ -675,7 +675,7 @@ int draw_level(
 			main_data->lemmings_anim,
 			main_data->masks,
 			level_palette,
-			level->player[0].x_pos,
+			x_offset,
 			0);
 	return 1;
 }
@@ -860,14 +860,16 @@ void draw_menu_text(
 int draw_toolbar(
 		struct MainInGameData* data,
 		struct Level* level,
+		struct InputState* io_state,
 		const char* text,
-		u32* highperf_palette) {
+		u32* highperf_palette,
+		u8 player) {
 	if (!initialized) {
 		return 0;
 	}
 	struct Buffer* dest = getScreenBuffer(BOTTOM_SCREEN);
 	s16 y = 160+32;
-	if (!dest->data || !data || !level) {
+	if (!dest->data || !data || !level || !io_state) {
 		return 0;
 	}
 	if (!highperf_palette) {
@@ -902,7 +904,7 @@ int draw_toolbar(
 	nums[0] = level->rate;
 	nums[1] = level->cur_rate;
 	for (i=0;i<8;i++) {
-		nums[i+2] = level->player[0].skills[i];
+		nums[i+2] = level->player[player].skills[i];
 	}
 	for (i=0;i<10;i++) {
 		for (yi=0;yi<8 && yi+y+17<dest->height;yi++) {
@@ -934,11 +936,11 @@ int draw_toolbar(
 	}
 
 	// mark active_skill
-	if (level->player[0].selected_skill >= 8) {
-		level->player[0].selected_skill = 0;
+	if (io_state->skill >= 8) {
+		io_state->skill = 0;
 	}
 	for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
-		for (x=16*(level->player[0].selected_skill+2);x<16*(level->player[0].selected_skill+3);x++) {
+		for (x=16*(io_state->skill+2);x<16*(io_state->skill+3);x++) {
 			s16 screen_x = x + ((s16)dest->width-320)/2;
 			if (screen_x < 0 || screen_x >= dest->width) {
 				continue;
@@ -947,8 +949,8 @@ int draw_toolbar(
 				if (yi==0 || yi==23) {
 					SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 				}else{
-					if (x==16*(level->player[0].selected_skill+2)
-							|| x==16*(level->player[0].selected_skill+2)+15) {
+					if (x==16*(io_state->skill+2)
+							|| x==16*(io_state->skill+2)+15) {
 						SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 					}
 				}
@@ -987,7 +989,7 @@ int draw_toolbar(
 		view_rect_width = 103;
 	}
 	for (yi=0;yi<20;yi++) {
-		for (x=level->player[0].x_pos / 16;x<level->player[0].x_pos / 16 + view_rect_width; x++) {
+		for (x=level->player[player].x_pos / 16;x<level->player[player].x_pos / 16 + view_rect_width; x++) {
 			s16 screen_x = x + ((s16)dest->width-320)/2 + 209;
 			s16 screen_y = y + 18 + yi;
 			if (screen_x < 0 || screen_x >= dest->width || screen_y >= dest->height) {
@@ -997,8 +999,8 @@ int draw_toolbar(
 			if (yi==0 || yi==19) {
 				SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 			}else{
-				if (x==level->player[0].x_pos / 16
-						|| x==level->player[0].x_pos / 16 + view_rect_width - 1) {
+				if (x==level->player[player].x_pos / 16
+						|| x==level->player[player].x_pos / 16 + view_rect_width - 1) {
 					SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
 				}
 			}
@@ -1021,7 +1023,7 @@ void draw_lemmings_minimap(struct Level* level, u32 highperf_palette[16]) {
 	for (p=0;p<level->num_players;p++) {
 		u8 color = 2;
 		if (level->num_players > 1 && p == 0) {
-			// color: blue (instead of green)
+			// player 2 color: blue (instead of green)
 			color = 1;
 		}
 		for (i=0;i<80;i++) {
