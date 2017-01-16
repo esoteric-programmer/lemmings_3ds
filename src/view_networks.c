@@ -31,6 +31,138 @@
 		*msg_ptr = 0;\
 	}
 
+
+void draw_2p_results(
+		u8 lemmings[2],
+		u16 won[2],
+		char* other_players_name,
+		u8 is_server,
+		u8 cntn,
+		struct MainMenuData* menu_data)
+{
+	char* usr = other_players_name;
+	char* usr_align_left = &other_players_name[41];
+	char* usr_align_right = &other_players_name[41+6];
+	char msg[(20+1)*12+1+60];
+	u8 player = (is_server?0:1);
+	sprintf(
+			msg,
+			"     %s     \n"
+			"                    \n"
+			"  Lemmings saved:   \n"
+			"         You: %3u   \n"
+			"  %s%s%s: %3u   \n"
+			"                    \n"
+			"     Games won:     \n"
+			"         You: %3u   \n"
+			"  %s%s%s: %3u   \n"
+			"                    \n"
+			"%s",
+			lemmings[0]==lemmings[1]
+				?"   Tie    "
+				:(lemmings[player]>lemmings[1-player]
+					?" You won! "
+					:"You lost! "),
+			lemmings[player],
+			usr_align_left,
+			usr_align_right,
+			usr,
+			lemmings[1-player],
+			won[player],
+			usr_align_left,
+			usr_align_right,
+			usr,
+			won[1-player],
+			is_server?(
+				!cntn
+					?"Press A or B to exit\n"
+					:"Press A to continue \n"
+					 "   or B to exit.    \n"
+			):(
+				!cntn
+					?"Press A or B to exit\n"
+					:" Wait for server or \n"
+					 "  press B to exit.  \n"
+			));
+	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+	draw_menu_text(
+			BOTTOM_SCREEN_BACK,
+			menu_data,
+			0,
+			cntn?12:16,
+			msg,
+			0,
+			1.0f);
+	begin_frame();
+	copy_from_backbuffer(TOP_SCREEN);
+	copy_from_backbuffer(BOTTOM_SCREEN);
+	end_frame();
+}
+
+int show_2p_results(
+		u8 lemmings[2],
+		u16 won[2],
+		char* other_players_name,
+		u8 is_server,
+		u8 is_connected,
+		udsBindContext* bindctx, // only necessary if is_client and is_connected, otherwise NULL
+		struct MainMenuData* menu_data)
+{
+	u8 cntn = (lemmings[0] || lemmings[1]) && is_connected;
+	draw_2p_results(lemmings, won, other_players_name, is_server, cntn, menu_data);
+	while (aptMainLoop()) {
+		// wait for A pressed
+		hidScanInput();
+		if (cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH))) {
+			return 1;
+		}
+		if ((hidKeysDown() & KEY_B) || (!cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH)))) {
+			return 0;
+		}
+		if (!is_server && cntn) {
+			union {
+				u8 msg;
+				struct NW_Level_Result res;
+				struct NW_GameInit init;
+			} tmp;
+			size_t actual_size = 0;
+			u16 src_NetworkNodeID;
+			Result ret = udsPullPacket(
+					bindctx,
+					&tmp,
+					sizeof(tmp),
+					&actual_size,
+					&src_NetworkNodeID);
+			if (R_FAILED(ret)) {
+				// lost connection
+				cntn = 0;
+				draw_2p_results(lemmings, won, other_players_name, is_server, cntn, menu_data);
+			}
+			if (actual_size == sizeof(struct NW_Level_Result)
+					&& tmp.msg == NW_LVLRESULT) {
+				udsSendTo(
+						UDS_BROADCAST_NETWORKNODEID,
+						1,
+						UDS_SENDFLAG_Default,
+						&tmp,
+						1);
+			} else if (actual_size == sizeof(struct NW_GameInit)
+					&& tmp.msg == NW_INITIALIZE) {
+				// run next level!
+				return 1;
+			}
+		}
+		if (cntn) {
+			if (!connection_alive()) {
+				cntn = 0;
+				draw_2p_results(lemmings, won, other_players_name, is_server, cntn, menu_data);
+			}
+		}
+	}
+	return 0;
+}
+
+
 void draw_network_view(
 		u8 cur_selection,
 		u8 total_networks,
@@ -219,19 +351,6 @@ int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* mai
 		}
 		if (hidKeysDown() & KEY_A) {
 			// start network game with said client: send level to client
-			tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
-			draw_menu_text(
-					BOTTOM_SCREEN_BACK,
-					menu_data,
-					0,
-					96,
-					"   Connecting...    \n",
-					0,
-					1.0f);
-			begin_frame();
-			copy_from_backbuffer(TOP_SCREEN);
-			copy_from_backbuffer(BOTTOM_SCREEN);
-			end_frame();
 			u8 num_lvl = count_custom_levels(import_2p[0].level_path);
 			struct Level* level = 0;
 			if (num_lvl) {
@@ -242,10 +361,28 @@ int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* mai
 				u8 lemmings[2] = {0, 0};
 				u16 won[2] = {0, 0};
 				do {
+					tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+					draw_menu_text(
+							BOTTOM_SCREEN_BACK,
+							menu_data,
+							0,
+							96,
+							"   Connecting...    \n",
+							0,
+							1.0f);
+					begin_frame();
+					copy_from_backbuffer(TOP_SCREEN);
+					copy_from_backbuffer(BOTTOM_SCREEN);
+					end_frame();
+
 					// calculate number of lemmings based on lemmings saved
 					int i;
 					for (i=0;i<2;i++) {
-						lemmings[i] = (lemmings[i]>40?80:(40+lemmings[i]));
+						if (settings.two_player_add_saved_lemmings) {
+							lemmings[i] = (lemmings[i]>40?80:(40+lemmings[i]));
+						}else{
+							lemmings[i] = 40;
+						}
 					}
 					int res = server_prepare_level(bindctx, lemmings, 0, lvl, level);
 					if (!res) {
@@ -265,77 +402,7 @@ int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* mai
 					}
 					int inform_client = server_send_result(bindctx, lemmings, won);
 					// show results; ...
-					msg = (char*)malloc((20+1)*12+1+60);
-					u8 cntn = (lemmings[0] || lemmings[1]) && inform_client;
-					sprintf(
-							msg,
-							"     %s     \n"
-							"                    \n"
-							"  Lemmings saved:   \n"
-							"         You: %3u   \n"
-							"  %s%s%s: %3u   \n"
-							"                    \n"
-							"     Games won:     \n"
-							"         You: %3u   \n"
-							"  %s%s%s: %3u   \n"
-							"                    \n"
-							"%s",
-							lemmings[0]==lemmings[1]
-								?"   Tie    "
-								:(lemmings[0]>lemmings[1]
-									?" You won! "
-									:"You lost! "),
-							lemmings[0],
-							usr_align_left,
-							usr_align_right,
-							usr,
-							lemmings[1],
-							won[0],
-							usr_align_left,
-							usr_align_right,
-							usr,
-							won[1],
-							!cntn
-								?"Press A or B to exit\n"
-								:"Press A to continue \n"
-								 "   or B to exit.    \n");
-					tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
-					draw_menu_text(
-							BOTTOM_SCREEN_BACK,
-							menu_data,
-							0,
-							cntn?12:16,
-							msg,
-							0,
-							1.0f);
-					free(msg);
-					msg = 0;
-					begin_frame();
-					copy_from_backbuffer(TOP_SCREEN);
-					copy_from_backbuffer(BOTTOM_SCREEN);
-					end_frame();
-					// TODO: send results to client; 
-					while (aptMainLoop()) {
-						// wait for A pressed
-						hidScanInput();
-						if (cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH))) {
-							break;
-						}
-						if ((hidKeysDown() & KEY_B) || (!cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH)))) {
-							free(level);
-							return MENU_ACTION_EXIT; // exit by user
-						}
-					}
-					// at the moment: send an invalid packet to the client
-					u8 nw_err = NW_ERROR; // at the moment: just crash!
-					udsSendTo(
-							UDS_BROADCAST_NETWORKNODEID,
-							1,
-							UDS_SENDFLAG_Default,
-							&nw_err,
-							1);
-
-					if (!cntn) {
+					if (!show_2p_results(lemmings, won, usr, 1, inform_client, 0, menu_data)) {
 						break; // no player saved any lemming => end match
 					}
 					lvl++;
@@ -659,28 +726,26 @@ int view_networks(struct MainMenuData* menu_data, struct MainInGameData* main_da
 								/* u8 num_players = init->num_players;
 								u8 client_id = init->receiver_id; */
 								// receive level
-								tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
-								draw_menu_text(
-										BOTTOM_SCREEN_BACK,
-										menu_data,
-										0,
-										96,
-										"   Connecting...    \n",
-										0,
-										1.0f);
-								begin_frame();
-								copy_from_backbuffer(TOP_SCREEN);
-								copy_from_backbuffer(BOTTOM_SCREEN);
-								end_frame();
 								struct Level* level = (struct Level*)malloc(sizeof(struct Level));
 								if (level) {
 									char usr[41+2*6];
 									if (!get_aligned_username(usr, &networks[cur_selection].nodes[0])) {
 										return 0;
 									}
-									char* usr_align_left = &usr[41];
-									char* usr_align_right = &usr[41+6];
 									do {
+										tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+										draw_menu_text(
+												BOTTOM_SCREEN_BACK,
+												menu_data,
+												0,
+												96,
+												"   Connecting...    \n",
+												0,
+												1.0f);
+										begin_frame();
+										copy_from_backbuffer(TOP_SCREEN);
+										copy_from_backbuffer(BOTTOM_SCREEN);
+										end_frame();
 										int res = client_prepare_level(&bindctx, lemmings, level);
 										if (res) {
 											// start game; ...
@@ -698,93 +763,18 @@ int view_networks(struct MainMenuData* menu_data, struct MainInGameData* main_da
 												break;
 											}
 											free_objects(level->object_types);
-					char* msg = (char*)malloc((20+1)*12+1+60);
-					sprintf(
-							msg,
-							"     %s     \n"
-							"                    \n"
-							"  Lemmings saved:   \n"
-							"         You: %3u   \n"
-							"  %s%s%s: %3u   \n"
-							"                    \n"
-							"     Games won:     \n"
-							"         You: %3u   \n"
-							"  %s%s%s: %3u   \n"
-							"                    \n"
-							" Wait for server or \n"
-							"  press B to exit.  \n",
-							lemmings[0]==lemmings[1]
-								?"   Tie    "
-								:(lemmings[1]>lemmings[0]
-									?" You won! "
-									:"You lost! "),
-							lemmings[1],
-							usr_align_left,
-							usr_align_right,
-							usr,
-							lemmings[0],
-							won[1],
-							usr_align_left,
-							usr_align_right,
-							usr,
-							won[0]);
-					tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
-					draw_menu_text(
-							BOTTOM_SCREEN_BACK,
-							menu_data,
-							0,
-							12,
-							msg,
-							0,
-							1.0f);
-					free(msg);
-					msg = 0;
-					begin_frame();
-					copy_from_backbuffer(TOP_SCREEN);
-					copy_from_backbuffer(BOTTOM_SCREEN);
-					end_frame();
-					// TODO: send results to client; 
-					while (aptMainLoop()) {
-						// wait for A pressed
-						hidScanInput();
-						if ((hidKeysDown() & KEY_B)) {
-							free(level);
-							level = 0;
-							break;
-						}
-						union {
-							u8 msg;
-							struct NW_Level_Result res;
-							struct NW_GameInit init;
-						} tmp;
-						size_t actual_size = 0;
-						u16 src_NetworkNodeID;
-						ret = udsPullPacket(
-								&bindctx,
-								&tmp,
-								sizeof(struct NW_Level_Result),
-								&actual_size,
-								&src_NetworkNodeID);
-						if (R_FAILED(ret)) {
-							// lost connection
-								free(level);
-								level = 0;
-								break;
-						}
-						if (actual_size == sizeof(struct NW_Level_Result)
-								&& tmp.msg == NW_LVLRESULT) {
-							udsSendTo(
-									UDS_BROADCAST_NETWORKNODEID,
-									1,
-									UDS_SENDFLAG_Default,
-									&tmp,
-									1);
-						} else if (actual_size == sizeof(struct NW_GameInit)
-								&& tmp.msg == NW_INITIALIZE) {
-							// run next level!
-							break;
-						}
-					}
+											if (!show_2p_results(
+													lemmings,
+													won,
+													usr,
+													0,
+													1,
+													&bindctx,
+													menu_data)) {
+												free(level);
+												level = 0;
+												break;
+											}
 										}
 									}while(aptMainLoop() && level);
 									if (level) {

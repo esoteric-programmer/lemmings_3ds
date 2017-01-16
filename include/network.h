@@ -63,6 +63,8 @@ struct NW_Level_Result {
 	u16 won[2];
 };
 
+int connection_alive();
+
 int server_prepare_level(
 		udsBindContext* bindctx,
 		const u8* lemmings, // number of lemmings the players start with

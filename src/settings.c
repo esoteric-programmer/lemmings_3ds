@@ -16,6 +16,7 @@ struct Settings settings = {
 	0, // skip unavailable skills
 	0, // zoom mode
 	0, // amiga background
+	1, // cumulate lemmings
 	{
 		{
 			KEY_R,

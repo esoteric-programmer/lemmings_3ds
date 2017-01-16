@@ -107,6 +107,9 @@ void read_savegame(struct SaveGame* savegame) {
 		if (version > 3) {
 			fread(&settings.amiga_background,1,1,savefile);
 		}
+		if (version > 4) {
+			fread(&settings.two_player_add_saved_lemmings,1,1,savefile);
+		}
 		for (i=0;i<2;i++) {
 			fread(&settings.key_bindings[i].modifier,1,4,savefile);
 			fread(&settings.key_bindings[i].click,1,4,savefile);
@@ -179,6 +182,7 @@ void write_savegame(struct SaveGame* savegame) {
 	fwrite(&settings.skip_unavailable_skills,1,1,savefile);
 	fwrite(&settings.zoom_mode_active,1,1,savefile);
 	fwrite(&settings.amiga_background,1,1,savefile);
+	fwrite(&settings.two_player_add_saved_lemmings,1,1,savefile);
 	for (i=0;i<2;i++) {
 		fwrite(&settings.key_bindings[i].modifier,1,4,savefile);
 		fwrite(&settings.key_bindings[i].click,1,4,savefile);

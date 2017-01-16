@@ -41,6 +41,7 @@ extern struct Settings {
 	u8 skip_unavailable_skills; // not implemented yet
 	u8 zoom_mode_active; // not implemented yet
 	u8 amiga_background; // 0 = no (black); 1 = yes (dark blue)
+	u8 two_player_add_saved_lemmings; // 0 = no, always start with 40 lemmings; 1 = yes, start wth 40 + rescued lemmings
 	struct KeyBindings {
 		u32 modifier;
 		u32 click;
