@@ -14,6 +14,7 @@
 #include "control.h"
 #include "settings.h"
 #include "gamespecific.h"
+#include "gamespecific_2p.h"
 #include "savegame.h"
 #include "ingame.h"
 #include "audio.h"
@@ -241,6 +242,27 @@ int main() {
 		return 0; // error
 	}
 
+
+	// read 2p level names
+	u8 num_2p_level[2] = {
+			count_custom_levels(import_2p[0].level_path),
+			count_custom_levels(import_2p[1].level_path)};
+	char* name_2p_level = 0;
+	if (num_2p_level[0] || num_2p_level[1]) {
+		name_2p_level = (char*)malloc(33*(u16)(num_2p_level[0]+num_2p_level[1]));
+		if (name_2p_level[0]) {
+			if (!read_level_names_from_path(import_2p[0].level_path, &num_2p_level[0], name_2p_level)) {
+				name_2p_level[0] = 0;
+			}
+		}
+		if (name_2p_level[1]) {
+			if (!read_level_names_from_path(import_2p[1].level_path, &num_2p_level[1], &name_2p_level[33*(u16)num_2p_level[0]])) {
+				name_2p_level[1] = 0;
+			}
+		}
+	}
+
+
 	// initialize variables
 	struct MainMenuData* menu_data =
 			(struct MainMenuData*)malloc(sizeof(struct MainMenuData));
@@ -327,7 +349,7 @@ int main() {
 					case MENU_ACTION_EXIT:
 						break;
 					case MENU_HOST_GAME:
-						result = host_game(menu_data, main_data);
+						result = host_game(&savegame, num_2p_level, name_2p_level, menu_data, main_data);
 						break;
 					case MENU_ERROR:
 					default:

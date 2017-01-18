@@ -1,8 +1,14 @@
 #include "gamespecific_2p.h"
 
 extern const u32 ingame_palette[];
+
+// 15..20 need to be tested
 const u8 orig_swap_exit[] =
 		{0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0};
+
+// needs to be tested
+const u8 ohno_swap_exit[] =
+		{1, 0, 0, 0, 0, 0, 1, 1, 1, 1};
 
 const struct GameSpecific2P import_2p[2] = {
 		// original Lemmings
@@ -15,6 +21,6 @@ const struct GameSpecific2P import_2p[2] = {
 		{
 			"2p/ohno", PATH_DATA_OHNOMORE,
 			ingame_palette,
-			0, 0
+			10, ohno_swap_exit
 		}
 };

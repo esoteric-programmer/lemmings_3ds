@@ -198,6 +198,50 @@ void free_objects(struct ObjectType* objects[16]) {
 	}
 }
 
+// read at most num_of_level many names; on success: set num_of_levels to the number of names that have been read
+int read_level_names_from_path(const char* levelpath, u8* num_of_levels, char* names) {
+	if (!levelpath || !num_of_levels || !names) {
+		return 0;
+	}
+	if (!*num_of_levels) {
+		return 0;
+	}
+	u8 level;
+	for (level = 0; level < *num_of_levels && level < 99; level++) {
+		char levelfilename[64];
+		sprintf(levelfilename, "%s/%s/%02u.lvl",PATH_ROOT, levelpath, level+1);
+		FILE* levelfile = fopen(levelfilename, "rb");
+		if (!levelfile) {
+			break;
+		}
+		fseek(levelfile,2016,SEEK_SET);
+		if (!fread(names+33*(u16)level, 1, 32, levelfile)) {
+			fclose(levelfile);
+			break;
+		}
+		fclose(levelfile);
+		names[33*(u16)level+32] = 0;
+		char* end = &names[33*(u16)level+31];
+		while (end >= &names[33*(u16)level] && (*end == ' ' || *end == 0)) {
+			*end = 0;
+			end--;
+		}
+		char* start = &names[33*(u16)level];
+		while (*start == ' ') {
+			start++;
+		}
+		char* tmp = &names[33*(u16)level];
+		while (*start != 0) {
+			*tmp = *start;
+			tmp++;
+			start++;
+		}
+		*tmp = 0;
+	}
+	*num_of_levels = level;
+	return 1;
+}
+
 
 // names: 33 bytes per levelname (at most 32 bytes followed by \0)
 int read_level_names(u8 game, char* names) {

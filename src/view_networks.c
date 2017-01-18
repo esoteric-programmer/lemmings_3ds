@@ -14,22 +14,202 @@
 #define NETWORK_PROTOCOL_VERSION 0
 #define NETWORK_MIN_PROTOCOL_VERSION 0
 
+#define MAX(x,y) ((x)>=(y)?(x):(y))
+
 // draw level selection screen to im_bottom
-#define DRAW_MENU(string) \
-	{\
-		size_t len = strlen(string);\
-		memcpy(msg_ptr,(string),len+1);\
-		msg_ptr += len;\
+void draw_2p_level_selection(
+		const char* game,
+		u8 cur_level,
+		u8 top_offset,
+		u8 num_2p_level,
+		const char* level_names,
+		u8 progress,
+		struct MainMenuData* menu_data) {
+	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+
+	char msg[30*(40+1)+1];
+	sprintf(msg,"\n  Select a 2 player level\n\n\n  Game: %s\n\n", game);
+	char* msg_ptr = msg + strlen(msg);
+	u8 i;
+	for (i=0;i<24;i++) {
+		u8 lvl = i+top_offset;
+		u8 level_no;
+		const char* level_name;
+		if (progress >= lvl) {
+			level_name = level_names+33*lvl;
+		}else{
+			level_name = "--------------------------------";
+		}
+		level_no = lvl + 1;
+		if (lvl >= num_2p_level) {
+			break;
+		}
+		sprintf(msg_ptr,"%s%02u: %s\n",
+				i==cur_level-top_offset?"->":"  ",level_no,level_name);
+		msg_ptr += strlen(msg_ptr);
 	}
-#define DRAW_MENU_LINE(string) \
-	{\
-		size_t len = strlen(string);\
-		memcpy(msg_ptr,(string),len);\
-		msg_ptr += len;\
-		*msg_ptr = '\n';\
-		msg_ptr++;\
-		*msg_ptr = 0;\
+	draw_menu_text(BOTTOM_SCREEN_BACK,menu_data,0,0,msg,0,0.5f);
+}
+
+int select_2p_level(
+		u8* game,
+		u8* lvl,
+		u8 num_2p_level[2],
+		char* name_2p_level,
+		u8 multiplayer_progress[2],
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data) {
+
+	// SHOW LEVEL SELECTION SCREEN!
+	int redraw_selection = 1;
+	int cur_lev = *lvl;
+	int top = 0;
+	if (num_2p_level[*game]) {
+		*lvl = *lvl%num_2p_level[*game];
+		if (*lvl>20) {
+			top = *lvl-20;
+		}
+	}else{
+		*lvl = 0;
+		if (*game) {
+			*game = 0;
+		}else{
+			*game = 1;
+		}
+		if (!num_2p_level[*game]) {
+			// no 2p levels found
+			// TODO: show error screen
+			return MENU_ACTION_EXIT;
+		}
 	}
+	int dwn = 0;
+	int up = 0;
+
+	u16 level_names_offset = 0;
+	u8 i;
+	for (i=0;i<*game;i++) {
+		level_names_offset += num_2p_level[i];
+	}
+
+	u32 kDown;
+	u32 kHeld;
+	while (aptMainLoop()) {
+
+		hidScanInput();
+		kDown = hidKeysDown();
+		kHeld = hidKeysHeld();
+		//kUp = hidKeysUp();
+		// hidTouchRead(&stylus);
+
+		if (kHeld & KEY_DOWN) {
+			dwn++;
+		} else if (!((kDown | kHeld) & KEY_DOWN)) {
+			dwn = 0;
+		}
+		if (kHeld & KEY_UP) {
+			up++;
+		} else if (!((kDown | kHeld) & KEY_UP)) {
+			up = 0;
+		}
+
+		if (kDown & KEY_B) {
+			// exit selection
+			return MENU_ACTION_EXIT;
+		}
+
+		if ((kDown & KEY_DOWN) || dwn >= 20) {
+			if (dwn) {
+				dwn = 18;
+			}else{
+				dwn = 1;
+			}
+
+			if (cur_lev+1 < num_2p_level[*game]) {
+				cur_lev++;
+				if (cur_lev > top+20
+						&& cur_lev+3
+							< num_2p_level[*game]) {
+					top++;
+				}
+			}else if (kDown & KEY_DOWN){
+				cur_lev = 0;
+				top = cur_lev;
+			}
+			redraw_selection = 1;
+		}
+
+		if ((kDown & KEY_UP) || up >= 20) {
+			if (up) {
+				up = 18;
+			}else{
+				up = 1;
+			}
+			if (cur_lev) {
+				cur_lev--;
+				if (cur_lev < top+3) {
+					if (top) {
+						top--;
+					}
+				}
+			}else if (kDown & KEY_UP){
+				top = cur_lev + MAX(num_2p_level[*game],24)-24;
+				if (num_2p_level[*game]) {
+					cur_lev = num_2p_level[*game]-1;
+				}else{
+					cur_lev = 0;
+				}
+			}
+			redraw_selection = 1;
+		}
+		if (kDown & KEY_LEFT) {
+			if (*game) {
+				if (num_2p_level[(*game)-1]) {
+					cur_lev = 0;
+					top = cur_lev;
+					(*game)--;
+					level_names_offset -= num_2p_level[*game];
+					redraw_selection = 1;
+				}
+			}
+		}
+		if (kDown & KEY_RIGHT) {
+			if (*game < 1) {
+				if (num_2p_level[(*game)-1]) {
+					cur_lev = 0;
+					top = cur_lev;
+					level_names_offset += num_2p_level[*game];
+					(*game)++;
+					redraw_selection = 1;
+				}
+			}
+		}
+		if (kDown & (KEY_A | KEY_START)) {
+			if (multiplayer_progress[*game]>=cur_lev) {
+				// start level!!
+				*lvl = cur_lev;
+				return MENU_ACTION_LEVEL_SELECTED;
+			}
+		}
+
+		if (redraw_selection) {
+			draw_2p_level_selection(
+					(*game==0)?"Lemmings":"Oh No! More Lemmings",
+					cur_lev,
+					top,
+					num_2p_level[*game],
+					name_2p_level+33*level_names_offset,
+					multiplayer_progress[*game],
+					menu_data
+					);
+			redraw_selection = 0;
+		}
+		begin_frame();
+		copy_from_backbuffer(TOP_SCREEN);
+		copy_from_backbuffer(BOTTOM_SCREEN);
+		end_frame();
+	}
+	return MENU_EXIT_GAME;
+}
 
 
 void draw_2p_results(
@@ -163,6 +343,22 @@ int show_2p_results(
 }
 
 
+// draw level selection screen to im_bottom
+#define DRAW_MENU(string) \
+	{\
+		size_t len = strlen(string);\
+		memcpy(msg_ptr,(string),len+1);\
+		msg_ptr += len;\
+	}
+#define DRAW_MENU_LINE(string) \
+	{\
+		size_t len = strlen(string);\
+		memcpy(msg_ptr,(string),len);\
+		msg_ptr += len;\
+		*msg_ptr = '\n';\
+		msg_ptr++;\
+		*msg_ptr = 0;\
+	}
 void draw_network_view(
 		u8 cur_selection,
 		u8 total_networks,
@@ -314,7 +510,7 @@ int get_aligned_username(char username[41+2*6], udsNodeInfo* nodeinfo) {
 	return 1;
 }
 
-int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* main_data, udsNodeInfo* nodeinfo, u16 client_id, udsBindContext* bindctx) {
+int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMenuData* menu_data, struct MainInGameData* main_data, udsNodeInfo* nodeinfo, u16 client_id, udsBindContext* bindctx) {
 	// ask user whether he wants to play with the new client
 	char usr[41+2*6];
 	if (!get_aligned_username(usr, nodeinfo)) {
@@ -351,13 +547,12 @@ int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* mai
 		}
 		if (hidKeysDown() & KEY_A) {
 			// start network game with said client: send level to client
-			u8 num_lvl = count_custom_levels(import_2p[0].level_path);
+			u8 num_lvl = count_custom_levels(import_2p[game].level_path);
 			struct Level* level = 0;
-			if (num_lvl) {
+			if (lvl <= num_lvl) {
 				level = (struct Level*)malloc(sizeof(struct Level));
 			}
 			if (level) {
-				u8 lvl = 0;
 				u8 lemmings[2] = {0, 0};
 				u16 won[2] = {0, 0};
 				do {
@@ -384,7 +579,7 @@ int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* mai
 							lemmings[i] = 40;
 						}
 					}
-					int res = server_prepare_level(bindctx, lemmings, 0, lvl, level);
+					int res = server_prepare_level(bindctx, lemmings, game, lvl, level);
 					if (!res) {
 						break;
 					}
@@ -402,6 +597,12 @@ int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* mai
 					}
 					int inform_client = server_send_result(bindctx, lemmings, won);
 					// show results; ...
+					if (lemmings[0] || lemmings[1]) {
+						if (lvl >= savegame->multiplayer_progress[game]) {
+							savegame->multiplayer_progress[game] = lvl+1;
+							write_savegame(savegame);
+						}
+					}
 					if (!show_2p_results(lemmings, won, usr, 1, inform_client, 0, menu_data)) {
 						break; // no player saved any lemming => end match
 					}
@@ -437,7 +638,24 @@ int on_client_connect(struct MainMenuData* menu_data, struct MainInGameData* mai
 	return MENU_EXIT_GAME;
 }
 
-int host_game(struct MainMenuData* menu_data, struct MainInGameData* main_data) {
+int host_game(struct SaveGame* savegame, u8 num_levels[2], char* level_names, struct MainMenuData* menu_data, struct MainInGameData* main_data) {
+
+	// level selection
+	u8 game = 0;
+	u8 lvl = 0;
+	int res = select_2p_level(
+		&game,
+		&lvl,
+		num_levels,
+		level_names,
+		savegame->multiplayer_progress,
+		menu_data,
+		main_data);
+	if (res != MENU_ACTION_LEVEL_SELECTED) {
+		udsExit();
+		return res;
+	}
+
 	udsNetworkStruct networkstruct;
 	udsBindContext bindctx;
 	udsGenerateDefaultNetworkStruct(&networkstruct, WLAN_ID, 0, 2);
@@ -511,7 +729,7 @@ int host_game(struct MainMenuData* menu_data, struct MainInGameData* main_data) 
 							if(!R_FAILED(ret)) {
 								error = 0;
 								udsSetNewConnectionsBlocked(true, true, false);
-								int res = on_client_connect(menu_data, main_data, &nodeinfo, i, &bindctx);
+								int res = on_client_connect(savegame, game, lvl, menu_data, main_data, &nodeinfo, i, &bindctx);
 								udsSetNewConnectionsBlocked(false, true, false);
 								if (res == MENU_EXIT_GAME) {
 									udsDestroyNetwork();
