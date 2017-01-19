@@ -293,7 +293,7 @@ int show_2p_results(
 	while (aptMainLoop()) {
 		// wait for A pressed
 		hidScanInput();
-		if (cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH))) {
+		if (is_server && cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH))) {
 			return 1;
 		}
 		if ((hidKeysDown() & KEY_B) || (!cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH)))) {

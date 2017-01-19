@@ -803,6 +803,7 @@ int server_run_level(
 	u64 next_input = next_frame;
 	u32 current_frame = 0;
 	u32 input_id = 0;
+	u32 client_input_id = 0;
 	u16 max_level_time = level->frames_left;
 	u8 error = 0;
 	// main loop
@@ -874,21 +875,33 @@ int server_run_level(
 			if (!actual_size) {
 				break; // message receivement complete, preceed level
 			}
-			if (nw.msg_type == NW_USER_INPUT) {
+			if (nw.msg_type == NW_CLIENT_ACTION) {
 				if (actual_size == sizeof(struct NW_User_Input)) {
-				
-					// TODO: test whether client ID match player_id... (only for multiple clients)
-					if (nw.ui.player_id == 1) {
-						if (process_action_queue(nw.ui.action_queue, nw.ui.num_actions, level, 1, 1)) {
-							level->frames_left = max_level_time;
+					if (nw.ui.input_id && nw.ui.input_id <= client_input_id+1) {
+						u32 tmp = nw.ui.input_id;
+						nw.ui.input_id = (client_input_id>tmp?client_input_id:tmp);
+						udsSendTo(
+								UDS_BROADCAST_NETWORKNODEID,
+								1,
+								UDS_SENDFLAG_Default,
+								&nw,
+								sizeof(struct NW_User_Input));
+						if (tmp == client_input_id+1) {
+							client_input_id = tmp;
+							nw.ui.msg_type = NW_USER_INPUT;
+							if (process_action_queue(nw.ui.action_queue, nw.ui.num_actions, level, 1, 1)) {
+								level->frames_left = max_level_time;
+							}
+							level->player[1].x_pos = nw.ui.x_pos;
+							if (nw.ui.num_actions) {
+								nw.ui.frame_id = current_frame;
+								nw.ui.input_id = (++input_id);
+								nw_ui_queue_add_copy(&nw.ui, &nw_ui_queue_first, &nw_ui_queue_last);
+								nw_ui_queue_send(bindctx, nw_ui_queue_first);
+							}
 						}
+					}else if (!nw.ui.input_id && !nw.ui.num_actions) {
 						level->player[1].x_pos = nw.ui.x_pos;
-						if (nw.ui.num_actions) {
-							nw.ui.frame_id = current_frame;
-							nw.ui.input_id = (++input_id);
-							nw_ui_queue_add_copy(&nw.ui, &nw_ui_queue_first, &nw_ui_queue_last);
-							nw_ui_queue_send(bindctx, nw_ui_queue_first);
-						}
 					}
 				}
 			}else if (nw.msg_type == NW_RUN_FRAME) {
@@ -991,6 +1004,10 @@ int client_run_level(
 	main_data->high_perf_palette[7] = level->palette[8];
 	init_lemmings(level);
 
+	u32 last_nw_ui_client_id = 0;
+	struct NW_UI_Queue* nw_ui_queue_first = 0;
+	struct NW_UI_Queue* nw_ui_queue_last = 0;
+
 	u64 next_frame = osGetTime();
 	u64 next_input = next_frame;
 	u32 last_frame = 0;
@@ -1017,6 +1034,7 @@ int client_run_level(
 			}
 			next_input += INPUT_SAMPLING_MILLIS;
 			if (!read_io(level, &io_state, 1)) {
+				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 				stop_audio();
 				return 0;
 			}
@@ -1031,29 +1049,32 @@ int client_run_level(
 			// other expected messages do not use payload yet
 		} msg;
 		if (io_state.num_actions || level->player[1].x_pos != io_state.x_pos) {
-			msg.io.msg_type = NW_USER_INPUT;
-			msg.io.player_id = 1; // TODO
+			msg.io.msg_type = NW_CLIENT_ACTION;
+			msg.io.player_id = 1; // not used
+			msg.io.frame_id = 0; // not used
 			msg.io.x_pos = io_state.x_pos;
+			msg.io.input_id = 0;
 			msg.io.num_actions = io_state.num_actions;
 			memcpy(
 					msg.io.action_queue,
 					io_state.action_queue,
 					sizeof(io_state.action_queue));
-			Result ret = udsSendTo(
-					UDS_HOST_NETWORKNODEID,
-					1,
-					UDS_SENDFLAG_Default,
-					&msg,
-					sizeof(struct NW_User_Input));
-			if(UDS_CHECK_SENDTO_FATALERROR(ret)) {
-				// TODO: clean up!
-				stop_audio();
-				return 0;
+			if (io_state.num_actions) {
+				msg.io.input_id = (++last_nw_ui_client_id);
+				nw_ui_queue_add_copy(&msg.io, &nw_ui_queue_first, &nw_ui_queue_last);
+			}else{
+				udsSendTo(
+						UDS_HOST_NETWORKNODEID,
+						1,
+						UDS_SENDFLAG_Default,
+						&msg,
+						sizeof(struct NW_User_Input));
 			}
 		}
 		io_state.num_actions = 0;
 		// apply user input
 		level->player[1].x_pos = io_state.x_pos;
+		nw_ui_queue_send(bindctx, nw_ui_queue_first);
 
 		// receive packets from server
 		do {
@@ -1070,6 +1091,7 @@ int client_run_level(
 					&src_NetworkNodeID);
 			if (R_FAILED(ret)) {
 				// TODO: clean up!
+				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 				stop_audio();
 				return 0;
 			}
@@ -1101,6 +1123,7 @@ int client_run_level(
 						if (msg.io.frame_id < last_frame) {
 							// FATAL ERROR
 							// TODO: tidy up...
+							nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 							stop_audio();
 							return 0;
 						}
@@ -1116,6 +1139,7 @@ int client_run_level(
 								// fatal error:
 								// no action must be triggered after end of game
 								// TODO: tidy up...
+								nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 								stop_audio();
 								return 0;
 							}
@@ -1134,6 +1158,10 @@ int client_run_level(
 						}
 					}
 					break;
+				case NW_CLIENT_ACTION:
+					if (actual_size == sizeof(struct NW_User_Input)) {
+						nw_ui_queue_remove(msg.io.input_id, &nw_ui_queue_first, &nw_ui_queue_last);
+					}
 				case NW_RUN_FRAME:
 					if (actual_size == sizeof(struct NW_Run_Frame)) {
 						if (msg.frame.required_input_id <= last_input_id) {
@@ -1144,6 +1172,7 @@ int client_run_level(
 									// fatal error:
 									// no frame should occur after end of game
 									// TODO: tidy up...
+									nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 									return 0;
 								}
 								u8 changes = 0;
@@ -1179,8 +1208,10 @@ int client_run_level(
 						won[0] = msg.result.won[0];
 						won[1] = msg.result.won[1];
 					}
+					nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 					return 1;
 				default:
+					nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 					stop_audio();
 					return 0; // error
 			}
@@ -1195,9 +1226,10 @@ int client_run_level(
 					&io_state,
 					1);
 	}
-	stop_audio();
 	// error: aptMainLoop() exit
 	// TODO: tidy up
+	nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
+	stop_audio();
 	return 0;
 }
 

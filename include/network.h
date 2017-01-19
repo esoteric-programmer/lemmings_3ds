@@ -12,9 +12,10 @@
 #define NW_LEVEL_DATA_CHUNK   3 // send back (with zero length) to confirm receivement
 #define NW_LEVEL_SENT         4 // entire level has been sent
 #define NW_RUN_FRAME          5 // step a given number of frames without action (info from server)
-#define NW_USER_INPUT         6 // screen positions and mouse positions of all players (to inform other); own position should be sent by clients with this message, too
-#define NW_LVLRESULT          7 // indicate end of level and send results (lemmings saved by each player)
-#define NW_READY_TO_PROCEED   8 // client informs server that he is ready to start the next level (user has read the result message)
+#define NW_USER_INPUT         6 // sent from server to client: screen positions and skill assignments of all players (to inform them);
+#define NW_CLIENT_ACTION      7 // client sends actions to server to ask him to apply them (use NW_User_Input struct, maybe do not use all fields)
+#define NW_LVLRESULT          8 // indicate end of level and send results (lemmings saved by each player)
+#define NW_READY_TO_PROCEED   9 // client informs server that he is ready to start the next level (user has read the result message)
 
 struct NW_GameInit {
 	u8 msg_type;
