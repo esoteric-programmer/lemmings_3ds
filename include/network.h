@@ -5,6 +5,11 @@
 #include "main_data.h"
 #include "control.h"
 
+#define WLAN_ID 0x40F91730
+#define WLAN_PASS "Lemmings for 3DS rulez"
+#define NETWORK_PROTOCOL_VERSION 1
+#define NETWORK_MIN_PROTOCOL_VERSION 1
+
 // network messages
 #define NW_ERROR              0 // communication error (maybe just cancel connection...; implement handling later)
 #define NW_INITIALIZE         1 // confirm that the server WILL start the game; params: num of (active) players, num of lemmings per player, player id of receiver
@@ -22,6 +27,9 @@ struct NW_GameInit {
 	u8 num_players;
 	u8 lemmings_per_player[2];
 	u8 receiver_id;
+	u8 lvl_id;
+	u8 game_id;
+	u8 glitch_direct_drop;
 };
 
 struct NW_LevelData_Info {
@@ -72,9 +80,13 @@ int server_prepare_level(
 		u8 game_id,
 		u8 level_id,
 		struct Level* output);
+
+// important: overwrites settings.glitch_direct_drop.
+// therefore the local value has to be stored before this function is called
 int client_prepare_level(
 		udsBindContext* bindctx,
 		const u8* lemmings, // number of lemmings the players start with
+		u8* lvl_id,
 		struct Level* output);
 
 int server_run_level(
@@ -97,4 +109,6 @@ int server_send_result(
 		udsBindContext* bindctx,
 		u8 lemmings[2],
 		u16 won[2]);
+
+#define CHUNK_SIZE (UDS_DATAFRAME_MAXSIZE - sizeof(struct NW_LevelData_Chunk))
 #endif

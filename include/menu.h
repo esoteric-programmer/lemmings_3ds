@@ -14,9 +14,8 @@
 #define RESULT_ACTION_NEXT                      6
 #define RESULT_ACTION_CANCEL                    7
 #define MENU_ACTION_START_MULTI_PLAYER          8
-#define MENU_HOST_GAME                          9
-#define MENU_HOST_REJECT_CLIENT                10
-#define MENU_CLIENT_QUIT                       11
+#define MENU_HOST_REJECT_CLIENT                 9
+#define MENU_CLIENT_QUIT                       10
 #define MENU_EXIT_GAME                        127
 
 int main_menu(

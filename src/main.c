@@ -21,7 +21,7 @@
 #include "menu.h"
 #include "main.h"
 #include "settings_menu.h"
-#include "view_networks.h"
+#include "network_menu.h"
 
 const char* PATH_ROOT = LEMMINGS_DIR;
 
@@ -341,18 +341,12 @@ int main() {
 			//int result =
 			int result;
 			do {
-				result = view_networks(menu_data, main_data);
+				result = network_menu(&savegame, num_2p_level, name_2p_level, menu_data, main_data);
 				switch (result) {
 					case MENU_EXIT_GAME:
 						menu_selection = MENU_EXIT_GAME;
 						break;
 					case MENU_ACTION_EXIT:
-						break;
-					case MENU_HOST_GAME:
-						result = host_game(&savegame, num_2p_level, name_2p_level, menu_data, main_data);
-						if (result != MENU_EXIT_GAME) {
-							result = MENU_ACTION_START_MULTI_PLAYER;
-						}
 						break;
 					case MENU_ERROR:
 					default:

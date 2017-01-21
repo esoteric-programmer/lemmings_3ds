@@ -883,10 +883,25 @@ int draw_toolbar(
 			if (toolbar_x >= 320 || toolbar_x < 0) {
 				SET_PIXEL(dest, x, y+yi, highperf_palette[0]);
 			} else {
-				SET_PIXEL(dest, x, y+yi,
-						highperf_palette[
-								data->high_perf_toolbar[
-										toolbar_x+yi*320] & 0x0F]);
+				if (level->num_players > 1) {
+					if (toolbar_x < 24 || toolbar_x >= 320 - 24) {
+						SET_PIXEL(dest, x, y+yi, highperf_palette[0]);
+					}else{
+						s16 tx = toolbar_x + 8;
+						if (tx >= 16*10) {
+							tx += 16;
+						}
+						SET_PIXEL(dest, x, y+yi,
+								highperf_palette[
+										data->high_perf_toolbar[
+												tx+yi*320] & 0x0F]);
+					}
+				} else {
+					SET_PIXEL(dest, x, y+yi,
+							highperf_palette[
+									data->high_perf_toolbar[
+											toolbar_x+yi*320] & 0x0F]);
+				}
 			}
 		}
 	}
@@ -906,10 +921,10 @@ int draw_toolbar(
 	for (i=0;i<8;i++) {
 		nums[i+2] = level->player[player].skills[i];
 	}
-	for (i=0;i<10;i++) {
+	for (i=(level->num_players>1?2:0);i<10;i++) {
 		for (yi=0;yi<8 && yi+y+17<dest->height;yi++) {
 			for (x=16*i+4;x<16*i+12;x++) {
-				s16 screen_x = x + ((s16)dest->width-320)/2;
+				s16 screen_x = x + ((s16)dest->width-320)/2 - (level->num_players>1?8:0);
 				if (screen_x < 0 || screen_x >= dest->width) {
 					continue;
 				} else {
@@ -941,7 +956,7 @@ int draw_toolbar(
 	}
 	for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
 		for (x=16*(io_state->skill+2);x<16*(io_state->skill+3);x++) {
-			s16 screen_x = x + ((s16)dest->width-320)/2;
+			s16 screen_x = x + ((s16)dest->width-320)/2 - (level->num_players>1?8:0);;
 			if (screen_x < 0 || screen_x >= dest->width) {
 				continue;
 			} else {
@@ -966,7 +981,7 @@ int draw_toolbar(
 				solid += ((level->terrain[x+i+yi*1584] & 0xF0)?1:0);
 			}
 			solid = (solid>8?7:0); // palette entry to draw in minimap
-			s16 minimap_x = 209 + x/16;
+			s16 minimap_x = 209 + x/16 - (level->num_players>1?24:0);
 			s16 minimap_y = y+17 + yi/8;
 			minimap_x += + ((s16)dest->width-320)/2;
 			if (minimap_x < 0 || minimap_x >= dest->width
@@ -988,23 +1003,65 @@ int draw_toolbar(
 	}else if (view_rect_width > 103) {
 		view_rect_width = 103;
 	}
-	for (yi=0;yi<20;yi++) {
-		for (x=level->player[player].x_pos / 16;x<level->player[player].x_pos / 16 + view_rect_width; x++) {
-			s16 screen_x = x + ((s16)dest->width-320)/2 + 209;
-			s16 screen_y = y + 18 + yi;
-			if (screen_x < 0 || screen_x >= dest->width || screen_y >= dest->height) {
-				continue;
-			}
-			// draw rectangle
-			if (yi==0 || yi==19) {
-				SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
-			}else{
-				if (x==level->player[player].x_pos / 16
-						|| x==level->player[player].x_pos / 16 + view_rect_width - 1) {
-					SET_PIXEL(dest, screen_x, screen_y, highperf_palette[3]);
+	u8 pl;
+	for (pl=0; pl<=level->num_players; pl++) {
+		if (pl == player) {
+			continue;
+		}
+		u8 p = pl;
+		if (p == level->num_players) {
+			p = player;
+		}
+		u32 color = highperf_palette[p==player?3:(p+1)];
+		for (yi=0;yi<20;yi++) {
+			for (x=level->player[p].x_pos / 16;x<level->player[p].x_pos / 16 + view_rect_width; x++) {
+				s16 screen_x = x + ((s16)dest->width-320)/2 + 209 - (level->num_players>1?24:0);
+				s16 screen_y = y + 18 + yi;
+				if (screen_x < 0 || screen_x >= dest->width || screen_y >= dest->height) {
+					continue;
+				}
+				// draw rectangle
+				if (yi==0 || yi==19) {
+					SET_PIXEL(dest, screen_x, screen_y, color);
+				}else{
+					if (x==level->player[p].x_pos / 16
+							|| x==level->player[p].x_pos / 16 + view_rect_width - 1) {
+						SET_PIXEL(dest, screen_x, screen_y, color);
+					}
 				}
 			}
-
+		}
+	}
+	u16 max_nuke = 0;
+	for (pl=0;pl<level->num_players;pl++) {
+		if (pl == player) {
+			continue;
+		}
+		if (level->player[pl].request_common_nuke > max_nuke) {
+			max_nuke = level->player[pl].request_common_nuke;
+		}
+	}
+	max_nuke = (max_nuke / 4) % 2;
+	if (max_nuke) {
+		u16 NUKE_BUTTON_POS = 10;
+		// mark nuke button to visualize nuke request...
+		for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
+			for (x=16*(NUKE_BUTTON_POS);x<16*(NUKE_BUTTON_POS+1);x++) {
+				s16 screen_x = x + ((s16)dest->width-320)/2 - 8;
+				if (screen_x < 0 || screen_x >= dest->width) {
+					continue;
+				} else {
+					// draw rectangle
+					if (yi==0 || yi==23) {
+						SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
+					}else{
+						if (x==16*(NUKE_BUTTON_POS)
+								|| x==16*(NUKE_BUTTON_POS)+15) {
+							SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
+						}
+					}
+				}
+			}
 		}
 	}
 	return 1; // all fine
@@ -1023,7 +1080,7 @@ void draw_lemmings_minimap(struct Level* level, u32 highperf_palette[16]) {
 	for (p=0;p<level->num_players;p++) {
 		u8 color = 2;
 		if (level->num_players > 1 && p == 0) {
-			// player 2 color: blue (instead of green)
+			// player 1 color: blue (instead of green)
 			color = 1;
 		}
 		for (i=0;i<80;i++) {
@@ -1038,7 +1095,8 @@ void draw_lemmings_minimap(struct Level* level, u32 highperf_palette[16]) {
 
 			s16 minimap_x = 209
 					+ (level->player[p].lemmings[i].x>=0?
-							level->player[p].lemmings[i].x:0)/16;
+							level->player[p].lemmings[i].x:0)/16
+							- (level->num_players>1?24:0);
 			s16 minimap_y = y + 17
 					+ (level->player[p].lemmings[i].y>=16?
 							level->player[p].lemmings[i].y:16)/8;

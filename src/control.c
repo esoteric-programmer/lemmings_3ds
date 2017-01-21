@@ -399,7 +399,17 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 	if (action & (ACTION_CURSOR_CLICK | ACTION_CURSOR_HOLD)) {
 		if (io_state->cursor.y >= 176 && io_state->cursor.y < 200) {
 			// clicked at panel
-			switch (io_state->cursor.x / 16) {
+			s16 cur_x = io_state->cursor.x;
+			if (level->num_players > 1) {
+				cur_x += 8;
+				if (cur_x >= 16*10) {
+					cur_x += 16;
+					if (cur_x >= SCREEN_WIDTH) {
+						cur_x = 0;
+					}
+				}
+			}
+			switch (cur_x / 16) {
 				case  0:
 					// decrement rate
 					action |= ACTION_DEC_RATE;
@@ -464,7 +474,7 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 				default:
 					{
 						// touched at minimap
-						s16 new_x_pos = (io_state->cursor.x - 13*16) * 16;
+						s16 new_x_pos = (cur_x - 13*16) * 16;
 						new_x_pos -= SCREEN_WIDTH / 2;
 						if (new_x_pos < 0) {
 							new_x_pos = 0;
@@ -660,7 +670,7 @@ int process_action_queue(
 		struct Level* level,
 		u8 player_id,
 		u8 multiplayer) {
-	int changes = 0;
+	int changes = 0; // for time calculation in 2p mode
 	// apply actions from action_queue
 	u8 i;
 	for (i=0; i<num_actions; i++) {
@@ -669,7 +679,7 @@ int process_action_queue(
 				if (!action_queue[i].param) {
 					if (!multiplayer) {
 						nuke(&level->player[player_id]);
-					}else{
+					}else if (!level->player[player_id].nuking){
 						// request nuke in 2p mode
 						level->player[player_id].request_common_nuke = COMMON_NUKE_FRAME_INTERVAL;
 						u8 p;
@@ -683,6 +693,7 @@ int process_action_queue(
 						if (start_nuking) {
 							for (p=0;p<level->num_players;p++) {
 								nuke(&level->player[p]);
+								level->player[p].request_common_nuke = 0;
 							}
 						}
 					}
@@ -706,14 +717,16 @@ int process_action_queue(
 						if (lem) {
 							level->player[player_id].skills[action_queue[i].param3]--;
 							changes = 1;
+							/*
 							if (lem == 2) {
 								action_queue[i].param = action_queue[i].param2;
 							}
 							action_queue[i].param2 = 0;
+							*/
 						}else{
 							action_queue[i].action = ACTIONQUEUE_NOP;
 						}
-					} else {
+					}else{
 						action_queue[i].action = ACTIONQUEUE_NOP;
 					}
 				}

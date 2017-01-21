@@ -54,8 +54,9 @@ struct MenuPoint gamemechanics_points[] = {
 	{0, "Entrance pausing glitch", &settings.glitch_entrance_pausing, {0,0}},
 	{0, "Mining one-way walls glitch", &settings.glitch_mining_right_oneway, {0,0}},
 	{0, "Shrugger glitch", &settings.glitch_shrugger, {0,0}},
+	{0, "Direct drop glitch", &settings.glitch_direct_drop, {0,0}},
 	{0, "Amiga background color", &settings.amiga_background, {0,0}},
-	{0, "2p mode: Add saved lemmings", &settings.two_player_add_saved_lemmings, {0,0}},
+	{0, "Always 40 lemmings in 2p mode", &settings.two_player_always_equal, {0,0}},
 	{0, 0, 0, {0,0}}
 };
 
@@ -298,7 +299,7 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 	u8 redraw_selection = 1;
 	// TODO: don't use hard coded size of menu entries
 	//       malloc dynamically instaed
-	u32 gamemechanics_values[6];
+	u32 gamemechanics_values[7];
 	u32 audio_values[3];
 	u32 key_bindings_values[19];
 	u32* menu_values[3] = {

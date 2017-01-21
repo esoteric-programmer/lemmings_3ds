@@ -507,12 +507,19 @@ int parse_level(
 		output->player[i].x_pos = ((u8*)level)[24];
 		output->player[i].x_pos <<= 8;
 		output->player[i].x_pos |= ((u8*)level)[25];
+		if (output->num_players > 1) {
+			if (output->player[i].x_pos > 96) {
+				output->player[i].x_pos -= 96;
+			}else{
+				output->player[i].x_pos = 0;
+			}
+		}
 		if (output->player[i].x_pos > 1264) {
 			output->player[i].x_pos = 1264;
 		}
 		if (output->player[i].x_pos % 8 >= 4) {
 			output->player[i].x_pos -= output->player[i].x_pos%8;
-			output->player[i].x_pos++;
+			output->player[i].x_pos+=8;
 		}else{
 			output->player[i].x_pos -= output->player[i].x_pos%8;
 		}

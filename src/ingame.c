@@ -278,14 +278,15 @@ void render_level_frame(
 		}
 		sprintf(above_text,
 				"%s%s%s\n"
-				"                In %3u:%3u   Total %2u:%2u",
+				"        In %3u:%3u  Total %2u:%2u  Rate %02u",
 				level_id?level_id:"",
 				level_id?" ":"",
 				lvl_name_stripped,
 				resc<999?resc:999,
 				resc_2p<999?resc_2p:999,
 				level->player[player].max_lemmings,
-				level->player[1-player].max_lemmings);
+				level->player[1-player].max_lemmings,
+				level->cur_rate<99?level->cur_rate:99);
 	}else{
 		sprintf(above_text,
 				"%s%s%s",

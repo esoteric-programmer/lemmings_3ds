@@ -9,14 +9,13 @@
 #include "ingame.h"
 #include "lemming.h"
 #include "main.h" // for was_suspended(); TODO: disable sleep mode while network game is active
+#include "settings.h"
 
 // server:
 // read level file
 // send via network
 // parse level file
 // start game
-
-#define CHUNK_SIZE (UDS_DATAFRAME_MAXSIZE - sizeof(struct NW_LevelData_Chunk))
 
 // TODO: tidy up (introduce subroutines to free memory); TODO: catch all errors
 
@@ -98,6 +97,9 @@ int server_prepare_level(
 	gameinit.lemmings_per_player[0] = lemmings[0];
 	gameinit.lemmings_per_player[1] = lemmings[1];
 	gameinit.receiver_id = 1; // receiver is second player
+	gameinit.lvl_id = level_id;
+	gameinit.game_id = level_id;
+	gameinit.glitch_direct_drop = settings.glitch_direct_drop;
 	// send gameinit
 	if (!send_until_confirmed(&gameinit, sizeof(gameinit), bindctx)) {
 		free(chunk);
@@ -395,9 +397,13 @@ union RecBuf{
 int client_prepare_level(
 		udsBindContext* bindctx,
 		const u8* lem,
+		u8* lvl_id,
 		struct Level* output){
 	if (!lem || !bindctx || !output) {
 		return 0;
+	}
+	if (lvl_id) {
+		*lvl_id = 0;
 	}
 	u8 lemmings[2] = {lem[0], lem[1]};
 	u8 parsed = 0;
@@ -442,6 +448,10 @@ int client_prepare_level(
 					// parse NW_INITIALIZE payload
 					lemmings[0] = rec_buf->gi.lemmings_per_player[0];
 					lemmings[1] = rec_buf->gi.lemmings_per_player[1];
+					settings.glitch_direct_drop = rec_buf->gi.glitch_direct_drop;
+					if (lvl_id) {
+						*lvl_id = rec_buf->gi.lvl_id;
+					}
 					// just send back this message type
 					udsSendTo(UDS_HOST_NETWORKNODEID,1,UDS_SENDFLAG_Default,rec_buf->buf,1);
 					break;

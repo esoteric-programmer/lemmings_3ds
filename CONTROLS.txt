@@ -1,7 +1,7 @@
 Main menu:
 
 A, START      start 1 player game
-B, X, SELECT  start 2 player game
+X, SELECT     start 2 player game
 Y             enter settings menu
 UP, DOWN      change rating; switch between original Lemmings and "Oh no! More Lemmings"
 touch         touch at a lemming to trigger one of the actions above

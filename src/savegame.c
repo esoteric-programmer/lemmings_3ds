@@ -22,6 +22,8 @@ void read_savegame(struct SaveGame* savegame) {
 	}
 	savegame->multiplayer_progress[0] = 0;
 	savegame->multiplayer_progress[1] = 0;
+	savegame->last_multiplayer_level = 0;
+	savegame->last_multiplayer_game = 0;
 
 	sprintf(savefile_fn,"%s/SAVEGAME.DAT", PATH_ROOT);
 	FILE* savefile = fopen(savefile_fn,"rb");
@@ -92,12 +94,16 @@ void read_savegame(struct SaveGame* savegame) {
 		fread(&settings.music_volume,1,1,savefile);
 		fread(&savegame->last_game,1,1,savefile);
 		fread(&savegame->last_level,1,1,savefile);
+		if (version > 5) {
+			fread(&savegame->last_multiplayer_game,1,1,savefile);
+			fread(&savegame->last_multiplayer_level,1,1,savefile);
+		}
 		fread(&settings.glitch_nuke,1,1,savefile);
 		fread(&settings.glitch_entrance_pausing,1,1,savefile);
 		fread(&settings.glitch_mining_right_oneway,1,1,savefile);
 		fread(&settings.glitch_shrugger,1,1,savefile);
 		fread(&settings.glitch_mayhem12,1,1,savefile);
-		fread(&settings.glitch_miner_splatter,1,1,savefile);
+		fread(&settings.glitch_direct_drop,1,1,savefile);
 		fread(&settings.speedup_millis_per_frame,1,1,savefile);
 		fread(&settings.audio_order,1,1,savefile);
 		fread(&settings.dlbclick_nuke,1,1,savefile);
@@ -108,7 +114,9 @@ void read_savegame(struct SaveGame* savegame) {
 			fread(&settings.amiga_background,1,1,savefile);
 		}
 		if (version > 4) {
-			fread(&settings.two_player_add_saved_lemmings,1,1,savefile);
+			u8 two_player_add_saved_lemmings;
+			fread(&two_player_add_saved_lemmings,1,1,savefile);
+			settings.two_player_always_equal = !two_player_add_saved_lemmings;
 		}
 		for (i=0;i<2;i++) {
 			fread(&settings.key_bindings[i].modifier,1,4,savefile);
@@ -169,12 +177,14 @@ void write_savegame(struct SaveGame* savegame) {
 	fwrite(&settings.music_volume,1,1,savefile);
 	fwrite(&savegame->last_game,1,1,savefile);
 	fwrite(&savegame->last_level,1,1,savefile);
+	fwrite(&savegame->last_multiplayer_game,1,1,savefile);
+	fwrite(&savegame->last_multiplayer_level,1,1,savefile);
 	fwrite(&settings.glitch_nuke,1,1,savefile);
 	fwrite(&settings.glitch_entrance_pausing,1,1,savefile);
 	fwrite(&settings.glitch_mining_right_oneway,1,1,savefile);
 	fwrite(&settings.glitch_shrugger,1,1,savefile);
 	fwrite(&settings.glitch_mayhem12,1,1,savefile);
-	fwrite(&settings.glitch_miner_splatter,1,1,savefile);
+	fwrite(&settings.glitch_direct_drop,1,1,savefile);
 	fwrite(&settings.speedup_millis_per_frame,1,1,savefile);
 	fwrite(&settings.audio_order,1,1,savefile);
 	fwrite(&settings.dlbclick_nuke,1,1,savefile);
@@ -182,7 +192,8 @@ void write_savegame(struct SaveGame* savegame) {
 	fwrite(&settings.skip_unavailable_skills,1,1,savefile);
 	fwrite(&settings.zoom_mode_active,1,1,savefile);
 	fwrite(&settings.amiga_background,1,1,savefile);
-	fwrite(&settings.two_player_add_saved_lemmings,1,1,savefile);
+	u8 two_player_add_saved_lemmings = !settings.two_player_always_equal;
+	fwrite(&two_player_add_saved_lemmings,1,1,savefile);
 	for (i=0;i<2;i++) {
 		fwrite(&settings.key_bindings[i].modifier,1,4,savefile);
 		fwrite(&settings.key_bindings[i].click,1,4,savefile);

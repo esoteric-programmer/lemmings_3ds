@@ -1062,7 +1062,9 @@ void process_interactive_objects(struct Lemming* lem, struct Level* level) {
 		case OBJECT_EXIT:
 		{
 			lem->exit_counts_for = (lem->object_below >> 4);
-			if (lem->current_action != LEMACTION_FALL) {
+			if (lem->current_action != LEMACTION_FALL
+					&& (settings.glitch_direct_drop
+						|| lem->current_action != LEMACTION_SPLATTER)) {
 				set_lemaction(lem, LEMACTION_EXIT);
 				// play sound: yippieh
 				play_sound(0x10);

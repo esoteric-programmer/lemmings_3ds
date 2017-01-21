@@ -6,7 +6,7 @@ struct Settings settings = {
 	1, // mining one-way bug
 	0, // shrugger glitch
 	1, // mayhem 12 glitch (not implemented)
-	1, // miner splatter glitch (cannot be turned off yet)
+	1, // direct drop glitch
 	MS_PER_FRAME_SPEED_UP,
 	100, // max music volume
 	100, // max sfx volume
@@ -16,7 +16,7 @@ struct Settings settings = {
 	0, // skip unavailable skills
 	0, // zoom mode
 	0, // amiga background
-	1, // cumulate lemmings
+	0, // cumulate lemmings
 	{
 		{
 			KEY_R,

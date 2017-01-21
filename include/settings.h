@@ -18,7 +18,7 @@ extern const char* PATH_ROOT;
 #define FADE_OUT_DOSFRAMES        32
 #define AMIGA_BACKGROUND  0x000030FF
 
-#define COMMON_NUKE_FRAME_INTERVAL (FPS * 10) // player must respond to nuke request within 15 seconds
+#define COMMON_NUKE_FRAME_INTERVAL (FPS * 8 - 1) // player must respond to nuke request within 15 seconds
 
 #define AUDIO_ORDER_PREFER_CUSTOM  0
 #define AUDIO_ORDER_PREFER_ADLIB   1
@@ -31,7 +31,7 @@ extern struct Settings {
 	u8 glitch_mining_right_oneway;
 	u8 glitch_shrugger;
 	u8 glitch_mayhem12; // not implemented yet
-	u8 glitch_miner_splatter; // not implemented yet
+	u8 glitch_direct_drop;
 	u8 speedup_millis_per_frame;
 	u8 music_volume; // 0 = off; 100 = max
 	u8 sfx_volume; // 0 = off; 100 = max
@@ -41,7 +41,7 @@ extern struct Settings {
 	u8 skip_unavailable_skills; // not implemented yet
 	u8 zoom_mode_active; // not implemented yet
 	u8 amiga_background; // 0 = no (black); 1 = yes (dark blue)
-	u8 two_player_add_saved_lemmings; // 0 = no, always start with 40 lemmings; 1 = yes, start wth 40 + rescued lemmings
+	u8 two_player_always_equal; // 0 = yes, always start with 40 lemmings; 1 = no, start wth 40 + rescued lemmings
 	struct KeyBindings {
 		u32 modifier;
 		u32 click;
@@ -75,4 +75,3 @@ extern u8 settings_icon[];
 #define ABGR
 #endif
 #endif
-

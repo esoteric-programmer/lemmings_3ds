@@ -1,6 +1,6 @@
 #ifndef SAVEGAME_H
 #define SAVEGAME_H
-#define SAVEGAME_VERSION 5
+#define SAVEGAME_VERSION 6
 #include <3ds.h>
 
 struct SaveGame {
@@ -10,6 +10,8 @@ struct SaveGame {
 	u8 multiplayer_progress[2];
 	u8 last_game;
 	u8 last_level;
+	u8 last_multiplayer_level;
+	u8 last_multiplayer_game;
 };
 
 void read_savegame(struct SaveGame* savegame);
