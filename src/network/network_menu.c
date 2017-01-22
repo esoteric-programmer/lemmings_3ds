@@ -4,6 +4,73 @@
 #include "network_menu.h"
 #include "view_networks.h"
 #include "network.h"
+#include "main.h"
+
+#define STACKSIZE (4 * 1024)
+
+volatile bool run_scanning_thread = true;
+volatile int scan_status = 0;
+Handle scan_mutex;
+volatile size_t total_networks = 0;
+udsNetworkScanInfo* volatile networks = 0;
+void memcpy_volatile(void* volatile d, void* volatile t, u32 len) {
+	while (len) {
+		*((char* volatile)d) = *((char* volatile)t);
+		d = (char* volatile)d + 1;
+		t = (char* volatile)t + 1;
+		len--;
+	}
+}
+
+void scan_thread_main(void *arg) {
+	size_t tmpbuf_size = (UDS_DATAFRAME_MAXSIZE>0x4000?UDS_DATAFRAME_MAXSIZE:0x4000);
+	void* tmpbuf = malloc(tmpbuf_size);
+	size_t num_networks = 0;
+	udsNetworkScanInfo* networks_scan = 0;
+	if (!tmpbuf) {
+		scan_status = -1;
+		return;
+	}
+	while (run_scanning_thread)
+	{
+		svcSleepThread(1000000ULL * 100); // sleep 100ms
+		Result res = svcWaitSynchronization(scan_mutex, 1000000ULL * 250); // wait 250ms
+		if (SUCCESS(res)) {
+			res = udsScanBeacons(
+				tmpbuf,
+				tmpbuf_size,
+				&networks_scan,
+				&num_networks,
+				WLAN_ID,
+				0,
+				NULL,
+				false);
+			scan_status = res;
+			if (R_SUCCEEDED(res)) {
+				if (networks_scan) {
+					total_networks = num_networks;
+					if (total_networks > 4) {
+						total_networks = 4;
+					}
+					if (total_networks) {
+						memcpy_volatile(
+								networks,
+								networks_scan,
+								total_networks * sizeof(udsNetworkScanInfo));
+						free(networks_scan);
+						networks_scan = 0;
+					}
+				}else{
+					total_networks = 0;
+				}
+			}else{
+				run_scanning_thread = false;
+			}
+			svcReleaseMutex(scan_mutex);
+		}
+	}
+	free(tmpbuf);
+}
 
 int get_aligned_username(char username[41+2*6], const udsNodeInfo* nodeinfo) {
 	if (!nodeinfo || !username) {
@@ -59,8 +126,8 @@ void draw_network_view(
 	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
 
 	char* msg = (char*)malloc(30*(40+1)+1);
-	sprintf(msg,"\n Choose a Game\n\n");
-	char* msg_ptr = msg + strlen(msg);
+	char* msg_ptr = msg;
+	DRAW_MENU("\n Choose a Game\n\n");
 	u8 cur_offset = 0;
 	for (cur_offset = 0; cur_offset < 4; cur_offset++) {
 		if (network_alive) {
@@ -163,49 +230,74 @@ int show_network_error(struct MainMenuData* menu_data) {
 	return MENU_EXIT_GAME;
 }
 
-int network_menu(struct SaveGame* savegame, u8 num_levels[2], char* level_names, struct MainMenuData* menu_data, struct MainInGameData* main_data) {
+int network_menu(
+		struct SaveGame* savegame,
+		u8 num_levels[2],
+		char* level_names,
+		struct MainMenuData* menu_data, struct MainInGameData* main_data) {
 	// init
-	Result ret = udsInit(0x3000, NULL);//The sharedmem size only needs to be slightly larger than the total recv_buffer_size for all binds, with page-alignment.
+	total_networks = 0;
+	networks = (udsNetworkScanInfo*)malloc(4 * sizeof(udsNetworkScanInfo));
+	run_scanning_thread = true;
+	scan_status = 0;
+	if (!networks) {
+		return MENU_ERROR;
+	}
+	if (R_FAILED(svcCreateMutex(&scan_mutex, false))) {
+		free(networks);
+		networks = 0;
+		return MENU_ERROR;
+	}
+	Result ret = udsInit(0x3000, NULL);
 	if(R_FAILED(ret)) {
 		// show WLAN error message
+		svcCloseHandle(scan_mutex);
+		scan_mutex = 0;
+		free(networks);
+		networks = 0;
 		return show_network_error(menu_data);
 	}
 
-	//u8 redraw_selection = 1;
+	size_t num_networks = 0; // local copy
+	udsNetworkScanInfo networks_scan[4]; // local copy
+	s32 prio = 0;
+	svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
+	Thread thread = threadCreate(scan_thread_main, (void*)(250), STACKSIZE, prio-1, -2, false);
+
 	u8 cur_selection = 0;
 	u8 network_alive[4] = {0, 0, 0, 0};
 	u32 kDown;
 	u32 kHeld;
 	int dwn = 0;
 	int up = 0;
-	size_t tmpbuf_size = (UDS_DATAFRAME_MAXSIZE>0x4000?UDS_DATAFRAME_MAXSIZE:0x4000);
-	void* tmpbuf = malloc(tmpbuf_size);
-	if (!tmpbuf) {
-		udsExit();
-		return MENU_ERROR;
-	}
-	size_t total_networks = 0;
-	udsNetworkScanInfo* networks = 0;
 
 	while (aptMainLoop()) {
+		draw_network_view(
+				cur_selection,
+				num_networks,
+				networks_scan,
+				menu_data,
+				network_alive);
+
+		begin_frame();
+		copy_from_backbuffer(TOP_SCREEN);
+		copy_from_backbuffer(BOTTOM_SCREEN);
+		end_frame();
+
 		hidScanInput();
 		kDown = hidKeysDown();
 		kHeld = hidKeysHeld();
 
-		if (kHeld & KEY_DOWN) {
-			dwn++;
-		} else if (!((kDown | kHeld) & KEY_DOWN)) {
+		if (!((kDown | kHeld) & KEY_DOWN)) {
 			dwn = 0;
 		}
-		if (kHeld & KEY_UP) {
-			up++;
-		} else if (!((kDown | kHeld) & KEY_UP)) {
+		if (!((kDown | kHeld) & KEY_UP)) {
 			up = 0;
 		}
 
-		if ((kDown & KEY_DOWN) || dwn >= 20) {
+		if ((kDown & KEY_DOWN) || dwn >= 15) {
 			if (dwn) {
-				dwn = 18;
+				dwn = 10;
 			}else{
 				dwn = 1;
 			}
@@ -214,11 +306,10 @@ int network_menu(struct SaveGame* savegame, u8 num_levels[2], char* level_names,
 			}else if (kDown & KEY_DOWN) {
 				cur_selection = 0;
 			}
-			//redraw_selection = 1;
 		}
-		if ((kDown & KEY_UP) || up >= 20) {
+		if ((kDown & KEY_UP) || up >= 15) {
 			if (up) {
-				up = 18;
+				up = 10;
 			}else{
 				up = 1;
 			}
@@ -227,7 +318,12 @@ int network_menu(struct SaveGame* savegame, u8 num_levels[2], char* level_names,
 			}else if (kDown & KEY_UP) {
 				cur_selection = 5;
 			}
-			//redraw_selection = 1;
+		}
+		if (kHeld & KEY_DOWN) {
+			dwn++;
+		}
+		if (kHeld & KEY_UP) {
+			up++;
 		}
 		if (kDown & KEY_A) {
 			if (cur_selection == 4) {
@@ -235,62 +331,129 @@ int network_menu(struct SaveGame* savegame, u8 num_levels[2], char* level_names,
 			}else if (cur_selection == 5){
 				kDown |= KEY_B;
 			}else if (cur_selection < 4 && network_alive[cur_selection]){
-				connect_to_network(&networks[cur_selection], menu_data, main_data);
-				kDown = 0;
+				// stop scanning
+				tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+				draw_menu_text(
+						BOTTOM_SCREEN_BACK,
+						menu_data,
+						0,
+						72,
+						"   Connecting...    \n",
+						0,
+						1.0f);
+				begin_frame();
+				copy_from_backbuffer(TOP_SCREEN);
+				copy_from_backbuffer(BOTTOM_SCREEN);
+				end_frame();
+				Result res = svcWaitSynchronization(scan_mutex, 1000000ULL * 2000); // wait up to 2s
+				if (SUCCESS(res) && cur_selection < num_networks) {
+					connect_to_network(&networks_scan[cur_selection], menu_data, main_data);
+					num_networks = 0;
+					total_networks = 0;
+					kDown = 0;
+					// continue scanning
+					svcReleaseMutex(scan_mutex);
+				}else{
+					// canot stop scanning!
+				}
 			}
 		}
 		if (kDown & KEY_B) {
-			// exit menu without saving
+			// exit menu
+			run_scanning_thread = false;
+			tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+			draw_menu_text(
+					BOTTOM_SCREEN_BACK,
+					menu_data,
+					0,
+					96,
+					"   Please wait...   \n",
+					0,
+					1.0f);
+			begin_frame();
+			copy_from_backbuffer(TOP_SCREEN);
+			copy_from_backbuffer(BOTTOM_SCREEN);
+			end_frame();
+			threadJoin(thread, U64_MAX);
+			threadFree(thread);
+			svcCloseHandle(scan_mutex);
+			scan_mutex = 0;
+			free(networks);
+			networks = 0;
 			udsExit();
-			free(tmpbuf);
 			return MENU_ACTION_EXIT;
 		}
 		if (kDown & KEY_START) {
 			// create own network
-			int res = host_game(savegame, num_levels, level_names, menu_data, main_data);
-			if (res == MENU_EXIT_GAME) {
-				break;
-			}
-			kDown = 0;
-		}
-		// TODO: scanning blocks a long time, so do this in a seperate thread
-		if (networks) {
-			free(networks);
-			networks = 0;
-		}
-		ret = udsScanBeacons(
-				tmpbuf,
-				tmpbuf_size,
-				&networks,
-				&total_networks,
-				WLAN_ID,
-				0,
-				NULL,
-				false);
-		if (R_FAILED(ret)) {
-			udsExit();
-			free(tmpbuf);
-			return show_network_error(menu_data);
-		}
-		//if (redraw_selection) {
-			draw_network_view(
-					cur_selection,
-					total_networks,
-					networks,
+			// stop scanning
+			tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+			draw_menu_text(
+					BOTTOM_SCREEN_BACK,
 					menu_data,
-					network_alive);
-			//redraw_selection = 0;
-		//}
-		begin_frame();
-		copy_from_backbuffer(TOP_SCREEN);
-		copy_from_backbuffer(BOTTOM_SCREEN);
-		end_frame();
+					0,
+					96,
+					"   Please wait...   \n",
+					0,
+					1.0f);
+			begin_frame();
+			copy_from_backbuffer(TOP_SCREEN);
+			copy_from_backbuffer(BOTTOM_SCREEN);
+			end_frame();
+			Result res = svcWaitSynchronization(scan_mutex, 1000000ULL * 2000); // wait up to 2s
+			if (SUCCESS(res)) {
+				int res = host_game(savegame, num_levels, level_names, menu_data, main_data);
+				num_networks = 0;
+				total_networks = 0;
+				// continue scanning
+				svcReleaseMutex(scan_mutex);
+				if (res == MENU_EXIT_GAME) {
+					break;
+				}
+				kDown = 0;
+			}else{
+					// canot stop scanning!
+				}
+		}
+
+		Result res = svcWaitSynchronization(scan_mutex, 1000000ULL * 5); // wait up to 5ms
+		if (SUCCESS(res)) {
+			if (R_FAILED(scan_status)) {
+				run_scanning_thread = false;
+				svcReleaseMutex(scan_mutex);
+				threadJoin(thread, U64_MAX);
+				threadFree(thread);
+				svcCloseHandle(scan_mutex);
+				scan_mutex = 0;
+				free(networks);
+				networks = 0;
+				udsExit();
+				return show_network_error(menu_data);
+			}
+			// update local network info
+			if (networks) {
+				num_networks = total_networks;
+				if (num_networks > 4) {
+					num_networks = 4;
+				}
+				if (num_networks) {
+					memcpy_volatile(
+							networks_scan,
+							networks,
+							num_networks * sizeof(udsNetworkScanInfo));
+				}
+			}else{
+				num_networks = 0;
+			}
+			svcReleaseMutex(scan_mutex);
+		}
 	}
-	if (networks) {
-		free(networks);
-		networks = 0;
-	}
+	run_scanning_thread = false;
+	threadJoin(thread, U64_MAX);
+	threadFree(thread);
+	svcCloseHandle(scan_mutex);
+	scan_mutex = 0;
+	free(networks);
+	networks = 0;
 	udsExit();
-	free(tmpbuf);
 	return MENU_EXIT_GAME;
 }

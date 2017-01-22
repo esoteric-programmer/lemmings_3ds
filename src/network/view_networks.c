@@ -13,6 +13,21 @@
 #define MAX(x,y) ((x)>=(y)?(x):(y))
 
 // draw level selection screen to im_bottom
+#define DRAW_MENU(string) \
+	{\
+		size_t len = strlen(string);\
+		memcpy(msg_ptr,(string),len+1);\
+		msg_ptr += len;\
+	}
+#define DRAW_MENU_LINE(string) \
+	{\
+		size_t len = strlen(string);\
+		memcpy(msg_ptr,(string),len);\
+		msg_ptr += len;\
+		*msg_ptr = '\n';\
+		msg_ptr++;\
+		*msg_ptr = 0;\
+	}
 void draw_2p_level_selection(
 		const char* game,
 		u8 cur_level,
@@ -24,28 +39,39 @@ void draw_2p_level_selection(
 	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
 
 	char msg[30*(40+1)+1];
-	sprintf(msg,"\n  Select a 2 player level\n\n\n  Game: %s\n\n", game);
-	char* msg_ptr = msg + strlen(msg);
+	char* msg_ptr = msg;
+	DRAW_MENU("\n  Select a 2 player level\n\n\n  Game: ");
+	DRAW_MENU(game);
+	DRAW_MENU("\n\n");
 	u8 i;
 	for (i=0;i<24;i++) {
 		u8 lvl = i+top_offset;
-		u8 level_no;
-		const char* level_name;
-		if (progress >= lvl) {
-			level_name = level_names+33*lvl;
-		}else{
-			level_name = "--------------------------------";
-		}
-		level_no = lvl + 1;
+		u8 level_no = lvl + 1;
 		if (lvl >= num_2p_level) {
 			break;
 		}
-		sprintf(msg_ptr,"%s%02u: %s\n",
-				i==cur_level-top_offset?"->":"  ",level_no,level_name);
-		msg_ptr += strlen(msg_ptr);
+		if (i==cur_level-top_offset) {
+			DRAW_MENU("->");
+		}else{
+			DRAW_MENU("  ");
+		}
+		char num[3] = {
+			'0' + (level_no/10)%10,
+			'0' + level_no%10,
+			0};
+		DRAW_MENU(num);
+		DRAW_MENU(": ");
+		if (progress >= lvl) {
+			DRAW_MENU(level_names+33*lvl);
+			DRAW_MENU("\n");
+		}else{
+			DRAW_MENU_LINE("--------------------------------");
+		}
 	}
 	draw_menu_text(BOTTOM_SCREEN_BACK,menu_data,0,0,msg,0,0.5f);
 }
+#undef DRAW_MENU
+#undef DRAW_MENU_LINE
 
 int select_2p_level(
 		u8* game,
@@ -174,7 +200,7 @@ int select_2p_level(
 		}
 		if (kDown & KEY_RIGHT) {
 			if (*game < 1) {
-				if (num_2p_level[(*game)-1]) {
+				if (num_2p_level[(*game)+1]) {
 					cur_lev = 0;
 					top = cur_lev;
 					level_names_offset += num_2p_level[*game];
