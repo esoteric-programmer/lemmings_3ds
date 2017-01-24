@@ -9,6 +9,7 @@
 const char* settings_menu_topics[] = {
 	"GAME MECHANICS",
 	"AUDIO",
+	"NETWORK GAME",
 	"KEY BINDINGS",
 	0
 };
@@ -39,6 +40,13 @@ struct SettingsValues audio_source[5] = {
 	{0,0}
 };
 
+struct SettingsValues timeout_2p[4] = {
+	{"  never   ",TIMEOUT_2P_NEVER},
+	{"inactivity",TIMEOUT_2P_INACTIVITY},
+	{"count down",TIMEOUT_2P_COUNTDOWN},
+	{0,0}
+};
+
 struct MenuPoint {
 	u8 type; // 0: check box; 1: key
 	const char* name;
@@ -56,7 +64,6 @@ struct MenuPoint gamemechanics_points[] = {
 	{0, "Shrugger glitch", &settings.glitch_shrugger, {0,0}},
 	{0, "Direct drop glitch", &settings.glitch_direct_drop, {0,0}},
 	{0, "Amiga background color", &settings.amiga_background, {0,0}},
-	{0, "Always 40 lemmings in 2p mode", &settings.two_player_always_equal, {0,0}},
 	{0, 0, 0, {0,0}}
 };
 
@@ -65,6 +72,13 @@ struct MenuPoint audio_points[] = {
 		{2, "Effects volume", &settings.sfx_volume, {8,volume}},
 		{2, "Audio source", &settings.audio_order, {0,audio_source}},
 		{0, 0, 0, {0,0}}
+};
+
+struct MenuPoint network_game_points[] = {
+	{0, "Always 40 lemmings", &settings.two_player_always_equal, {0,0}},
+	{0, "Inspect level", &settings.two_player_inspect_level, {0,0}},
+	{2, "Time out", &settings.two_player_timeout, {1,timeout_2p}},
+	{0, 0, 0, {0,0}}
 };
 
 struct MenuPoint key_bindings_points[] = {
@@ -93,6 +107,7 @@ struct MenuPoint key_bindings_points[] = {
 struct MenuPoint* settings_menu_points[] = {
 	gamemechanics_points,
 	audio_points,
+	network_game_points,
 	key_bindings_points,
 	0
 };
@@ -299,12 +314,14 @@ int settings_menu(struct SaveGame* savegame, struct MainMenuData* menu_data) {
 	u8 redraw_selection = 1;
 	// TODO: don't use hard coded size of menu entries
 	//       malloc dynamically instaed
-	u32 gamemechanics_values[7];
+	u32 gamemechanics_values[6];
 	u32 audio_values[3];
+	u32 network_game_values[3];
 	u32 key_bindings_values[19];
-	u32* menu_values[3] = {
+	u32* menu_values[4] = {
 		gamemechanics_values,
 		audio_values,
+		network_game_values,
 		key_bindings_values
 	};
 	u8 topic;

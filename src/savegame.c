@@ -118,6 +118,12 @@ void read_savegame(struct SaveGame* savegame) {
 			fread(&two_player_add_saved_lemmings,1,1,savefile);
 			settings.two_player_always_equal = !two_player_add_saved_lemmings;
 		}
+		if (version > 6) {
+			fread(&settings.two_player_timeout,1,1,savefile);
+			fread(&settings.two_player_inspect_level,1,1,savefile);
+			fread(&settings.reserved_1,1,1,savefile);
+			fread(&settings.reserved_2,1,1,savefile);
+		}
 		for (i=0;i<2;i++) {
 			fread(&settings.key_bindings[i].modifier,1,4,savefile);
 			fread(&settings.key_bindings[i].click,1,4,savefile);
@@ -194,6 +200,10 @@ void write_savegame(struct SaveGame* savegame) {
 	fwrite(&settings.amiga_background,1,1,savefile);
 	u8 two_player_add_saved_lemmings = !settings.two_player_always_equal;
 	fwrite(&two_player_add_saved_lemmings,1,1,savefile);
+	fwrite(&settings.two_player_timeout,1,1,savefile);
+	fwrite(&settings.two_player_inspect_level,1,1,savefile);
+	fwrite(&settings.reserved_1,1,1,savefile);
+	fwrite(&settings.reserved_2,1,1,savefile);
 	for (i=0;i<2;i++) {
 		fwrite(&settings.key_bindings[i].modifier,1,4,savefile);
 		fwrite(&settings.key_bindings[i].click,1,4,savefile);

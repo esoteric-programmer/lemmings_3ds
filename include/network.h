@@ -30,6 +30,8 @@ struct NW_GameInit {
 	u8 lvl_id;
 	u8 game_id;
 	u8 glitch_direct_drop;
+	u8 timeout; // 2p time limit settings
+	u8 inspect_level; // inspect level before it starts?
 };
 
 struct NW_LevelData_Info {

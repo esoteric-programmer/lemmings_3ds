@@ -16,7 +16,11 @@ struct Settings settings = {
 	0, // skip unavailable skills
 	0, // zoom mode
 	0, // amiga background
-	0, // cumulate lemmings
+	0, // cumulate lemmings in 2p mode
+	TIMEOUT_2P_INACTIVITY, // liberal time out, only to prevent locks
+	1, // allow players in 2p mode to inspect level at begin
+	0, // reserved
+	0, // reserved
 	{
 		{
 			KEY_R,

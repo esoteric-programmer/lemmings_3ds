@@ -100,6 +100,8 @@ int server_prepare_level(
 	gameinit.lvl_id = level_id;
 	gameinit.game_id = level_id;
 	gameinit.glitch_direct_drop = settings.glitch_direct_drop;
+	gameinit.timeout = settings.two_player_timeout;
+	gameinit.inspect_level = settings.two_player_inspect_level;
 	// send gameinit
 	if (!send_until_confirmed(&gameinit, sizeof(gameinit), bindctx)) {
 		free(chunk);
@@ -175,9 +177,15 @@ int server_prepare_level(
 			vgaspec
 	};
 	u8* chunks_received = 0;
-	u32 chunk_received_offsets[4] = {0, 2, 2+((chunks[0]?chunks[0]->size:0) + CHUNK_SIZE - 1)/CHUNK_SIZE, 0};
-	chunk_received_offsets[3] = chunk_received_offsets[2] + ((chunks[1]?chunks[1]->size:0) + CHUNK_SIZE - 1)/CHUNK_SIZE;
-	u32 chunk_num = chunk_received_offsets[3] + ((chunks[2]?chunks[2]->size:0) + CHUNK_SIZE - 1)/CHUNK_SIZE;
+	u32 chunk_received_offsets[4] = {
+			0,
+			2,
+			2+((chunks[0]?chunks[0]->size:0) + CHUNK_SIZE - 1)/CHUNK_SIZE,
+			0};
+	chunk_received_offsets[3] = chunk_received_offsets[2]
+			+ ((chunks[1]?chunks[1]->size:0) + CHUNK_SIZE - 1)/CHUNK_SIZE;
+	u32 chunk_num = chunk_received_offsets[3]
+			+ ((chunks[2]?chunks[2]->size:0) + CHUNK_SIZE - 1)/CHUNK_SIZE;
 	chunks_received = (u8*)malloc(chunk_num);
 	memset(chunks_received, 0, chunk_num);
 	while (chunk_num) {
@@ -257,7 +265,10 @@ int server_prepare_level(
 							}
 							if (valid) {
 								// some chunk has been confirmed
-								idx = chunk_received_offsets[chunk->type] + (chunk->type==0?(chunk->offset/1024):(chunk->offset/CHUNK_SIZE));
+								idx = chunk_received_offsets[chunk->type]
+										+ (chunk->type==0
+											?(chunk->offset/1024)
+											:(chunk->offset/CHUNK_SIZE));
 								if (!chunks_received[idx]) {
 									chunks_received[idx] = 1;
 									chunk_num--;
@@ -449,6 +460,8 @@ int client_prepare_level(
 					lemmings[0] = rec_buf->gi.lemmings_per_player[0];
 					lemmings[1] = rec_buf->gi.lemmings_per_player[1];
 					settings.glitch_direct_drop = rec_buf->gi.glitch_direct_drop;
+					settings.two_player_timeout = rec_buf->gi.timeout;
+					settings.two_player_inspect_level = rec_buf->gi.inspect_level;
 					if (lvl_id) {
 						*lvl_id = rec_buf->gi.lvl_id;
 					}
@@ -572,7 +585,12 @@ int client_prepare_level(
 						memcpy(&level[rec_buf->lc.offset], rec_buf->lc.data, rec_buf->lc.length);
 					}
 					rec_buf->lc.length = 0;
-					udsSendTo(UDS_HOST_NETWORKNODEID,1,UDS_SENDFLAG_Default,rec_buf->buf,sizeof(struct NW_LevelData_Chunk));
+					udsSendTo(
+							UDS_HOST_NETWORKNODEID,
+							1,
+							UDS_SENDFLAG_Default,
+							rec_buf->buf,
+							sizeof(struct NW_LevelData_Chunk));
 					break;
 				case NW_LEVEL_SENT:
 					{
@@ -849,7 +867,9 @@ int server_run_level(
 
 		// apply actions from action_queue
 		if (process_action_queue(io_state.action_queue, io_state.num_actions, level, 0, 1)) {
-			level->frames_left = max_level_time;
+			if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+				level->frames_left = max_level_time;
+			}
 		}
 
 		// send action queue to client!
@@ -900,7 +920,9 @@ int server_run_level(
 							client_input_id = tmp;
 							nw.ui.msg_type = NW_USER_INPUT;
 							if (process_action_queue(nw.ui.action_queue, nw.ui.num_actions, level, 1, 1)) {
-								level->frames_left = max_level_time;
+								if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+									level->frames_left = max_level_time;
+								}
 							}
 							level->player[1].x_pos = nw.ui.x_pos;
 							if (nw.ui.num_actions) {
@@ -970,6 +992,11 @@ int server_run_level(
 				break;
 			}
 			if (changes) {
+				if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+					level->frames_left = max_level_time;
+				}
+			}
+			if (settings.two_player_timeout == TIMEOUT_2P_NEVER) {
 				level->frames_left = max_level_time;
 			}
 		}while(1);
@@ -1154,13 +1181,20 @@ int client_run_level(
 								return 0;
 							}
 							if (changes) {
+								if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+									level->frames_left = max_level_time;
+								}
+							}
+							if (settings.two_player_timeout == TIMEOUT_2P_NEVER) {
 								level->frames_left = max_level_time;
 							}
 							steps--;
 						}
 						// parse input...
 						if (process_action_queue(msg.io.action_queue, msg.io.num_actions, level, msg.io.player_id, 1)) {
-							level->frames_left = max_level_time;
+							if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+								level->frames_left = max_level_time;
+							}
 						}
 						if (msg.io.player_id != 1) {
 							// don't overwrite own position
@@ -1194,6 +1228,11 @@ int client_run_level(
 									game_ended = 1;
 								}
 								if (changes) {
+									if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+										level->frames_left = max_level_time;
+									}
+								}
+								if (settings.two_player_timeout == TIMEOUT_2P_NEVER) {
 									level->frames_left = max_level_time;
 								}
 								steps--;

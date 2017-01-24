@@ -1,6 +1,6 @@
 #ifndef SAVEGAME_H
 #define SAVEGAME_H
-#define SAVEGAME_VERSION 6
+#define SAVEGAME_VERSION 7
 #include <3ds.h>
 
 struct SaveGame {

@@ -25,6 +25,10 @@ extern const char* PATH_ROOT;
 #define AUDIO_ORDER_ONLY_CUSTOM    2
 #define AUDIO_ORDER_ONLY_ADLIB     3
 
+#define TIMEOUT_2P_NEVER           0
+#define TIMEOUT_2P_INACTIVITY      1
+#define TIMEOUT_2P_COUNTDOWN       2
+
 extern struct Settings {
 	u8 glitch_nuke;
 	u8 glitch_entrance_pausing;
@@ -42,6 +46,10 @@ extern struct Settings {
 	u8 zoom_mode_active; // not implemented yet
 	u8 amiga_background; // 0 = no (black); 1 = yes (dark blue)
 	u8 two_player_always_equal; // 0 = yes, always start with 40 lemmings; 1 = no, start wth 40 + rescued lemmings
+	u8 two_player_timeout;
+	u8 two_player_inspect_level;
+	u8 reserved_1; // maybe 1p recording settings (for playback)
+	u8 reserved_2; // maybe 2p recording settings (for playback)
 	struct KeyBindings {
 		u32 modifier;
 		u32 click;

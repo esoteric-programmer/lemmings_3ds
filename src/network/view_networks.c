@@ -753,8 +753,16 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 						udsUnbind(&bindctx);
 						return 0;
 					}
-					u8 direct_drop = settings.glitch_direct_drop; // save local value
+					// save local settings
+					u8 local_settings[] = {
+							settings.glitch_direct_drop,
+							settings.two_player_timeout,
+							settings.two_player_inspect_level
+					};
+					// apply server settings
 					settings.glitch_direct_drop = tmpbuf.gi.glitch_direct_drop;
+					settings.two_player_timeout = tmpbuf.gi.timeout;
+					settings.two_player_inspect_level = tmpbuf.gi.inspect_level;
 					do {
 						tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
 						draw_menu_text(
@@ -807,7 +815,10 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 							}
 						}
 					}while(aptMainLoop() && level);
-					settings.glitch_direct_drop = direct_drop; // restore local value
+					// restore local settings
+					settings.glitch_direct_drop = local_settings[0];
+					settings.two_player_timeout = local_settings[1];
+					settings.two_player_inspect_level = local_settings[2];
 					if (level) {
 						// TODO: clean up;
 						free(level);
