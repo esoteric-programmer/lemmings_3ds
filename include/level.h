@@ -55,6 +55,7 @@ struct LevelPlayer {
 	// of that player this LevelPlayer struct corresponds to.
 	u8 rescued[2];
 	u16 request_common_nuke; // multiplayer only. set when player wants to nuke. count down each frame, so the other player must request nuking in the same time slot
+	u8 ready_to_start; // multiplayer only. set when player finished inspection of the level. to start the game, all players must have set this value (if level inspection is enabled).
 	struct Lemming lemmings[MAX_NUM_OF_LEMMINGS];
 };
 
@@ -77,6 +78,7 @@ struct Level {
 	u16 frames_left; // until time is up
 
 	u8 paused;
+	u8 inspect;
 	u8 frame_step_forward;
 
 	u8 next_lemming_countdown;

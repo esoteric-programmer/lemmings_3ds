@@ -32,7 +32,7 @@ In game:
 
 C-PAD         move cursor
 A             click at cursor position
-B             pause/resume (not in 2 player game)
+B             pause/resume (in 2 player mode with inspection: ready to start game)
 X             select next skill
 Y             select previous skill
 D UP          increase release rate (not in 2 player game)

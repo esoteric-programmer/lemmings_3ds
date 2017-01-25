@@ -492,6 +492,9 @@ int parse_level(
 	if (settings.amiga_background) {
 		palette[0] = AMIGA_BACKGROUND;
 	}
+	if (players > 1 && settings.two_player_inspect_level) {
+		output->inspect = 1;
+	}
 	struct Image* terrain_img[64];
 	if (!parse_vgagr(
 			ground_data,

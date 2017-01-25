@@ -761,13 +761,13 @@ void draw_highperf_text(
 		if (code == '"') {
 			other = highperf_font_quote;
 		}
-		if (x_offset >= 40) {
+		if (x_offset >= dest->width) {
 			i+=bytes;
 			continue;
 		}
 		// now draw character with index i
 		for (yi=0;yi<16 && yi+y_offset<dest->height;yi++) {
-			for (xi=8*x_offset;xi<8*(x_offset+1);xi++) {
+			for (xi=x_offset;xi<x_offset+8;xi++) {
 				if (xi >= dest->width) {
 					break;
 				}
@@ -778,14 +778,14 @@ void draw_highperf_text(
 					// draw character
 					if (id == -1) {
 						if (other) {
-							if (other[8*yi + xi-8*x_offset] & 0xF0) {
+							if (other[8*yi + xi-x_offset] & 0xF0) {
 								SET_PIXEL(dest, screen_x, yi+y_offset,
 										highperf_palette[
-												other[8*yi + xi-8*x_offset] & 0xF]);
+												other[8*yi + xi-x_offset] & 0xF]);
 							}
 						}
 					}else{
-						u8 color = data->high_perf_font[id*8*16 + 8*yi + xi-8*x_offset];
+						u8 color = data->high_perf_font[id*8*16 + 8*yi + xi-x_offset];
 						if (color & 0xF0) {
 							SET_PIXEL(dest, screen_x, yi+y_offset,
 									highperf_palette[color & 0xF]);
@@ -795,7 +795,7 @@ void draw_highperf_text(
 			}
 		}
 		i+=bytes;
-		x_offset++;
+		x_offset+=8; // character width
 	}
 }
 
@@ -884,17 +884,22 @@ int draw_toolbar(
 				SET_PIXEL(dest, x, y+yi, highperf_palette[0]);
 			} else {
 				if (level->num_players > 1) {
-					if (toolbar_x < 24 || toolbar_x >= 320 - 24) {
+					if (level->inspect && toolbar_x < 192 - 24) {
+						SET_PIXEL(dest, x, y+yi, highperf_palette[0]);
+					}else if (toolbar_x < 24 || toolbar_x >= 320 - 24) {
 						SET_PIXEL(dest, x, y+yi, highperf_palette[0]);
 					}else{
 						s16 tx = toolbar_x + 8;
 						if (tx >= 16*10) {
 							tx += 16;
 						}
+						int color_idx = data->high_perf_toolbar[tx+yi*320] & 0x0F;
+						if (player == 1 && (color_idx == 1 || color_idx == 2)) {
+							// swap blue and green
+							color_idx = 3 - color_idx;
+						}
 						SET_PIXEL(dest, x, y+yi,
-								highperf_palette[
-										data->high_perf_toolbar[
-												tx+yi*320] & 0x0F]);
+								highperf_palette[color_idx]);
 					}
 				} else {
 					SET_PIXEL(dest, x, y+yi,
@@ -905,68 +910,128 @@ int draw_toolbar(
 			}
 		}
 	}
-
+	if (level->inspect && !level->player[player].ready_to_start) {
+		draw_highperf_text(
+				BOTTOM_SCREEN,
+				((s16)dest->width-320)/2 + 56,
+				160+32+16+4,
+				data,
+				"Start game",
+				highperf_palette);
+		s16 xi;
+		for (xi=0;xi<=88 && xi+((s16)dest->width-320)/2 + 56 - 4<dest->width;xi++) {
+			SET_PIXEL(dest, xi+((s16)dest->width-320)/2 + 56 - 4, 160+32+16+4, highperf_palette[3]);
+			SET_PIXEL(dest, xi+((s16)dest->width-320)/2 + 56 - 4, 160+32+16+16+4, highperf_palette[3]);
+		}
+		for (yi=0;yi<=16 && yi+160+32+16+4<dest->height;yi++) {
+			SET_PIXEL(dest, ((s16)dest->width-320)/2 + 56 - 4, yi+160+32+16+4, highperf_palette[3]);
+			SET_PIXEL(dest, ((s16)dest->width-320)/2 + 56 + 80 + 4, yi+160+32+16+4, highperf_palette[3]);
+		}
+	}else if (level->inspect) {
+		draw_highperf_text(
+				BOTTOM_SCREEN,
+				((s16)dest->width-320)/2 + 56,
+				160+32+16+4,
+				data,
+				"Waiting...",
+				highperf_palette);
+	}
 	draw_highperf_text(
-			GFX_BOTTOM,
+			BOTTOM_SCREEN,
 			((s16)dest->width-320)/2,
 			160+32,
 			data,
 			text,
 			highperf_palette);
 
-	// number of available draw skills
-	u8 nums[10];
-	nums[0] = level->rate;
-	nums[1] = level->cur_rate;
-	for (i=0;i<8;i++) {
-		nums[i+2] = level->player[player].skills[i];
-	}
-	for (i=(level->num_players>1?2:0);i<10;i++) {
-		for (yi=0;yi<8 && yi+y+17<dest->height;yi++) {
-			for (x=16*i+4;x<16*i+12;x++) {
-				s16 screen_x = x + ((s16)dest->width-320)/2 - (level->num_players>1?8:0);
+	if (!level->inspect) {
+		// number of available draw skills
+		u8 nums[10];
+		nums[0] = level->rate;
+		nums[1] = level->cur_rate;
+		for (i=0;i<8;i++) {
+			nums[i+2] = level->player[player].skills[i];
+		}
+		for (i=(level->num_players>1?2:0);i<10;i++) {
+			for (yi=0;yi<8 && yi+y+17<dest->height;yi++) {
+				for (x=16*i+4;x<16*i+12;x++) {
+					s16 screen_x = x + ((s16)dest->width-320)/2 - (level->num_players>1?8:0);
+					if (screen_x < 0 || screen_x >= dest->width) {
+						continue;
+					} else {
+						// draw rectangle
+						if (nums[i] == 0) {
+							SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
+						}else{
+							if (nums[i] > 99) {
+								nums[i] = 99;
+							}
+							SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[0]);
+							if (data->skill_numbers[
+									(nums[i]%10)*2*8*8 + yi*8 + (x-16*i-4)]) {
+								SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
+							}
+							if (data->skill_numbers[
+									((nums[i]/10)*2+1)*8*8 + yi*8 + (x-16*i-4)]) {
+								SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// mark active_skill
+		if (io_state->skill >= 8) {
+			io_state->skill = 0;
+		}
+		for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
+			for (x=16*(io_state->skill+2);x<16*(io_state->skill+3);x++) {
+				s16 screen_x = x + ((s16)dest->width-320)/2 - (level->num_players>1?8:0);;
 				if (screen_x < 0 || screen_x >= dest->width) {
 					continue;
 				} else {
 					// draw rectangle
-					if (nums[i] == 0) {
-						SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
+					if (yi==0 || yi==23) {
+						SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 					}else{
-						if (nums[i] > 99) {
-							nums[i] = 99;
-						}
-						SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[0]);
-						if (data->skill_numbers[
-								(nums[i]%10)*2*8*8 + yi*8 + (x-16*i-4)]) {
-							SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
-						}
-						if (data->skill_numbers[
-								((nums[i]/10)*2+1)*8*8 + yi*8 + (x-16*i-4)]) {
-							SET_PIXEL(dest, screen_x, y+yi+17, highperf_palette[3]);
+						if (x==16*(io_state->skill+2)
+								|| x==16*(io_state->skill+2)+15) {
+							SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
 						}
 					}
 				}
 			}
 		}
 	}
-
-	// mark active_skill
-	if (io_state->skill >= 8) {
-		io_state->skill = 0;
+	u16 max_nuke = 0;
+	u8 pl;
+	for (pl=0;pl<level->num_players;pl++) {
+		if (pl == player) {
+			continue;
+		}
+		if (level->player[pl].request_common_nuke > max_nuke) {
+			max_nuke = level->player[pl].request_common_nuke;
+		}
 	}
-	for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
-		for (x=16*(io_state->skill+2);x<16*(io_state->skill+3);x++) {
-			s16 screen_x = x + ((s16)dest->width-320)/2 - (level->num_players>1?8:0);;
-			if (screen_x < 0 || screen_x >= dest->width) {
-				continue;
-			} else {
-				// draw rectangle
-				if (yi==0 || yi==23) {
-					SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
-				}else{
-					if (x==16*(io_state->skill+2)
-							|| x==16*(io_state->skill+2)+15) {
+	max_nuke = (max_nuke / 4) % 2;
+	if (max_nuke) {
+		u16 NUKE_BUTTON_POS = 10;
+		// mark nuke button to visualize nuke request...
+		for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
+			for (x=16*(NUKE_BUTTON_POS);x<16*(NUKE_BUTTON_POS+1);x++) {
+				s16 screen_x = x + ((s16)dest->width-320)/2 - 8;
+				if (screen_x < 0 || screen_x >= dest->width) {
+					continue;
+				} else {
+					// draw rectangle
+					if (yi==0 || yi==23) {
 						SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
+					}else{
+						if (x==16*(NUKE_BUTTON_POS)
+								|| x==16*(NUKE_BUTTON_POS)+15) {
+							SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
+						}
 					}
 				}
 			}
@@ -1003,7 +1068,6 @@ int draw_toolbar(
 	}else if (view_rect_width > 103) {
 		view_rect_width = 103;
 	}
-	u8 pl;
 	for (pl=0; pl<=level->num_players; pl++) {
 		if (pl == player) {
 			continue;
@@ -1027,38 +1091,6 @@ int draw_toolbar(
 					if (x==level->player[p].x_pos / 16
 							|| x==level->player[p].x_pos / 16 + view_rect_width - 1) {
 						SET_PIXEL(dest, screen_x, screen_y, color);
-					}
-				}
-			}
-		}
-	}
-	u16 max_nuke = 0;
-	for (pl=0;pl<level->num_players;pl++) {
-		if (pl == player) {
-			continue;
-		}
-		if (level->player[pl].request_common_nuke > max_nuke) {
-			max_nuke = level->player[pl].request_common_nuke;
-		}
-	}
-	max_nuke = (max_nuke / 4) % 2;
-	if (max_nuke) {
-		u16 NUKE_BUTTON_POS = 10;
-		// mark nuke button to visualize nuke request...
-		for (yi=0;yi<24 && y+yi+16<dest->height;yi++) {
-			for (x=16*(NUKE_BUTTON_POS);x<16*(NUKE_BUTTON_POS+1);x++) {
-				s16 screen_x = x + ((s16)dest->width-320)/2 - 8;
-				if (screen_x < 0 || screen_x >= dest->width) {
-					continue;
-				} else {
-					// draw rectangle
-					if (yi==0 || yi==23) {
-						SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
-					}else{
-						if (x==16*(NUKE_BUTTON_POS)
-								|| x==16*(NUKE_BUTTON_POS)+15) {
-							SET_PIXEL(dest, screen_x, y+yi+16, highperf_palette[3]);
-						}
 					}
 				}
 			}

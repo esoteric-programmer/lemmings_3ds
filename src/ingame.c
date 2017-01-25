@@ -20,7 +20,10 @@ int level_step(
 	if (lemming_inout) {
 		*lemming_inout = 0;
 	}
-	if (settings.glitch_entrance_pausing || !level->paused || level->frame_step_forward) {
+	if (!level->inspect
+			&& (settings.glitch_entrance_pausing
+				|| !level->paused
+				|| level->frame_step_forward)) {
 		if (level->opening_counter <= 55) {
 			level->opening_counter++;
 			// do action depending on _new:
@@ -49,15 +52,15 @@ int level_step(
 		}
 	}
 
-	if (!level->paused || level->frame_step_forward) {
-		// count down common nuke counter
-		u8 p;
-		for (p=0;p<level->num_players;p++) {
-			if (level->player[p].request_common_nuke) {
-				level->player[p].request_common_nuke--;
-			}
+	// count down common nuke counter
+	u8 p;
+	for (p=0;p<level->num_players;p++) {
+		if (level->player[p].request_common_nuke) {
+			level->player[p].request_common_nuke--;
 		}
-		int i;
+	}
+
+	if (!level->inspect && (!level->paused || level->frame_step_forward)) {
 		if (level->frame_step_forward) {
 			level->frame_step_forward--;
 		}
@@ -93,6 +96,9 @@ int level_step(
 				*lemming_inout = 1;
 			}
 		}
+	}
+	if (!level->paused || level->frame_step_forward) {
+		int i;
 		for (i=0;i<32;i++) {
 			// process object!
 			struct ObjectType* obj_type = level->object_types[level->object_instances[i].type];
@@ -122,7 +128,6 @@ int level_step(
 		}
 	}
 	u8 lem_left = 0;
-	u16 p;
 	for (p=0; p<level->num_players; p++) {
 		lem_left += count_lemmings(level->player[p].lemmings) + lemmings_left(&level->player[p]);
 	}
@@ -241,7 +246,6 @@ void render_level_frame(
 			BOTTOM_SCREEN_Y_OFFSET+200,
 			SCREEN_WIDTH,
 			240-(BOTTOM_SCREEN_Y_OFFSET+200));
-
 
 	draw(
 			BOTTOM_SCREEN,

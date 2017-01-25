@@ -399,90 +399,101 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 	if (action & (ACTION_CURSOR_CLICK | ACTION_CURSOR_HOLD)) {
 		if (io_state->cursor.y >= 176 && io_state->cursor.y < 200) {
 			// clicked at panel
-			s16 cur_x = io_state->cursor.x;
-			if (level->num_players > 1) {
-				cur_x += 8;
-				if (cur_x >= 16*10) {
-					cur_x += 16;
-					if (cur_x >= SCREEN_WIDTH) {
-						cur_x = 0;
+			if (level->inspect) {
+				if (!level->player[player].ready_to_start) {
+					if (io_state->cursor.y >= 180
+							&& io_state->cursor.y <= 196
+							&& io_state->cursor.x >= 56
+							&& io_state->cursor.x <= 136) {
+						action |= ACTION_PAUSE; // start game
 					}
 				}
-			}
-			switch (cur_x / 16) {
-				case  0:
-					// decrement rate
-					action |= ACTION_DEC_RATE;
-					break;
-				case 1:
-					// increment rate
-					action |= ACTION_INC_RATE;
-					break;
-				case 2:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_CIMBER;
-					}
-					break;
-				case 3:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_FLOATER;
-					}
-					break;
-				case 4:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_BOMBER;
-					}
-					break;
-				case 5:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_BLOCKER;
-					}
-					break;
-				case 6:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_BUILDER;
-					}
-					break;
-				case 7:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_BASHER;
-					}
-					break;
-				case 8:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_MINER;
-					}
-					break;
-				case 9:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_SELECT_SKILL_DIGGER;
-					}
-					break;
-				case 10:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_PAUSE;
-					}
-					break;
-				case 11:
-					if (action & ACTION_CURSOR_CLICK) {
-						action |=  ACTION_NUKE;
-					}
-					break;
-				case 12:
-					// nothing
-					break;
-				default:
-					{
-						// touched at minimap
-						s16 new_x_pos = (cur_x - 13*16) * 16;
-						new_x_pos -= SCREEN_WIDTH / 2;
-						if (new_x_pos < 0) {
-							new_x_pos = 0;
-						}else if (new_x_pos >= 1584 - SCREEN_WIDTH) {
-							new_x_pos = (SCREEN_WIDTH <= 1584?1584 - SCREEN_WIDTH:0);
+			}else{
+				s16 cur_x = io_state->cursor.x;
+				if (level->num_players > 1) {
+					cur_x += 8;
+					if (cur_x >= 16*10) {
+						cur_x += 16;
+						if (cur_x >= SCREEN_WIDTH) {
+							cur_x = 0;
 						}
-						io_state->x_pos = new_x_pos;
 					}
+				}
+				switch (cur_x / 16) {
+					case  0:
+						// decrement rate
+						action |= ACTION_DEC_RATE;
+						break;
+					case 1:
+						// increment rate
+						action |= ACTION_INC_RATE;
+						break;
+					case 2:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_CIMBER;
+						}
+						break;
+					case 3:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_FLOATER;
+						}
+						break;
+					case 4:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_BOMBER;
+						}
+						break;
+					case 5:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_BLOCKER;
+						}
+						break;
+					case 6:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_BUILDER;
+						}
+						break;
+					case 7:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_BASHER;
+						}
+						break;
+					case 8:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_MINER;
+						}
+						break;
+					case 9:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_SELECT_SKILL_DIGGER;
+						}
+						break;
+					case 10:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_PAUSE;
+						}
+						break;
+					case 11:
+						if (action & ACTION_CURSOR_CLICK) {
+							action |=  ACTION_NUKE;
+						}
+						break;
+					case 12:
+						// nothing
+						break;
+					default:
+						{
+							// touched at minimap
+							s16 new_x_pos = (cur_x - 13*16) * 16;
+							new_x_pos -= SCREEN_WIDTH / 2;
+							if (new_x_pos < 0) {
+								new_x_pos = 0;
+							}else if (new_x_pos >= 1584 - SCREEN_WIDTH) {
+								new_x_pos = (SCREEN_WIDTH <= 1584?1584 - SCREEN_WIDTH:0);
+							}
+							io_state->x_pos = new_x_pos;
+						}
+				}
 			}
 		}
 	}
@@ -490,88 +501,90 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 		add_action(io_state, ACTIONQUEUE_TOGGLE_PAUSE, 0, 0, 0);
 		io_state->time_since_nuke_pressed = 0;
 	}
-	if (action & ACTION_NEXT_SKILL) {
-		io_state->skill = (io_state->skill+1)%8;
-		play_sound(0x01);
-	}
-	if (action & ACTION_PREV_SKILL) {
-		if (io_state->skill > 0) {
-			io_state->skill--;
-		}else{
+	if (!level->inspect) {
+		if (action & ACTION_NEXT_SKILL) {
+			io_state->skill = (io_state->skill+1)%8;
+			play_sound(0x01);
+		}
+		if (action & ACTION_PREV_SKILL) {
+			if (io_state->skill > 0) {
+				io_state->skill--;
+			}else{
+				io_state->skill = 7;
+			}
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_CIMBER) {
+			io_state->skill = 0;
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_FLOATER) {
+			io_state->skill = 1;
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_BOMBER) {
+			io_state->skill = 2;
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_BLOCKER) {
+			io_state->skill = 3;
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_BUILDER) {
+			io_state->skill = 4;
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_BASHER) {
+			io_state->skill = 5;
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_MINER) {
+			io_state->skill = 6;
+			play_sound(0x01);
+		}
+		if (action & ACTION_SELECT_SKILL_DIGGER) {
 			io_state->skill = 7;
+			play_sound(0x01);
 		}
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_CIMBER) {
-		io_state->skill = 0;
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_FLOATER) {
-		io_state->skill = 1;
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_BOMBER) {
-		io_state->skill = 2;
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_BLOCKER) {
-		io_state->skill = 3;
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_BUILDER) {
-		io_state->skill = 4;
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_BASHER) {
-		io_state->skill = 5;
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_MINER) {
-		io_state->skill = 6;
-		play_sound(0x01);
-	}
-	if (action & ACTION_SELECT_SKILL_DIGGER) {
-		io_state->skill = 7;
-		play_sound(0x01);
-	}
-	if (action & ACTION_INC_RATE) {
-		s8 inc = 0;
-		if (!io_state->change_rate_hold) {
-			inc = step_width_start();
-			io_state->change_rate_hold++;
-		}else{
-			io_state->change_rate_hold++;
-			if (io_state->change_rate_hold % 12 == 0) {
-				io_state->change_rate_hold = 6;
-				inc = step_width_running();
+		if (action & ACTION_INC_RATE) {
+			s8 inc = 0;
+			if (!io_state->change_rate_hold) {
+				inc = step_width_start();
+				io_state->change_rate_hold++;
+			}else{
+				io_state->change_rate_hold++;
+				if (io_state->change_rate_hold % 12 == 0) {
+					io_state->change_rate_hold = 6;
+					inc = step_width_running();
+				}
 			}
+			add_action(io_state, ACTIONQUEUE_CHANGE_RATE, (u8)inc, 0, 0);
 		}
-		add_action(io_state, ACTIONQUEUE_CHANGE_RATE, (u8)inc, 0, 0);
-	}
-	if (action & ACTION_DEC_RATE) {
-		s8 dec = 0;
-		if (!io_state->change_rate_hold) {
-			dec = step_width_start();
-			io_state->change_rate_hold++;
-		}else{
-			io_state->change_rate_hold++;
-			if (io_state->change_rate_hold % 12 == 0) {
-				io_state->change_rate_hold = 6;
-				dec = step_width_running();
+		if (action & ACTION_DEC_RATE) {
+			s8 dec = 0;
+			if (!io_state->change_rate_hold) {
+				dec = step_width_start();
+				io_state->change_rate_hold++;
+			}else{
+				io_state->change_rate_hold++;
+				if (io_state->change_rate_hold % 12 == 0) {
+					io_state->change_rate_hold = 6;
+					dec = step_width_running();
+				}
 			}
+			add_action(io_state, ACTIONQUEUE_CHANGE_RATE, (u8)(-dec), 0, 0);
 		}
-		add_action(io_state, ACTIONQUEUE_CHANGE_RATE, (u8)(-dec), 0, 0);
-	}
-	if (!(action & (ACTION_INC_RATE | ACTION_DEC_RATE))) {
-		io_state->change_rate_hold = 0;
-	}
-	if (!level->paused && (action & (ACTION_NUKE | ACTION_NUKE_IMMEDIATELY))) {
-		if ((action & ACTION_NUKE_IMMEDIATELY)
-				|| (io_state->time_since_nuke_pressed
-					&& io_state->time_since_nuke_pressed < 45)) {
-			add_action(io_state, ACTIONQUEUE_NUKE, 0, 0, 0);
-		}else{
-			io_state->time_since_nuke_pressed = 1;
+		if (!(action & (ACTION_INC_RATE | ACTION_DEC_RATE))) {
+			io_state->change_rate_hold = 0;
+		}
+		if (!level->paused && (action & (ACTION_NUKE | ACTION_NUKE_IMMEDIATELY))) {
+			if ((action & ACTION_NUKE_IMMEDIATELY)
+					|| (io_state->time_since_nuke_pressed
+						&& io_state->time_since_nuke_pressed < 45)) {
+				add_action(io_state, ACTIONQUEUE_NUKE, 0, 0, 0);
+			}else{
+				io_state->time_since_nuke_pressed = 1;
+			}
 		}
 	}
 	if (action & ACTION_SCROLL_RIGHT) {
@@ -599,7 +612,7 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 			}else{
 				io_state->x_pos = 0;
 			}
-	}else{
+		}else{
 			io_state->x_pos+=x;
 			if (io_state->x_pos > 1584-SCREEN_WIDTH) {
 				if (1584>SCREEN_WIDTH) {
@@ -610,7 +623,7 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 			}
 		}
 	}
-	if (action & ACTION_SPEED_UP) {
+	if (!level->inspect && (action & ACTION_SPEED_UP)) {
 		io_state->speed_up = 1;
 	}else{
 		io_state->speed_up = 0;
@@ -642,23 +655,29 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 			}
 		}
 	}
-
-	if (action & ACTION_CURSOR_CLICK) {
-		if (lem1) {
-			u8 param2 = 0xFF;
-			if (lem2) {
-				param2 = lem2 - level->player[player].lemmings;
+	if (!level->inspect) {
+		if (action & ACTION_CURSOR_CLICK) {
+			if (lem1) {
+				u8 param2 = 0xFF;
+				if (lem2) {
+					param2 = lem2 - level->player[player].lemmings;
+				}
+				add_action(
+						io_state,
+						ACTIONQUEUE_ASSIGN_SKILL,
+						lem1 - level->player[player].lemmings,
+						param2,
+						io_state->skill);
 			}
-			add_action(io_state, ACTIONQUEUE_ASSIGN_SKILL, lem1 - level->player[player].lemmings, param2, io_state->skill);
 		}
-	}
-	if (!level->paused) {
-		if (io_state->time_since_nuke_pressed) {
-			io_state->time_since_nuke_pressed++;
-		}
-	}else {
-		if (action & ACTION_STEP_FRAME) {
-			add_action(io_state, ACTIONQUEUE_FRAME_FORWARD, 1, 0, 0);
+		if (!level->paused) {
+			if (io_state->time_since_nuke_pressed) {
+				io_state->time_since_nuke_pressed++;
+			}
+		}else {
+			if (action & ACTION_STEP_FRAME) {
+				add_action(io_state, ACTIONQUEUE_FRAME_FORWARD, 1, 0, 0);
+			}
 		}
 	}
 	return 1;
@@ -735,7 +754,23 @@ int process_action_queue(
 				if (!multiplayer) {
 					level->paused = !level->paused;
 				}else{
-					action_queue[i].action = ACTIONQUEUE_NOP;
+					if (settings.two_player_inspect_level && level->inspect
+							&& !level->player[player_id].ready_to_start) {
+						level->player[player_id].ready_to_start = 1;
+						u8 p;
+						u8 start = 1;
+						for (p=0;p<level->num_players;p++) {
+							if (!level->player[p].ready_to_start) {
+								start = 0;
+								break;
+							}
+						}
+						if (start) {
+							level->inspect = 0;
+						}
+					}else{
+						action_queue[i].action = ACTIONQUEUE_NOP;
+					}
 				}
 				break;
 			case ACTIONQUEUE_FRAME_FORWARD:
