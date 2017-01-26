@@ -15,6 +15,7 @@ struct MainInGameData {
 	u8 high_perf_toolbar[320*40];
 	u8 skill_numbers[20*8*8];
 	u8 high_perf_font[38*8*16];
+	u32 level_base_palette[7];
 };
 
 struct MainMenuData {

@@ -475,6 +475,9 @@ int read_main_ingame(u8 game, struct MainInGameData* data){
 	for (i=0;i<16;i++) {
 		data->high_perf_palette[i] = import[game].highperf_palette[i];
 	}
+	for (i=0;i<7;i++) {
+		data->level_base_palette[i] = import[game].ingame_palette[i];
+	}
 
 	planar_image_to_pixmap(data->high_perf_toolbar, dec->data, 320*40, 0);
 	for (i=0;i<20;i++) {

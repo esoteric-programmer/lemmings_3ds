@@ -667,6 +667,9 @@ int draw_level(
 	}
 
 	// draw lemmings
+	u32 lemmings_palette[16];
+	memcpy(lemmings_palette, main_data->level_base_palette, 7*sizeof(u32));
+	memcpy(&lemmings_palette[7], &level_palette[7], 9*sizeof(u32));
 	draw_lemmings(
 			screen,
 			x,
@@ -674,7 +677,7 @@ int draw_level(
 			level,
 			main_data->lemmings_anim,
 			main_data->masks,
-			level_palette,
+			lemmings_palette,
 			x_offset,
 			0);
 	return 1;
@@ -894,7 +897,12 @@ int draw_toolbar(
 							tx += 16;
 						}
 						int color_idx = data->high_perf_toolbar[tx+yi*320] & 0x0F;
-						if (player == 1 && (color_idx == 1 || color_idx == 2)) {
+						u8 colorspecific_skill = 0;
+						if (tx >= 16*2 && tx < 16*10 && (tx < 16*4 || tx >= 16*5)) {
+							colorspecific_skill = 1;
+						}
+						if (player == 1 && colorspecific_skill
+								&& (color_idx == 1 || color_idx == 2)) {
 							// swap blue and green
 							color_idx = 3 - color_idx;
 						}
@@ -1166,7 +1174,8 @@ void draw_lemmings(
 					y,
 					&level->player[p].lemmings[i],
 					lemmings_anim,
-					masks,palette,
+					masks,
+					palette,
 					x_offset,
 					y_offset,
 					p);
@@ -1206,27 +1215,9 @@ void draw_single_lemming(
 		s16 x_offset,
 		s16 y_offset,
 		u8 player2) {
-	// swaps color 1 with color 2 if player2 is set
-	u8 i;
-	u8 swap_pal[16];
-	for (i=0;i<16;i++) {
-		swap_pal[i] = i;
-	}
-	if (player2) {
-		swap_pal[1] = 2;
-		swap_pal[2] = 1;
-	}
 	struct Buffer* dest = getScreenBuffer(screen);
 	if (!lem || !lemmings_anim || !palette || !dest->data) {
 		return;
-	}
-	if (y<0) {
-		y_offset -= y;
-		y = 0;
-	}
-	if (x<0) {
-		x_offset -= x;
-		x = 0;
 	}
 	u8 act = 0;
 	if (settings.glitch_shrugger) {
@@ -1237,12 +1228,30 @@ void draw_single_lemming(
 	if (act >= 18 || lem->removed) {
 		return;
 	}
-	s16 x_pos = lem->x + (s16)lem->x_draw_offset - x_offset + x;
-	s16 y_pos = lem->y + (s16)lem->y_draw_offset - y_offset + y;
 	int im_idx = action_image_offsets[act][lem->look_right?1:0] + lem->frame_offset;
 	if (im_idx < 0) {
 		return;
 	}
+	// swaps color 1 with color 2 if player2 is set
+	u8 i;
+	u8 swap_pal[16];
+	for (i=0;i<16;i++) {
+		swap_pal[i] = i;
+	}
+	if (player2 && im_idx != 336) { // don't swap colors in explosion graphic
+		swap_pal[1] = 2;
+		swap_pal[2] = 1;
+	}
+	if (y<0) {
+		y_offset -= y;
+		y = 0;
+	}
+	if (x<0) {
+		x_offset -= x;
+		x = 0;
+	}
+	s16 x_pos = lem->x + (s16)lem->x_draw_offset - x_offset + x;
+	s16 y_pos = lem->y + (s16)lem->y_draw_offset - y_offset + y;
 	if (im_idx >= 337) {
 		// draw explosion particles
 		if (im_idx - 337 > 50) {
