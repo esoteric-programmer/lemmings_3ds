@@ -82,12 +82,12 @@ int server_prepare_level(
 		u8 level_id,
 		struct Level* output){
 	if (!lemmings || !bindctx || !output) {
-		return 0;
+		return NETWORK_ERROR_OTHER;
 	}
 	struct NW_LevelData_Chunk* chunk = (struct NW_LevelData_Chunk*)malloc(
 			sizeof(struct NW_LevelData_Chunk) + CHUNK_SIZE);
 	if (!chunk) {
-		return 0;
+		return NETWORK_ERROR_OUT_OF_MEM;
 	}
 	Result ret;
 
@@ -105,7 +105,7 @@ int server_prepare_level(
 	// send gameinit
 	if (!send_until_confirmed(&gameinit, sizeof(gameinit), bindctx)) {
 		free(chunk);
-		return 0;
+		return NETWORK_ERROR_CONNECTION_LOST;
 	}
 
 	u8 swap_exits = 0;
@@ -143,7 +143,7 @@ int server_prepare_level(
 	if (!res) {
 		free(chunk);
 		free(leveldata_info);
-		return 0;
+		return NETWORK_ERROR_READ_LEVEL_ERROR;
 	}
 	memcpy(leveldata_info->ingame_basis_palette,import[1].ingame_palette,7*sizeof(u32));
 	if (vgagr_s0) {
@@ -168,7 +168,7 @@ int server_prepare_level(
 			free(vgaspec);
 		}
 		free(leveldata_info);
-		return 0;
+		return NETWORK_ERROR_CONNECTION_LOST;
 	}
 
 	struct Data* chunks[] = {
@@ -218,7 +218,7 @@ int server_prepare_level(
 				}
 				free(leveldata_info);
 				free(chunks_received);
-				return 0;
+				return NETWORK_ERROR_CONNECTION_LOST;
 			}
 		}
 
@@ -249,7 +249,7 @@ int server_prepare_level(
 					if (R_FAILED(ret)) {
 						// lost connection
 						free(chunk);
-						return 0;
+						return NETWORK_ERROR_CONNECTION_LOST;
 					}
 					if (actual_size == sizeof(struct NW_LevelData_Chunk)) {
 						if (chunk->msg_type == NW_LEVEL_DATA_CHUNK && chunk->type <= 3) {
@@ -308,7 +308,7 @@ int server_prepare_level(
 					}
 					free(leveldata_info);
 					free(chunks_received);
-					return 0;
+					return NETWORK_ERROR_CONNECTION_LOST;
 				}
 			}
 			if(!connection_alive()) {
@@ -328,7 +328,10 @@ int server_prepare_level(
 			}
 			free(leveldata_info);
 			free(chunks_received);
-			return 0;
+			if (!aptMainLoop()) {
+				return NETWORK_ERROR_OTHER;
+			}
+			return NETWORK_ERROR_CONNECTION_LOST;
 		}
 	}
 	free(chunks_received);
@@ -348,7 +351,7 @@ int server_prepare_level(
 			free(vgaspec);
 		}
 		free(leveldata_info);
-		return 0;
+		return NETWORK_ERROR_CONNECTION_LOST;
 	}
 	free(chunk);
 	chunk = 0;
@@ -361,7 +364,7 @@ int server_prepare_level(
 		vgaspec,
 		leveldata_info->ingame_basis_palette,
 		swap_exits,
-		2, // TODO: number of players?
+		2, // 2 player
 		output);
 	if (vgagr_s0) {
 		free(vgagr_s0);
@@ -377,17 +380,17 @@ int server_prepare_level(
 	}
 	free(leveldata_info);
 	if (!res) {
-		return 0;
+		return NETWORK_ERROR_PARSE_LEVEL_ERROR;
 	}
 	prepare_music(1, 0);
 
 	if(!connection_alive()) {
 		free_objects(output->object_types);
-		return 0; // lost connection to client
+		return NETWORK_ERROR_CONNECTION_LOST; // lost connection to client
 	}
 	output->player[0].max_lemmings = lemmings[0];
 	output->player[1].max_lemmings = lemmings[1];
-	return 1;
+	return NETWORK_SUCCESS;
 }
 
 // client:
@@ -411,7 +414,7 @@ int client_prepare_level(
 		u8* lvl_id,
 		struct Level* output){
 	if (!lem || !bindctx || !output) {
-		return 0;
+		return NETWORK_ERROR_OTHER;
 	}
 	if (lvl_id) {
 		*lvl_id = 0;
@@ -449,7 +452,7 @@ int client_prepare_level(
 			free(level);
 			free(ground_data);
 			free(rec_buf);
-			return 0; // lost connection
+			return NETWORK_ERROR_CONNECTION_LOST; // lost connection
 		}
 		// test for acceptance message
 		if (actual_size) {
@@ -499,7 +502,7 @@ int client_prepare_level(
 						free(level);
 						free(ground_data);
 						free(rec_buf);
-						return 0;
+						return NETWORK_ERROR_PROTOCOL_ERROR;
 					}
 					if (rec_buf->li.vgagr_s0_size && !vgagr_s0) {
 						vgagr_s0 = (struct Data*)malloc(
@@ -541,7 +544,7 @@ int client_prepare_level(
 						free(level);
 						free(ground_data);
 						free(rec_buf);
-						return 0;
+						return NETWORK_ERROR_PROTOCOL_ERROR;
 					}
 					if (actual_size !=
 								sizeof(struct NW_LevelData_Chunk)
@@ -552,7 +555,7 @@ int client_prepare_level(
 						free(level);
 						free(ground_data);
 						free(rec_buf);
-						return 0;
+						return NETWORK_ERROR_PROTOCOL_ERROR;
 					}
 					if (rec_buf->lc.type) {
 						struct Data* chk = *chunks[rec_buf->lc.type-1];
@@ -562,7 +565,7 @@ int client_prepare_level(
 							free(level);
 							free(ground_data);
 							free(rec_buf);
-							return 0;
+							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
 						if (chk->size < rec_buf->lc.offset + rec_buf->lc.length) {
 							// invalid message: maybe send error message, then break up connection
@@ -570,7 +573,7 @@ int client_prepare_level(
 							free(level);
 							free(ground_data);
 							free(rec_buf);
-							return 0;
+							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
 						memcpy(&chk->data[rec_buf->lc.offset], rec_buf->lc.data, rec_buf->lc.length);
 					}else{
@@ -580,7 +583,7 @@ int client_prepare_level(
 							free(level);
 							free(ground_data);
 							free(rec_buf);
-							return 0;
+							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
 						memcpy(&level[rec_buf->lc.offset], rec_buf->lc.data, rec_buf->lc.length);
 					}
@@ -628,7 +631,7 @@ int client_prepare_level(
 							free(level);
 							free(ground_data);
 							free(rec_buf);
-							return 0;
+							return NETWORK_ERROR_PARSE_LEVEL_ERROR;
 						}
 						prepare_music(1, 0);
 						parsed = 1;
@@ -642,7 +645,7 @@ int client_prepare_level(
 							free(level);
 							free(ground_data);
 							free(rec_buf);
-							return 0;
+							return NETWORK_ERROR_CONNECTION_LOST;
 						}
 					}
 					break;
@@ -652,7 +655,7 @@ int client_prepare_level(
 						free(level);
 						free(ground_data);
 						free(rec_buf);
-						return 0;
+						return NETWORK_ERROR_PROTOCOL_ERROR;
 					}
 					// game has been started!
 					free(level);
@@ -660,7 +663,7 @@ int client_prepare_level(
 					free(rec_buf);
 					output->player[0].max_lemmings = lemmings[0];
 					output->player[1].max_lemmings = lemmings[1];
-					return 1;
+					return NETWORK_SUCCESS;
 					break;
 				default:
 					// invalid message: maybe send error message, then break up connection
@@ -670,7 +673,7 @@ int client_prepare_level(
 					free(level);
 					free(ground_data);
 					free(rec_buf);
-					return 0;
+					return NETWORK_ERROR_PROTOCOL_ERROR;
 			}
 		}
 	}while(aptMainLoop() && connection_alive());
@@ -680,7 +683,7 @@ int client_prepare_level(
 	free(level);
 	free(ground_data);
 	free(rec_buf);
-	return 0;
+	return NETWORK_ERROR_OTHER;
 }
 
 struct NW_UI_Queue {
@@ -858,11 +861,7 @@ int server_run_level(
 				next_frame = time;
 			}
 			next_input += INPUT_SAMPLING_MILLIS;
-			if (!read_io(level, &io_state, 0)) {
-				stop_audio();
-				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
-				return 0;
-			}
+			read_io(level, &io_state, 0);
 		}while(1);
 
 		// apply actions from action_queue
@@ -900,7 +899,7 @@ int server_run_level(
 				// TODO: clean up!
 				stop_audio();
 				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
-				return 0;
+				return NETWORK_ERROR_CONNECTION_LOST;
 			}
 			if (!actual_size) {
 				break; // message receivement complete, preceed level
@@ -981,7 +980,7 @@ int server_run_level(
 				// TODO: clean up!
 				stop_audio();
 				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
-				return 0;
+				return NETWORK_ERROR_CONNECTION_LOST;
 			}
 			u8 changes = 0;
 			if (!level_step(
@@ -1011,15 +1010,15 @@ int server_run_level(
 	}
 	stop_audio();
 	nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
-	if (error) {
-		return 0;
+	if (error || !aptMainLoop()) {
+		return NETWORK_ERROR_CONNECTION_LOST;
 	}
 	if (lemmings) {
 		// set lemmings saved...
 		lemmings[0] = level->player[0].rescued[0] + level->player[0].rescued[1];
 		lemmings[1] = level->player[1].rescued[0] + level->player[1].rescued[1];
 	}
-	return 1;
+	return NETWORK_SUCCESS;
 }
 
 int client_run_level(
@@ -1052,7 +1051,13 @@ int client_run_level(
 	u8 game_ended = 0;
 	u16 max_level_time = level->frames_left;
 	// main loop
-	while (aptMainLoop() && connection_alive()) {
+	while (aptMainLoop()) {
+		if (!connection_alive()) {
+			// TODO: tidy up
+			nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
+			stop_audio();
+			return NETWORK_ERROR_CONNECTION_LOST;
+		}
 
 		if (!next_frame) {
 			break;
@@ -1070,12 +1075,8 @@ int client_run_level(
 				next_frame = time;
 			}
 			next_input += INPUT_SAMPLING_MILLIS;
-			if (!read_io(level, &io_state, 1)) {
-				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
-				stop_audio();
-				return 0;
-			}
-		}while(1);
+			read_io(level, &io_state, 1);
+		}while(aptMainLoop());
 
 		// send action queue to server!
 		union {
@@ -1130,7 +1131,7 @@ int client_run_level(
 				// TODO: clean up!
 				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 				stop_audio();
-				return 0;
+				return NETWORK_ERROR_CONNECTION_LOST;
 			}
 			// TODO: ignore messages not from server (src_NetworkNodeID)
 			if (!actual_size) {
@@ -1162,7 +1163,7 @@ int client_run_level(
 							// TODO: tidy up...
 							nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 							stop_audio();
-							return 0;
+							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
 						// run frames if necessary until input is done...
 						u32 steps = msg.io.frame_id - last_frame;
@@ -1178,7 +1179,7 @@ int client_run_level(
 								// TODO: tidy up...
 								nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 								stop_audio();
-								return 0;
+								return NETWORK_ERROR_ASYNCHRONOUS;
 							}
 							if (changes) {
 								if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
@@ -1217,7 +1218,7 @@ int client_run_level(
 									// no frame should occur after end of game
 									// TODO: tidy up...
 									nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
-									return 0;
+									return NETWORK_ERROR_ASYNCHRONOUS;
 								}
 								u8 changes = 0;
 								if (!level_step(
@@ -1258,11 +1259,11 @@ int client_run_level(
 						won[1] = msg.result.won[1];
 					}
 					nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
-					return 1;
+					return NETWORK_SUCCESS;
 				default:
 					nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 					stop_audio();
-					return 0; // error
+					return NETWORK_ERROR_PROTOCOL_ERROR; // error
 			}
 		}while(aptMainLoop());
 
@@ -1279,7 +1280,7 @@ int client_run_level(
 	// TODO: tidy up
 	nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 	stop_audio();
-	return 0;
+	return NETWORK_ERROR_OTHER;
 }
 
 int server_send_result(

@@ -408,6 +408,26 @@ int read_io(struct Level* level, struct InputState* io_state, u8 player) {
 						action |= ACTION_PAUSE; // start game
 					}
 				}
+				s16 cur_x = io_state->cursor.x;
+				if (level->num_players > 1) {
+					cur_x += 8;
+					if (cur_x >= 16*10) {
+						cur_x += 16;
+						if (cur_x >= SCREEN_WIDTH) {
+							cur_x = 0;
+						}
+					}
+				}
+				if (cur_x / 16 >= 13) {
+					s16 new_x_pos = (cur_x - 13*16) * 16;
+					new_x_pos -= SCREEN_WIDTH / 2;
+					if (new_x_pos < 0) {
+						new_x_pos = 0;
+					}else if (new_x_pos >= 1584 - SCREEN_WIDTH) {
+						new_x_pos = (SCREEN_WIDTH <= 1584?1584 - SCREEN_WIDTH:0);
+					}
+					io_state->x_pos = new_x_pos;
+				}
 			}else{
 				s16 cur_x = io_state->cursor.x;
 				if (level->num_players > 1) {

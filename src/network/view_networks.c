@@ -439,16 +439,18 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 						}
 					}
 					int res = server_prepare_level(bindctx, lemmings, game, lvl, level);
-					if (!res) {
-						break;
+					if (res != NETWORK_SUCCESS) {
+						free(level);
+						return show_network_error(res, menu_data);
 					}
 					// start game!
 					char lvlnum[4];
 					sprintf(lvlnum,"%02u:",(lvl+1)%100);
-					server_run_level(bindctx, level, lvlnum, lemmings, menu_data, main_data);
-					if (!res) {
+					res = server_run_level(bindctx, level, lvlnum, lemmings, menu_data, main_data);
+					if (res != NETWORK_SUCCESS) {
 						free_objects(level->object_types);
-						break;
+						free(level);
+						return show_network_error(res, menu_data);
 					}
 					free_objects(level->object_types);
 					if (lemmings[0] > lemmings[1]) {
@@ -469,7 +471,7 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 						write_savegame(savegame);
 					}
 					if (!show_2p_results(lemmings, won, usr, 1, inform_client, 0, menu_data)) {
-						break; // no player saved any lemming => end match
+						break; // end match
 					}
 				}while(aptMainLoop());
 				free(level);
@@ -532,7 +534,7 @@ int host_game(struct SaveGame* savegame, u8 num_levels[2], char* level_names, st
 			1,
 			UDS_DEFAULT_RECVBUFSIZE);
 	if(R_FAILED(ret)) {
-		return show_network_error(menu_data);
+		return show_network_error(NETWORK_ERROR_WLAN_LOST, menu_data);
 	}
 
 	u8 appdata[0x02] = {
@@ -542,7 +544,7 @@ int host_game(struct SaveGame* savegame, u8 num_levels[2], char* level_names, st
 	if(R_FAILED(ret)) {
 		udsDestroyNetwork();
 		udsUnbind(&bindctx);
-		return show_network_error(menu_data);
+		return show_network_error(NETWORK_ERROR_WLAN_LOST, menu_data);
 	}
 	udsEjectSpectator();
 	const char* msg =
@@ -569,84 +571,86 @@ int host_game(struct SaveGame* savegame, u8 num_levels[2], char* level_names, st
 			udsUnbind(&bindctx);
 			return MENU_ACTION_START_MULTI_PLAYER;
 		}
-		if(udsWaitConnectionStatusEvent(false, false)) {
-			// connection status changed. maybe a user tried to connect
-			udsConnectionStatus constatus;
-			ret = udsGetConnectionStatus(&constatus);
-			if(R_FAILED(ret)) {
-				udsDestroyNetwork();
-				udsUnbind(&bindctx);
-				return show_network_error(menu_data);
+		// check connection status.
+		udsConnectionStatus constatus;
+		ret = udsGetConnectionStatus(&constatus);
+		if(R_FAILED(ret) || constatus.status != 0x06) {
+			udsDestroyNetwork();
+			udsUnbind(&bindctx);
+			if (show_network_error(NETWORK_ERROR_WLAN_LOST, menu_data) != MENU_EXIT_GAME) {
+				return MENU_EXIT_NETWORK;
+			}else{
+				return MENU_EXIT_GAME;
 			}
-			if (constatus.total_nodes == 2) {
-				u16 other_mask = (constatus.node_bitmask & ~(1 << (constatus.cur_NetworkNodeID-1)));
-				u8 error = 1;
-				if (other_mask) {
-					u16 i;
-					for (i=1; i<16; i++) {
-						if (other_mask == (1 << (i-1))) {
-							udsNodeInfo nodeinfo;
-							ret = udsGetNodeInformation(i, &nodeinfo);
-							if(!R_FAILED(ret)) {
-								error = 0;
-								udsSetNewConnectionsBlocked(true, true, false);
-								appdata[0] = 255;
-								appdata[1] = 0;
-								udsSetApplicationData(appdata, sizeof(appdata));
-								int res = on_client_connect(
-										savegame,
-										game,
-										lvl,
-										menu_data,
-										main_data,
-										&nodeinfo,
-										i,
-										&bindctx);
-								appdata[0] = NETWORK_MIN_PROTOCOL_VERSION;
-								appdata[1] = NETWORK_PROTOCOL_VERSION;
-								udsSetApplicationData(appdata, sizeof(appdata));
-								udsSetNewConnectionsBlocked(false, true, false);
-								if (res == MENU_EXIT_GAME) {
-									udsDestroyNetwork();
-									udsUnbind(&bindctx);
-									return MENU_EXIT_GAME;
-								}
-								if (res == MENU_ACTION_EXIT) {
-									udsDestroyNetwork();
-									udsUnbind(&bindctx);
-									return MENU_ACTION_EXIT;
-								}
-								if (res == MENU_HOST_REJECT_CLIENT) {
-									// kick client
-									udsEjectClient(i);
-								}
-								tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
-								draw_menu_text(
-										BOTTOM_SCREEN_BACK,
-										menu_data,
-										0,
-										72,
-										msg,
-										0,
-										1.0f);
-								if (res == MENU_ERROR) {
-									error = 1;
-								}
+		}
+		if (constatus.total_nodes == 2) {
+			u16 other_mask = (constatus.node_bitmask & ~(1 << (constatus.cur_NetworkNodeID-1)));
+			u8 error = 1;
+			if (other_mask) {
+				u16 i;
+				for (i=1; i<16; i++) {
+					if (other_mask == (1 << (i-1))) {
+						udsNodeInfo nodeinfo;
+						ret = udsGetNodeInformation(i, &nodeinfo);
+						if(!R_FAILED(ret)) {
+							error = 0;
+							udsSetNewConnectionsBlocked(true, true, false);
+							appdata[0] = 255;
+							appdata[1] = 0;
+							udsSetApplicationData(appdata, sizeof(appdata));
+							int res = on_client_connect(
+									savegame,
+									game,
+									lvl,
+									menu_data,
+									main_data,
+									&nodeinfo,
+									i,
+									&bindctx);
+							appdata[0] = NETWORK_MIN_PROTOCOL_VERSION;
+							appdata[1] = NETWORK_PROTOCOL_VERSION;
+							udsSetApplicationData(appdata, sizeof(appdata));
+							udsSetNewConnectionsBlocked(false, true, false);
+							if (res == MENU_EXIT_GAME) {
+								udsDestroyNetwork();
+								udsUnbind(&bindctx);
+								return MENU_EXIT_GAME;
 							}
-							break;
+							if (res == MENU_ACTION_EXIT) {
+								udsDestroyNetwork();
+								udsUnbind(&bindctx);
+								return MENU_ACTION_EXIT;
+							}
+							if (res == MENU_HOST_REJECT_CLIENT) {
+								// kick client
+								udsEjectClient(i);
+							}
+							tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+							draw_menu_text(
+									BOTTOM_SCREEN_BACK,
+									menu_data,
+									0,
+									72,
+									msg,
+									0,
+									1.0f);
+							if (res == MENU_ERROR) {
+								error = 1;
+							}
 						}
+						break;
 					}
 				}
-				if (error) {
-					udsDestroyNetwork();
-					udsUnbind(&bindctx);
-					return show_network_error(menu_data);
-				}
-			}else if (constatus.total_nodes > 2) {
+			}
+			if (error) {
 				udsDestroyNetwork();
 				udsUnbind(&bindctx);
-				return show_network_error(menu_data);
+				return show_network_error(NETWORK_ERROR_OTHER, menu_data);
 			}
+		}else if (constatus.total_nodes > 2) {
+			udsDestroyNetwork();
+			udsUnbind(&bindctx);
+			return show_network_error(NETWORK_ERROR_OTHER, menu_data);
 		}
 		begin_frame();
 		copy_from_backbuffer(TOP_SCREEN);
@@ -705,6 +709,7 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 		}
 	}
 	if(attempt>=10) {
+		show_network_error(NETWORK_ERROR_CONNECTION_LOST, menu_data);
 		return 0;
 	}
 	// connected!
@@ -725,6 +730,9 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 		if (R_FAILED(ret) || (kDown & KEY_B)) {
 			udsDisconnectNetwork();
 			udsUnbind(&bindctx);
+			if (R_FAILED(ret)) {
+				show_network_error(NETWORK_ERROR_CONNECTION_LOST, menu_data);
+			}
 			return 0; // lost connection
 		}
 		// test for acceptance message
@@ -751,6 +759,7 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 						free(level);
 						udsDisconnectNetwork();
 						udsUnbind(&bindctx);
+						show_network_error(NETWORK_ERROR_OTHER, menu_data);
 						return 0;
 					}
 					// save local settings
@@ -783,36 +792,38 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 								lemmings,
 								&lvl,
 								level);
-						if (res) {
-							// start game; ...
-							u8 lemmings[2];
-							u16 won[2];
-							char lvlname[4];
-							sprintf(lvlname,"%02u:",(lvl+1)%100);
-							if (!client_run_level(
-									&bindctx,
-									level,
-									lvlname,
-									lemmings,
-									won,
-									menu_data,
-									main_data)) {
-								free_objects(level->object_types);
-								break;
-							}
+						if (res != NETWORK_SUCCESS) {
+							show_network_error(res, menu_data);
+							break;
+						}
+						// start game; ...
+						u8 lemmings[2];
+						u16 won[2];
+						char lvlname[4];
+						sprintf(lvlname,"%02u:",(lvl+1)%100);
+						res = client_run_level(
+								&bindctx,
+								level,
+								lvlname,
+								lemmings,
+								won,
+								menu_data,
+								main_data);
+							if (res != NETWORK_SUCCESS) {
 							free_objects(level->object_types);
-							if (!show_2p_results(
-									lemmings,
-									won,
-									usr,
-									0,
-									1,
-									&bindctx,
-									menu_data)) {
-								free(level);
-								level = 0;
-								break;
-							}
+							show_network_error(res, menu_data);
+							break;
+						}
+						free_objects(level->object_types);
+						if (!show_2p_results(
+								lemmings,
+								won,
+								usr,
+								0,
+								1,
+								&bindctx,
+								menu_data)) {
+							break;
 						}
 					}while(aptMainLoop() && level);
 					// restore local settings
@@ -822,6 +833,7 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 					if (level) {
 						// TODO: clean up;
 						free(level);
+						level = 0;
 					}
 				}
 			}

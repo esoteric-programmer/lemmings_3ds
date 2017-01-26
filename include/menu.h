@@ -16,6 +16,7 @@
 #define MENU_ACTION_START_MULTI_PLAYER          8
 #define MENU_HOST_REJECT_CLIENT                 9
 #define MENU_CLIENT_QUIT                       10
+#define MENU_EXIT_NETWORK                      11
 #define MENU_EXIT_GAME                        127
 
 int main_menu(

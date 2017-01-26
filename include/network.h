@@ -22,6 +22,16 @@
 #define NW_LVLRESULT          8 // indicate end of level and send results (lemmings saved by each player)
 #define NW_READY_TO_PROCEED   9 // client informs server that he is ready to start the next level (user has read the result message)
 
+#define NETWORK_SUCCESS                 0
+#define NETWORK_ERROR_WLAN_LOST         1
+#define NETWORK_ERROR_CONNECTION_LOST   2
+#define NETWORK_ERROR_PROTOCOL_ERROR    3
+#define NETWORK_ERROR_READ_LEVEL_ERROR  4
+#define NETWORK_ERROR_PARSE_LEVEL_ERROR 5
+#define NETWORK_ERROR_OUT_OF_MEM        6
+#define NETWORK_ERROR_ASYNCHRONOUS      7
+#define NETWORK_ERROR_OTHER             8
+
 struct NW_GameInit {
 	u8 msg_type;
 	u8 num_players;

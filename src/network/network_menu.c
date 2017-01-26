@@ -139,13 +139,8 @@ void draw_network_view(
 			DRAW_MENU("  ")
 		}
 		char tmp[41+2*6];
-		/*
-		char* usr_align_left = &tmp[41];
-		char* usr_align_right = &tmp[41+6];
-		*/
 		sprintf(tmp,"%u. ",cur_offset+1);
 		DRAW_MENU(tmp);
-		// u8 active = 0;
 		if (cur_offset < total_networks) {
 			if(udsCheckNodeInfoInitialized(&networks[cur_offset].nodes[0])){
 				if (get_aligned_username(tmp, &networks[cur_offset].nodes[0])) {
@@ -160,28 +155,12 @@ void draw_network_view(
 						if (NETWORK_PROTOCOL_VERSION >= appdata[0] &&
 								NETWORK_MIN_PROTOCOL_VERSION <= appdata[1]) {
 							DRAW_MENU(tmp);
-							/*
-							DRAW_MENU(usr_align_left);
-							DRAW_MENU(usr_align_right);
-							active = 1;
-							sprintf(
-									tmp,
-									" %2u/%2u",
-									networks[cur_offset].network.total_nodes,
-									networks[cur_offset].network.max_nodes);
-							DRAW_MENU(tmp); // number of connected clients
-							*/
 							network_alive[cur_offset] = 1;
 						}
 					}
 				}
 			}
 		}
-		/*
-		if (!active) {
-			DRAW_MENU("            0/ 0");
-		}
-		*/
 		DRAW_MENU_LINE("")
 	}
 	DRAW_MENU_LINE("")
@@ -203,18 +182,70 @@ void draw_network_view(
 #undef DRAW_MENU
 #undef DRAW_MENU_LINE
 
-int show_network_error(struct MainMenuData* menu_data) {
+int show_network_error(u8 error, struct MainMenuData* menu_data) {
+	const char* msg = 0;
+	switch (error) {
+		case NETWORK_ERROR_WLAN_LOST:
+			msg =
+					" Cannot access the  \n"
+					"wireless connection.\n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+		case NETWORK_ERROR_CONNECTION_LOST:
+			msg =
+					"  Connection lost.  \n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+		case NETWORK_ERROR_PROTOCOL_ERROR:
+			msg =
+					"  A protocol error  \n"
+					"     occurred.      \n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+		case NETWORK_ERROR_READ_LEVEL_ERROR:
+		case NETWORK_ERROR_PARSE_LEVEL_ERROR:
+			msg =
+					"   Invalid level.   \n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+		case NETWORK_ERROR_OUT_OF_MEM:
+			msg =
+					"   Out of memory.   \n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+		case NETWORK_ERROR_ASYNCHRONOUS:
+			msg =
+					"    Level became    \n"
+					"   asynchronous.    \n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+		default:
+			msg =
+					" An error occurred. \n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+	}
 	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
 	draw_menu_text(
 			BOTTOM_SCREEN_BACK,
 			menu_data,
 			0,
 			80,
-			" Cannot access the  \n"
-			"wireless connection.\n"
-			"                    \n"
-			"   Press any key    \n"
-			"    to continue.    \n",
+			msg,
 			0,
 			1.0f);
 	while (aptMainLoop()) {
@@ -255,7 +286,7 @@ int network_menu(
 		scan_mutex = 0;
 		free(networks);
 		networks = 0;
-		return show_network_error(menu_data);
+		return show_network_error(NETWORK_ERROR_WLAN_LOST, menu_data);
 	}
 
 	size_t num_networks = 0; // local copy
@@ -358,31 +389,6 @@ int network_menu(
 				}
 			}
 		}
-		if (kDown & KEY_B) {
-			// exit menu
-			run_scanning_thread = false;
-			tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
-			draw_menu_text(
-					BOTTOM_SCREEN_BACK,
-					menu_data,
-					0,
-					96,
-					"   Please wait...   \n",
-					0,
-					1.0f);
-			begin_frame();
-			copy_from_backbuffer(TOP_SCREEN);
-			copy_from_backbuffer(BOTTOM_SCREEN);
-			end_frame();
-			threadJoin(thread, U64_MAX);
-			threadFree(thread);
-			svcCloseHandle(scan_mutex);
-			scan_mutex = 0;
-			free(networks);
-			networks = 0;
-			udsExit();
-			return MENU_ACTION_EXIT;
-		}
 		if (kDown & KEY_START) {
 			// create own network
 			// stop scanning
@@ -409,10 +415,39 @@ int network_menu(
 				if (res == MENU_EXIT_GAME) {
 					break;
 				}
-				kDown = 0;
+				if (res == MENU_EXIT_NETWORK) {
+					kDown = KEY_B;
+				}else{
+					kDown = 0;
+				}
 			}else{
 					// canot stop scanning!
 				}
+		}
+		if (kDown & KEY_B) {
+			// exit menu
+			run_scanning_thread = false;
+			tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+			draw_menu_text(
+					BOTTOM_SCREEN_BACK,
+					menu_data,
+					0,
+					96,
+					"   Please wait...   \n",
+					0,
+					1.0f);
+			begin_frame();
+			copy_from_backbuffer(TOP_SCREEN);
+			copy_from_backbuffer(BOTTOM_SCREEN);
+			end_frame();
+			threadJoin(thread, U64_MAX);
+			threadFree(thread);
+			svcCloseHandle(scan_mutex);
+			scan_mutex = 0;
+			free(networks);
+			networks = 0;
+			udsExit();
+			return MENU_ACTION_EXIT;
 		}
 
 		Result res = svcWaitSynchronization(scan_mutex, 1000000ULL * 5); // wait up to 5ms
@@ -427,7 +462,7 @@ int network_menu(
 				free(networks);
 				networks = 0;
 				udsExit();
-				return show_network_error(menu_data);
+				return show_network_error(NETWORK_ERROR_WLAN_LOST, menu_data);
 			}
 			// update local network info
 			if (networks) {
