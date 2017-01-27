@@ -99,6 +99,7 @@ int client_prepare_level(
 		udsBindContext* bindctx,
 		const u8* lemmings, // number of lemmings the players start with
 		u8* lvl_id,
+		u8 game_id,
 		struct Level* output);
 
 int server_run_level(

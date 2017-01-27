@@ -467,6 +467,7 @@ int parse_level(
 		struct Data* vgaspec,
 		const u32* ingame_palette,
 		u8 ABBA_order,
+		u8 entrance_x_offset,
 		u8 players,
 		struct Level* output) {
 	int i;
@@ -726,7 +727,7 @@ int parse_level(
 				int j;
 				case 0:
 					for (j=0;j<4;j++) {
-						output->entrances[j].x=objects[i].x + 25;
+						output->entrances[j].x=objects[i].x + entrance_x_offset;
 						output->entrances[j].y=objects[i].y + 14;
 					}
 					num_entrances++;
@@ -734,12 +735,12 @@ int parse_level(
 				case 1:
 					if (ABBA_order && output->num_players == 1) {
 						for (j=1;j<3;j++) {
-							output->entrances[j].x=objects[i].x + 25;
+							output->entrances[j].x=objects[i].x + entrance_x_offset;
 							output->entrances[j].y=objects[i].y + 14;
 						}
 					}else{
 						for (j=0;j<2;j++) {
-							output->entrances[1+2*j].x=objects[i].x + 25;
+							output->entrances[1+2*j].x=objects[i].x + entrance_x_offset;
 							output->entrances[1+2*j].y=objects[i].y + 14;
 						}
 					}
@@ -750,12 +751,12 @@ int parse_level(
 						output->entrances[3].x = output->entrances[2].x;
 						output->entrances[3].y = output->entrances[2].y;
 					}
-					output->entrances[2].x=objects[i].x + 25;
+					output->entrances[2].x=objects[i].x + entrance_x_offset;
 					output->entrances[2].y=objects[i].y + 14;
 					num_entrances++;
 					break;
 				case 3:
-					output->entrances[3].x=objects[i].x + 25;
+					output->entrances[3].x=objects[i].x + entrance_x_offset;
 					output->entrances[3].y=objects[i].y + 14;
 					break;
 				default:
@@ -937,6 +938,7 @@ struct Level* init_level_from_dat(u8 game, u8 lvl, char* level_id) {
 			vgaspec,
 			import[game].ingame_palette,
 			import[game].ABBA_order,
+			import[game].entrance_x_offset,
 			1,
 			level);
 	if (vgagr_s0) {

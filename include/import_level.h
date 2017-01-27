@@ -36,6 +36,7 @@ int parse_level(
 		struct Data* vgaspec,
 		const u32* ingame_palette,
 		u8 ABBA_order,
+		u8 entrance_x_offset,
 		u8 players,
 		struct Level* output);
 

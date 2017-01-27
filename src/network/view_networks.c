@@ -408,7 +408,7 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 			// start network game with said client: send level to client
 			u8 num_lvl = count_custom_levels(import_2p[game].level_path);
 			struct Level* level = 0;
-			if (lvl <= num_lvl) {
+			if (lvl < num_lvl) {
 				level = (struct Level*)malloc(sizeof(struct Level));
 			}
 			if (level) {
@@ -751,6 +751,7 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 				};
 				/* u8 num_players = init->num_players;
 				u8 client_id = init->receiver_id; */
+				u8 game_id = tmpbuf.gi.game_id;
 				// receive level
 				struct Level* level = (struct Level*)malloc(sizeof(struct Level));
 				if (level) {
@@ -791,6 +792,7 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 								&bindctx,
 								lemmings,
 								&lvl,
+								game_id,
 								level);
 						if (res != NETWORK_SUCCESS) {
 							show_network_error(res, menu_data);

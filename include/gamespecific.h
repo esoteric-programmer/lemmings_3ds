@@ -29,6 +29,7 @@
 
 struct GameSpecific {
 	const u8 ABBA_order;
+	const u8 entrance_x_offset;
 	const u8 num_of_difficulties;
 	const u8 num_of_level_per_difficulty;
 	const char* const path;

@@ -98,7 +98,7 @@ int server_prepare_level(
 	gameinit.lemmings_per_player[1] = lemmings[1];
 	gameinit.receiver_id = 1; // receiver is second player
 	gameinit.lvl_id = level_id;
-	gameinit.game_id = level_id;
+	gameinit.game_id = game_id;
 	gameinit.glitch_direct_drop = settings.glitch_direct_drop;
 	gameinit.timeout = settings.two_player_timeout;
 	gameinit.inspect_level = settings.two_player_inspect_level;
@@ -364,6 +364,7 @@ int server_prepare_level(
 		vgaspec,
 		leveldata_info->ingame_basis_palette,
 		swap_exits,
+		import[game_id?OH_NO_MORE_LEMMINGS:ORIGINAL_LEMMINGS].entrance_x_offset,
 		2, // 2 player
 		output);
 	if (vgagr_s0) {
@@ -412,6 +413,7 @@ int client_prepare_level(
 		udsBindContext* bindctx,
 		const u8* lem,
 		u8* lvl_id,
+		u8 game_id,
 		struct Level* output){
 	if (!lem || !bindctx || !output) {
 		return NETWORK_ERROR_OTHER;
@@ -468,6 +470,7 @@ int client_prepare_level(
 					if (lvl_id) {
 						*lvl_id = rec_buf->gi.lvl_id;
 					}
+					game_id = rec_buf->gi.game_id;
 					// just send back this message type
 					udsSendTo(UDS_HOST_NETWORKNODEID,1,UDS_SENDFLAG_Default,rec_buf->buf,1);
 					break;
@@ -610,7 +613,8 @@ int client_prepare_level(
 							vgaspec,
 							ingame_basis_palette,
 							swap_exits,
-							2, // TODO: number of players?
+							import[game_id?OH_NO_MORE_LEMMINGS:ORIGINAL_LEMMINGS].entrance_x_offset,
+							2, // 2 player
 							output);
 
 						if (vgagr_s0) {
