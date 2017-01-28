@@ -5,6 +5,7 @@
 #include "gamespecific.h"
 #include "settings.h"
 #include "audio.h"
+#include "patch_menu.h"
 
 const struct {
 	int w;
@@ -608,6 +609,89 @@ int read_main_menu(u8 game, struct MainMenuData* data) {
 	}
 	free(dec);
 	free(tmp);
+
+	// remove dos keys from menu graphics
+	u16 x, y;
+	for (y=0;y<12;y++) {
+		for (x=0;x<21;x++) {
+			switch (game) {
+				case LEMMINGS_DEMO:
+				case ORIGINAL_LEMMINGS:
+				case OH_NO_DEMO:
+				case OH_NO_MORE_LEMMINGS:
+					data->static_pictures[2]->data[
+								(x+7) + (y+18)*data->static_pictures[2]->width] =
+							orig_mainmenu_no_dos_1p[x+21*y];
+					break;
+				case HOLIDAY_LEMMINGS_91:
+				case HOLIDAY_LEMMINGS_92:
+				case HOLIDAY_93_DEMO:
+				case HOLIDAY_LEMMINGS_93:
+					// smaller graphic
+					if (x < 17 && y < 9) {
+						data->static_pictures[2]->data[
+									(x+7) + (y+20)*data->static_pictures[2]->width] =
+								xmas_mainmenu_no_dos_1p[x+17*y];
+					}
+					break;
+				case HOLIDAY_94_DEMO:
+				case HOLIDAY_LEMMINGS_94:
+					// smaller graphic
+					if (x < 17 && y < 9) {
+						data->static_pictures[2]->data[
+									(x+7) + (y+20)*data->static_pictures[2]->width] =
+								holi_mainmenu_no_dos_1p[x+17*y];
+					}
+					break;
+				default:
+					break;
+			}
+			switch (game) {
+				case LEMMINGS_DEMO:
+				case ORIGINAL_LEMMINGS:
+				case OH_NO_DEMO:
+				case OH_NO_MORE_LEMMINGS:
+					data->static_pictures[3]->data[
+								(x+8) + (y+18)*data->static_pictures[3]->width] =
+							orig_mainmenu_no_dos_2p[x+21*y];
+					break;
+				case HOLIDAY_LEMMINGS_91:
+				case HOLIDAY_LEMMINGS_92:
+				case HOLIDAY_93_DEMO:
+				case HOLIDAY_LEMMINGS_93:
+				case HOLIDAY_94_DEMO:
+				case HOLIDAY_LEMMINGS_94:
+					// smaller graphic
+					if (x < 15 && y < 7) {
+						data->static_pictures[3]->data[
+									(x+9) + (y+21)*data->static_pictures[3]->width] =
+								xmas_mainmenu_no_dos_2p[x+15*y];
+					}
+					break;
+				default:
+					break;
+			}
+			switch (game) {
+				case LEMMINGS_DEMO:
+				case ORIGINAL_LEMMINGS:
+				case OH_NO_DEMO:
+				case OH_NO_MORE_LEMMINGS:
+				case HOLIDAY_LEMMINGS_91:
+				case HOLIDAY_LEMMINGS_92:
+				case HOLIDAY_93_DEMO:
+				case HOLIDAY_LEMMINGS_93:
+				case HOLIDAY_94_DEMO:
+				case HOLIDAY_LEMMINGS_94:
+					data->static_pictures[4]->data[
+								(x+7) + (y+19)*data->static_pictures[4]->width] =
+							orig_mainmenu_no_dos_settings[x+21*y];
+					break;
+				default:
+					break;
+			}
+		}
+	}
+
 	tmp = (char*)malloc(2048);
 	if (!tmp) {
 		free(dec);

@@ -1,17 +1,19 @@
 Copyrighted third-party content:
+buildtools
 demos/*
 doc/*
-banner.png
-banner.wav
-icon.png
-src/data/particles.c
-src/data/cursor.c
+lemmings/audio/audio.bat
 src/adlib/adlib.cpp (GPL)
 src/adlib/adlib.h (GPL)
 src/adlib/dbopl.cpp (GPL)
 src/adlib/dbopl.h (GPL)
-lemmings/audio/audio.bat
-as well as ctrulib, sf2dlib, buildtools
+src/data/2p_button.c
+src/data/cursor.c
+src/data/particles.c
+banner.png
+banner.wav
+icon.png
+as well as ctrulib (not included in repository, but linked into binary release)
 
 Note that all parts of the Lemmings series that are imitated by this software,
 e.g. game mechanics (e.g. src/lemming.c),

@@ -36,6 +36,7 @@ int draw_scaled(
 
 int clear(ScreenBuffer screen);
 int clear_rectangle(ScreenBuffer screen, u16 x, u16 y, u16 w, u16 h);
+int color_rectangle(ScreenBuffer screen, u16 x, u16 y, u16 w, u16 h, u32 color);
 void copy_from_backbuffer(ScreenBuffer screen);
 
 // draw palette image into RGB image at specific position

@@ -232,6 +232,37 @@ int clear_rectangle(
 	return 1;
 }
 
+int color_rectangle(
+		ScreenBuffer screen,
+		u16 x,
+		u16 y,
+		u16 w,
+		u16 h,
+		u32 color) {
+	if (!initialized) {
+		return 0; // error
+	}
+	struct Buffer* dest = getScreenBuffer(screen);
+	if (!dest->data) {
+		return 0; // error
+	}
+	s16 xi, yi;
+	for (yi = 0; yi<h; yi++) {
+		s16 draw_y = yi + y;
+		if (draw_y < 0 || draw_y >= dest->height) {
+			continue;
+		}
+		for (xi = 0; xi<w; xi++) {
+			s16 draw_x = xi + x;
+			if (draw_x < 0 || draw_x >= dest->width) {
+				continue;
+			}
+			SET_PIXEL(dest, draw_x, draw_y, color);
+		}
+	}
+	return 1;
+}
+
 int draw(
 		ScreenBuffer screen,
 		s16 x,

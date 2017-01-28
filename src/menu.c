@@ -298,6 +298,8 @@ int draw_main_menu(
 		struct MainMenuData* menu_data,
 		int only_redraw_difficulty, int only_redraw_music) {
 	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
+
+	// 1 player mode
 	draw(
 			BOTTOM_SCREEN_BACK,
 			27,
@@ -306,6 +308,8 @@ int draw_main_menu(
 			menu_data->static_pictures[2]->width,
 			menu_data->static_pictures[2]->height,
 			menu_data->palette);
+
+	// 2 player mode
 	draw(
 			BOTTOM_SCREEN_BACK,
 			174,
@@ -314,50 +318,6 @@ int draw_main_menu(
 			menu_data->static_pictures[3]->width,
 			menu_data->static_pictures[3]->height,
 			menu_data->palette);
-	draw(
-			BOTTOM_SCREEN_BACK,
-			174,
-			140,
-			menu_data->static_pictures[5]->data,
-			menu_data->static_pictures[5]->width,
-			menu_data->static_pictures[5]->height,
-			menu_data->palette);
-
-	if (import[game].num_of_difficulty_graphics >= import[game].num_of_difficulties
-			&& import[game].num_of_difficulties > 1) {
-		// draw current difficulty
-		draw(
-				BOTTOM_SCREEN_BACK,
-				174+33,
-				140+25,
-				menu_data->static_pictures[
-						10+import[game].num_of_difficulty_graphics-difficulty
-				]->data,
-				menu_data->static_pictures[
-						10+import[game].num_of_difficulty_graphics-difficulty
-				]->width,
-				menu_data->static_pictures[
-						10+import[game].num_of_difficulty_graphics-difficulty
-				]->height,
-				menu_data->palette); // x-position: 33; y-position: 25
-	}
-	draw(
-			BOTTOM_SCREEN_BACK,
-			27,
-			140,
-			menu_data->static_pictures[4]->data,
-			menu_data->static_pictures[4]->width,
-			menu_data->static_pictures[4]->height,
-			menu_data->palette);
-	draw(
-			BOTTOM_SCREEN_BACK,
-			27+27,
-			140+26,
-			settings_icon,
-			64,
-			31,
-			menu_data->palette);
-
 	// draw 2p button
 	switch (game) {
 		case LEMMINGS_DEMO:
@@ -393,20 +353,54 @@ int draw_main_menu(
 			// invalid / not supported
 			break;
 	}
-	
-/*
-	if (!audio_error() && (settings.sfx_volume || settings.music_volume)) {
-		int picture_id = (!settings.music_volume?9:8);
+
+	// difficulty selection
+	draw(
+			BOTTOM_SCREEN_BACK,
+			174,
+			140,
+			menu_data->static_pictures[5]->data,
+			menu_data->static_pictures[5]->width,
+			menu_data->static_pictures[5]->height,
+			menu_data->palette);
+
+	if (import[game].num_of_difficulty_graphics >= import[game].num_of_difficulties
+			&& import[game].num_of_difficulties > 1) {
+		// draw current difficulty
 		draw(
 				BOTTOM_SCREEN_BACK,
-				27+27,
-				140+26,
-				menu_data->static_pictures[picture_id]->data,
-				menu_data->static_pictures[picture_id]->width,
-				menu_data->static_pictures[picture_id]->height,
-				menu_data->palette);
+				174+33,
+				140+25,
+				menu_data->static_pictures[
+						10+import[game].num_of_difficulty_graphics-difficulty
+				]->data,
+				menu_data->static_pictures[
+						10+import[game].num_of_difficulty_graphics-difficulty
+				]->width,
+				menu_data->static_pictures[
+						10+import[game].num_of_difficulty_graphics-difficulty
+				]->height,
+				menu_data->palette); // x-position: 33; y-position: 25
 	}
-*/
+
+	// settings
+	draw(
+			BOTTOM_SCREEN_BACK,
+			27,
+			140,
+			menu_data->static_pictures[4]->data,
+			menu_data->static_pictures[4]->width,
+			menu_data->static_pictures[4]->height,
+			menu_data->palette);
+	color_rectangle(BOTTOM_SCREEN_BACK, 27+28, 140+26, 60, 28, menu_data->palette[13]);
+	draw(
+			BOTTOM_SCREEN_BACK,
+			27+27,
+			140+26,
+			settings_icon,
+			64,
+			31,
+			menu_data->palette);
 	return 1;
 }
 
