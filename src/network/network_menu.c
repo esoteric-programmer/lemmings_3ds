@@ -76,6 +76,7 @@ int get_aligned_username(char username[41+2*6], const udsNodeInfo* nodeinfo) {
 	if (!nodeinfo || !username) {
 		return 0;
 	}
+	memset(username, 0, 41+2*6);
 	Result ret = udsGetNodeInfoUsername(nodeinfo, username);
 	if(R_FAILED(ret)) {
 		return 0;

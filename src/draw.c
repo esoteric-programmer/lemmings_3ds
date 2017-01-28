@@ -1148,13 +1148,13 @@ void draw_lemmings_minimap(struct Level* level, u32 highperf_palette[16]) {
 	if (!level) {
 		return; // error
 	}
-	for (p=0;p<level->num_players;p++) {
-		u8 color = 2;
-		if (level->num_players > 1 && p == 0) {
-			// player 1 color: blue (instead of green)
-			color = 1;
-		}
-		for (i=0;i<80;i++) {
+	for (i=0;i<80;i++) {
+		for (p=0;p<level->num_players;p++) {
+			u8 color = 2;
+			if (level->num_players > 1 && p == 0) {
+				// player 1 color: blue (instead of green)
+				color = 1;
+			}
 			if (level->player[p].lemmings[i].removed
 					|| level->player[p].lemmings[i].current_action >= 18) {
 				continue;
@@ -1193,8 +1193,8 @@ void draw_lemmings(
 	if (!level) {
 		return; // error
 	}
-	for (p=0;p<level->num_players;p++) {
-		for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
+	for (i=0;i<MAX_NUM_OF_LEMMINGS;i++) {
+		for (p=0;p<level->num_players;p++) {
 			if (level->player[p].lemmings[i].removed
 					|| level->player[p].lemmings[i].current_action >= 18) {
 			continue;

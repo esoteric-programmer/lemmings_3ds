@@ -10,6 +10,7 @@ src/adlib/dbopl.h (GPL)
 src/data/2p_button.c
 src/data/cursor.c
 src/data/particles.c
+src/data/patch_menu.c
 banner.png
 banner.wav
 icon.png
