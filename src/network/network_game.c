@@ -3,9 +3,10 @@
 #include <string.h>
 #include <3ds.h>
 #include "draw.h"
-#include "view_networks.h"
-#include "network_menu.h"
 #include "network.h"
+#include "network_game.h"
+#include "network_menu.h"
+#include "network_run_level.h"
 #include "ingame.h"
 #include "import_level.h"
 #include "gamespecific_2p.h"
@@ -104,8 +105,7 @@ int select_2p_level(
 		}
 		if (!num_2p_level[*game]) {
 			// no 2p levels found
-			// TODO: show error screen
-			return MENU_ACTION_EXIT;
+			return show_network_error(NETWORK_ERROR_NO_2P_LEVELS, menu_data);
 		}
 	}
 	int dwn = 0;
@@ -311,7 +311,7 @@ int show_2p_results(
 		char* other_players_name,
 		u8 is_server,
 		u8 is_connected,
-		udsBindContext* bindctx, // only necessary if is_client and is_connected, otherwise NULL
+		udsBindContext* bindctx, // only necessary if is_client and is_connected
 		struct MainMenuData* menu_data)
 {
 	u8 cntn = (lemmings[0] || lemmings[1]) && is_connected;
@@ -319,10 +319,15 @@ int show_2p_results(
 	while (aptMainLoop()) {
 		// wait for A pressed
 		hidScanInput();
-		if (is_server && cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH))) {
+		if (is_server
+				&& cntn
+				&& ((hidKeysDown() & KEY_A)
+					|| (hidKeysDown() & KEY_TOUCH))) {
 			return 1;
 		}
-		if ((hidKeysDown() & KEY_B) || (!cntn && ((hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_TOUCH)))) {
+		if ((hidKeysDown() & KEY_B)
+				|| (!cntn && ((hidKeysDown() & KEY_A)
+				|| (hidKeysDown() & KEY_TOUCH)))) {
 			return 0;
 		}
 		if (!is_server && cntn) {
@@ -342,7 +347,13 @@ int show_2p_results(
 			if (R_FAILED(ret)) {
 				// lost connection
 				cntn = 0;
-				draw_2p_results(lemmings, won, other_players_name, is_server, cntn, menu_data);
+				draw_2p_results(
+						lemmings,
+						won,
+						other_players_name,
+						is_server,
+						cntn,
+						menu_data);
 			}
 			if (actual_size == sizeof(struct NW_Level_Result)
 					&& tmp.msg == NW_LVLRESULT) {
@@ -361,7 +372,12 @@ int show_2p_results(
 		if (cntn) {
 			if (!connection_alive()) {
 				cntn = 0;
-				draw_2p_results(lemmings, won, other_players_name, is_server, cntn, menu_data);
+				draw_2p_results(
+						lemmings,
+						won,
+						other_players_name,
+						is_server,
+						cntn, menu_data);
 			}
 		}
 	}
@@ -369,7 +385,16 @@ int show_2p_results(
 }
 
 
-int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMenuData* menu_data, struct MainInGameData* main_data, udsNodeInfo* nodeinfo, u16 client_id, udsBindContext* bindctx) {
+int on_client_connect(
+		struct SaveGame* savegame,
+		u8 game,
+		u8 lvl,
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data,
+		udsNodeInfo* nodeinfo,
+		u16 client_id,
+		udsBindContext* bindctx)
+{
 	// ask user whether he wants to play with the new client
 	char usr[41+2*6];
 	if (!get_aligned_username(usr, nodeinfo)) {
@@ -402,12 +427,48 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 			1.0f);
 	free(msg);
 	msg = 0;
+	u8 version_received = 0; // client version received?
+	u8 network_version = 0; // client version
+	u8 start_game = 0;
 	while (aptMainLoop()) {
 		hidScanInput();
 		if (hidKeysDown() & KEY_B) {
 			return MENU_HOST_REJECT_CLIENT; // eject client
 		}
+		// NW_PROTOCOL_VERSION
+		size_t actual_size = 0;
+		u16 src_NetworkNodeID;
+		struct NW_ProtocolVersion nw_pv;
+		Result ret = udsPullPacket(
+				bindctx,
+				&nw_pv,
+				sizeof(struct NW_ProtocolVersion),
+				&actual_size,
+				&src_NetworkNodeID);
+		if (R_FAILED(ret)) {
+			// lost connection (or network error)
+			return MENU_CLIENT_QUIT;
+		}
+		if (actual_size && nw_pv.msg_type == NW_PROTOCOL_VERSION) {
+			version_received = 1;
+			network_version = nw_pv.version_major;
+			if (network_version > NETWORK_PROTOCOL_VERSION
+					|| network_version < NETWORK_MIN_PROTOCOL_VERSION) {
+				// something went wrong!
+				return MENU_HOST_REJECT_CLIENT; // eject client
+			}
+			// confirm receivement
+			udsSendTo(
+					src_NetworkNodeID,
+					1,
+					UDS_SENDFLAG_Default,
+					&nw_pv,
+					1);
+		}
 		if (hidKeysDown() & KEY_A) {
+			start_game = 1;
+		}
+		if (start_game && version_received) {
 			// start network game with said client: send level to client
 			u8 num_lvl = count_custom_levels(import_2p[game].level_path);
 			struct Level* level = 0;
@@ -441,7 +502,12 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 							lemmings[i] = 40;
 						}
 					}
-					int res = server_prepare_level(bindctx, lemmings, game, lvl, level);
+					int res = server_prepare_level(
+							bindctx,
+							lemmings,
+							game,
+							lvl,
+							level);
 					if (res != NETWORK_SUCCESS) {
 						free(level);
 						return show_network_error(res, menu_data);
@@ -449,7 +515,13 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 					// start game!
 					char lvlnum[4];
 					sprintf(lvlnum,"%02u:",(lvl+1)%100);
-					res = server_run_level(bindctx, level, lvlnum, lemmings, menu_data, main_data);
+					res = server_run_level(
+							bindctx,
+							level,
+							lvlnum,
+							lemmings,
+							menu_data,
+							main_data);
 					if (res != NETWORK_SUCCESS) {
 						free_objects(level->object_types);
 						free(level);
@@ -473,7 +545,14 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 						savegame->last_multiplayer_level = lvl;
 						write_savegame(savegame);
 					}
-					if (!show_2p_results(lemmings, won, usr, 1, inform_client, 0, menu_data)) {
+					if (!show_2p_results(
+							lemmings,
+							won,
+							usr,
+							1,
+							inform_client,
+							0,
+							menu_data)) {
 						break; // end match
 					}
 				}while(aptMainLoop());
@@ -505,8 +584,13 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 	return MENU_EXIT_GAME;
 }
 
-int host_game(struct SaveGame* savegame, u8 num_levels[2], char* level_names, struct MainMenuData* menu_data, struct MainInGameData* main_data) {
-
+int host_game(
+		struct SaveGame* savegame,
+		u8 num_levels[2],
+		char* level_names,
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data)
+{
 	// level selection
 	u8 game = savegame->last_multiplayer_game;
 	u8 lvl = savegame->last_multiplayer_level;
@@ -579,14 +663,16 @@ int host_game(struct SaveGame* savegame, u8 num_levels[2], char* level_names, st
 		if(R_FAILED(ret) || constatus.status != 0x06) {
 			udsDestroyNetwork();
 			udsUnbind(&bindctx);
-			if (show_network_error(NETWORK_ERROR_WLAN_LOST, menu_data) != MENU_EXIT_GAME) {
+			if (show_network_error(NETWORK_ERROR_WLAN_LOST, menu_data)
+					!= MENU_EXIT_GAME) {
 				return MENU_EXIT_NETWORK;
 			}else{
 				return MENU_EXIT_GAME;
 			}
 		}
 		if (constatus.total_nodes == 2) {
-			u16 other_mask = (constatus.node_bitmask & ~(1 << (constatus.cur_NetworkNodeID-1)));
+			u16 other_mask = (constatus.node_bitmask
+					& ~(1 << (constatus.cur_NetworkNodeID-1)));
 			u8 error = 1;
 			if (other_mask) {
 				u16 i;
@@ -664,7 +750,26 @@ int host_game(struct SaveGame* savegame, u8 num_levels[2], char* level_names, st
 	return MENU_EXIT_GAME;
 }
 
-int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData* menu_data, struct MainInGameData* main_data) {
+int connect_to_network(
+		const udsNetworkScanInfo* scan_info,
+		struct MainMenuData* menu_data,
+		struct MainInGameData* main_data)
+{
+	u8 appdata[2];
+	size_t appdata_size;
+	Result ret = udsGetNetworkStructApplicationData(
+			&scan_info->network,
+			appdata,
+			sizeof(appdata),
+			&appdata_size);
+	if(R_FAILED(ret) || appdata_size < 2) {
+		// TODO: show error
+		return 0;
+	}
+	u8 server_version = appdata[1];
+	u8 network_version = (NW_PROTOCOL_VERSION<=server_version
+			?NW_PROTOCOL_VERSION
+			:server_version);
 	// try to connect
 	const char* msg =
 			"   Connecting...    \n"
@@ -686,10 +791,10 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 	end_frame();
 	udsBindContext bindctx;
 	int attempt;
-	Result ret;
 	union {
 		u8 msg_type;
 		struct NW_GameInit gi;
+		struct NW_ProtocolVersion pv;
 	} tmpbuf;
 	for(attempt=0; attempt<10; attempt++) {
 		ret = udsConnectNetwork(
@@ -715,17 +820,33 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 		return 0;
 	}
 	// connected!
-	// now wait for server to accept
+	// now wait for server to send its version and to accept client
+	u8 version_received = 0; // don't send server the protocol version any longer
 	while (aptMainLoop()) {
-		// get data
+		struct NW_ProtocolVersion version = {
+				NW_PROTOCOL_VERSION,
+				network_version,
+				0};
+		ret = 0;
+		if (!version_received) {
+			ret = udsSendTo(
+					UDS_HOST_NETWORKNODEID,
+					1,
+					UDS_SENDFLAG_Default,
+					&version,
+					sizeof(struct NW_ProtocolVersion));
+		}
 		size_t actual_size;
-		u16 src_NetworkNodeID;
-		ret = udsPullPacket(
-				&bindctx,
-				&tmpbuf,
-				sizeof(struct NW_GameInit),
-				&actual_size,
-				&src_NetworkNodeID);
+		if (!R_FAILED(ret)) {
+			// get data
+			u16 src_NetworkNodeID;
+			ret = udsPullPacket(
+					&bindctx,
+					&tmpbuf,
+					sizeof(struct NW_GameInit),
+					&actual_size,
+					&src_NetworkNodeID);
+		}
 		hidScanInput();
 		u32 kDown = hidKeysDown();
 		// test for connection to be closed!!! -> break up
@@ -767,11 +888,13 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 					}
 					// save local settings
 					u8 local_settings[] = {
+							settings.glitch_shrugger,
 							settings.glitch_direct_drop,
 							settings.two_player_timeout,
 							settings.two_player_inspect_level
 					};
 					// apply server settings
+					settings.glitch_shrugger = tmpbuf.gi.glitch_shrugger;
 					settings.glitch_direct_drop = tmpbuf.gi.glitch_direct_drop;
 					settings.two_player_timeout = tmpbuf.gi.timeout;
 					settings.two_player_inspect_level = tmpbuf.gi.inspect_level;
@@ -831,17 +954,26 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 						}
 					}while(aptMainLoop());
 					// restore local settings
-					settings.glitch_direct_drop = local_settings[0];
-					settings.two_player_timeout = local_settings[1];
-					settings.two_player_inspect_level = local_settings[2];
+					settings.glitch_shrugger = local_settings[0];
+					settings.glitch_direct_drop = local_settings[1];
+					settings.two_player_timeout = local_settings[2];
+					settings.two_player_inspect_level = local_settings[3];
 					free(level);
 					level = 0;
 				}
+				// done. -> exit connection
+				udsDisconnectNetwork();
+				udsUnbind(&bindctx);
+				return 1;
+			} else if (tmpbuf.msg_type == NW_PROTOCOL_VERSION) {
+				version_received = 1;
+			}else{
+				// error!
+				udsDisconnectNetwork();
+				udsUnbind(&bindctx);
+				show_network_error(NETWORK_ERROR_PROTOCOL_ERROR, menu_data);
+				return 0;
 			}
-			// done. -> exit connection
-			udsDisconnectNetwork();
-			udsUnbind(&bindctx);
-			return 1;
 		}
 		begin_frame();
 		copy_from_backbuffer(TOP_SCREEN);

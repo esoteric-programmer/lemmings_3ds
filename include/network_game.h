@@ -1,5 +1,5 @@
-#ifndef VIEW_NETWORKS_H
-#define VIEW_NETWORKS_H
+#ifndef NETWORK_GAME_H
+#define NETWORK_GAME_H
 #include <3ds.h>
 #include "menu.h"
 #include "savegame.h"

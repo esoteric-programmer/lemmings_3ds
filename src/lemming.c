@@ -1235,8 +1235,9 @@ int assign_climb(struct Lemming* lem1, struct Lemming* lem2, struct Level* level
 			lem1->current_action != LEMACTION_EXPLODE) {
 		lem1->abilities |= LEMABILITY_CLIMB;
 		if (lem1->current_action == LEMACTION_SHRUG) {
-			if (settings.glitch_shrugger && level->num_players == 1) {
-				lem1->current_action = LEMACTION_WALK; // this triggers a bug of the original game since draw_action is not updated
+			if (settings.glitch_shrugger) {
+				// this triggers a bug of the original game since draw_action is not updated
+				lem1->current_action = LEMACTION_WALK;
 			}else{
 				set_lemaction(lem1,LEMACTION_WALK);
 			}

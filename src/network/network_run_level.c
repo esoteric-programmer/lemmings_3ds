@@ -1,5 +1,6 @@
 #include <string.h>
 #include <malloc.h>
+#include "network_run_level.h"
 #include "network.h"
 #include "gamespecific_2p.h"
 #include "import_level.h"
@@ -113,6 +114,7 @@ int server_prepare_level(
 	gameinit.receiver_id = 1; // receiver is second player
 	gameinit.lvl_id = level_id;
 	gameinit.game_id = game_id;
+	gameinit.glitch_shrugger = settings.glitch_shrugger;
 	gameinit.glitch_direct_drop = settings.glitch_direct_drop;
 	gameinit.timeout = settings.two_player_timeout;
 	gameinit.inspect_level = settings.two_player_inspect_level;
@@ -534,6 +536,7 @@ int client_prepare_level(
 					// parse NW_INITIALIZE payload
 					lemmings[0] = rec_buf->gi.lemmings_per_player[0];
 					lemmings[1] = rec_buf->gi.lemmings_per_player[1];
+					settings.glitch_shrugger = rec_buf->gi.glitch_shrugger;
 					settings.glitch_direct_drop = rec_buf->gi.glitch_direct_drop;
 					settings.two_player_timeout = rec_buf->gi.timeout;
 					settings.two_player_inspect_level = rec_buf->gi.inspect_level;

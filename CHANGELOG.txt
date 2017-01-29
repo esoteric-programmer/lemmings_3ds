@@ -1,5 +1,5 @@
 Version 0.6.1
-- Bugfixes (hence, v0.6 <-> v0.6.1 multiplayer mode is not compatible)
+- Bugfixes (note: multiplayer mode is not compatible with v0.6)
 
 Version 0.6
 - Added 2 player mode via 3DS local wifi connection

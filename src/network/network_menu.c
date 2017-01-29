@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "network_menu.h"
-#include "view_networks.h"
+#include "network_game.h"
 #include "network.h"
 #include "main.h"
 
@@ -233,6 +233,14 @@ int show_network_error(u8 error, struct MainMenuData* menu_data) {
 			msg =
 					"    Level became    \n"
 					"   asynchronous.    \n"
+					"                    \n"
+					"   Press any key    \n"
+					"    to continue.    \n";
+			break;
+		case NETWORK_ERROR_NO_2P_LEVELS:
+			msg =
+					"   No level files   \n"
+					" for 2p mode found. \n"
 					"                    \n"
 					"   Press any key    \n"
 					"    to continue.    \n";

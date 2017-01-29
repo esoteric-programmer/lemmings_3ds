@@ -1,17 +1,16 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 #include <3ds.h>
-#include "level.h"
-#include "main_data.h"
 #include "control.h"
 
 #define WLAN_ID 0x40F91730
 #define WLAN_PASS "Lemmings for 3DS rulez"
-#define NETWORK_PROTOCOL_VERSION 1
-#define NETWORK_MIN_PROTOCOL_VERSION 1
+#define NETWORK_PROTOCOL_VERSION 2
+#define NETWORK_MIN_PROTOCOL_VERSION 2
 
 // network messages
 #define NW_ERROR              0 // communication error (maybe just cancel connection...; implement handling later)
+#define NW_PROTOCOL_VERSION  42
 #define NW_INITIALIZE         1 // confirm that the server WILL start the game; params: num of (active) players, num of lemmings per player, player id of receiver
 #define NW_LEVEL_INFO         2 // receive level data (first packet: Info. then: Chunks)
 #define NW_LEVEL_DATA_CHUNK   3 // send back (with zero length) to confirm receivement
@@ -30,7 +29,15 @@
 #define NETWORK_ERROR_PARSE_LEVEL_ERROR 5
 #define NETWORK_ERROR_OUT_OF_MEM        6
 #define NETWORK_ERROR_ASYNCHRONOUS      7
-#define NETWORK_ERROR_OTHER             8
+#define NETWORK_ERROR_NO_2P_LEVELS      8
+#define NETWORK_ERROR_OTHER             9
+
+// sent by client on connect (until server confirms receivement)
+struct NW_ProtocolVersion {
+	u8 msg_type;
+	u8 version_major;
+	u8 version_minor;
+};
 
 struct NW_GameInit {
 	u8 msg_type;
@@ -40,6 +47,7 @@ struct NW_GameInit {
 	u8 lvl_id;
 	u8 game_id;
 	u8 glitch_direct_drop;
+	u8 glitch_shrugger;
 	u8 timeout; // 2p time limit settings
 	u8 inspect_level; // inspect level before it starts?
 };
@@ -85,43 +93,4 @@ struct NW_Level_Result {
 };
 
 int connection_alive();
-
-int server_prepare_level(
-		udsBindContext* bindctx,
-		const u8* lemmings, // number of lemmings the players start with
-		u8 game_id,
-		u8 level_id,
-		struct Level* output);
-
-// important: overwrites settings.glitch_direct_drop.
-// therefore the local value has to be stored before this function is called
-int client_prepare_level(
-		udsBindContext* bindctx,
-		const u8* lemmings, // number of lemmings the players start with
-		u8* lvl_id,
-		u8 game_id,
-		struct Level* output);
-
-int server_run_level(
-		udsBindContext* bindctx,
-		struct Level* level,
-		const char* level_id,
-		u8* lemmings, // number of lemmings the players have rescued
-		struct MainMenuData* menu_data,
-		struct MainInGameData* main_data);
-int client_run_level(
-		udsBindContext* bindctx,
-		struct Level* level,
-		const char* level_id,
-		u8* lemmings,
-		u16* won,
-		struct MainMenuData* menu_data,
-		struct MainInGameData* main_data);
-
-int server_send_result(
-		udsBindContext* bindctx,
-		u8 lemmings[2],
-		u16 won[2]);
-
-#define CHUNK_SIZE (UDS_DATAFRAME_MAXSIZE - sizeof(struct NW_LevelData_Chunk))
 #endif
