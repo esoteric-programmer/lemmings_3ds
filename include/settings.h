@@ -2,8 +2,6 @@
 #define SETTINGS_H
 #include <3ds.h>
 
-#define NO_SF2D
-
 #define LEMMINGS_DIR "/lemmings" // if it does not exist, "." will be used instead
 extern const char* PATH_ROOT;
 
@@ -78,8 +76,4 @@ extern struct Settings {
 } settings;
 
 extern u8 settings_icon[];
-
-#ifdef NO_SF2D
-#define ABGR
-#endif
 #endif

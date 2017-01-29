@@ -61,15 +61,6 @@ void event_hook(APT_HookType hook_type, void* param) {
 */
 
 void die() {
-	#ifndef NO_SF2D
-	int i;
-	for (i=0;i<4;i++) {
-		begin_frame();
-		clear(TOP_SCREEN);
-		clear(BOTTOM_SCREEN);
-		end_frame();
-	}
-	#endif
 	consoleInit(GFX_TOP, NULL);
 	consoleClear();
 	printf(CONSOLE_RED);
@@ -105,14 +96,9 @@ void die() {
 		if (kDown & (~KEY_TOUCH)) {
 			break;
 		}
-		#ifdef NO_SF2D
 		begin_frame();
 		clear(BOTTOM_SCREEN);
 		end_frame();
-		#else
-		gfxFlushBuffers();
-		gfxSwapBuffers();
-		#endif
 	}
 	// exit game
 	aptUnhook(&hookCookie);

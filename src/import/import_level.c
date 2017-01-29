@@ -26,7 +26,6 @@ int decompress_rle(s8* in, s8* out, u16 out_length, u16 max_in_length) {
 			for (i=0;i<257-((u8)*in);i++) {
 				if (out_pos>=out_length) {
 					// error
-					printf("out: %d, i: %d of %d\n",out_pos,i,257-((u8)*in));
 					return in_pos;
 				}
 				*out = in[1];

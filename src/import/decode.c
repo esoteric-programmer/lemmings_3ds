@@ -80,7 +80,6 @@ struct Data* decompress_cur_section(FILE* input) {
 	}
 	header.size_dec = (header.size_dec>>8) | (header.size_dec<<8);
 	header.size_enc = (header.size_enc>>8) | (header.size_enc<<8);
-	//printf("header: %d, %d, %d.\n",header.start_bits, header.size_dec, header.size_enc);
 	if (header.size_enc < 10) {
 		return 0; // invalid file format
 	}
@@ -88,16 +87,13 @@ struct Data* decompress_cur_section(FILE* input) {
 	if (header.start_bits < 0 || header.start_bits > 8) {
 		return 0; // invalid file format
 	}
-	//printf("found section: %d, %d, %d.\n",header.start_bits, header.size_dec, header.size_enc);
 	struct Data* in = (struct Data*)malloc(sizeof(struct Data) + header.size_enc);
 	if (in == 0) {
-		fprintf(stderr,"out of memory\n");
 		return 0; // out of memory
 	}
 	in->size = header.size_enc;
 	if (header.size_enc != fread(in->data,1,header.size_enc,input)) {
 		free(in);
-		fprintf(stderr,"unexpected eof\n");
 		return 0; // unexpected EOF or error reading file
 	}
 	s8* in_ptr = in->data + header.size_enc - 1;
@@ -109,23 +105,18 @@ struct Data* decompress_cur_section(FILE* input) {
 		checksum ^= in->data[i];
 	}
 	if (checksum != header.checksum) {
-		printf("Header checksum: %02X, Computed checksum: %02X\n",header.checksum,checksum);
+		// ignore... TODO: maybe don't ignore...?
 	}
 
 	struct Data* data = (struct Data*)malloc(sizeof(struct Data) + header.size_dec);
 	if (data == 0) {
 		free(in);
-		fprintf(stderr,"out of memory\n");
 		return 0; // out of memory
 	}
 	data->size = header.size_dec;
 
-	//printf("start...\n");
 	s8* data_ptr = data->data + header.size_dec;
-	//int z=0;
 	while (data_ptr > data->data) {
-		//printf("dec %d\n",z);
-		//z++;
 		s16 type;
 		if (get_bit(&in_ptr, &in_mask, &(header.start_bits),in->data)!=0) {
 			type = get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,2)+2;
@@ -135,7 +126,6 @@ struct Data* decompress_cur_section(FILE* input) {
 		switch (type) {
 			case 0:
 				{
-					//printf("t0\n");
 					s16 n;
 					s16 i;
 					n = get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,3)+1;
@@ -147,13 +137,11 @@ struct Data* decompress_cur_section(FILE* input) {
 					for (i=0;i<n;i++) {
 						data_ptr--;
 						*data_ptr = (s8)get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,8);
-						//printf("data: %02X\n",(unsigned char)(*data_ptr));
 					}
 				}
 				break;
 			case 1:
 				{
-					//printf("t1\n");
 					s16 offset;
 					s16 j;
 					offset = get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,8)+1;
@@ -165,13 +153,11 @@ struct Data* decompress_cur_section(FILE* input) {
 					for (j=0;j<2;j++) {
 						data_ptr--;
 						*data_ptr = data_ptr[offset];
-						//printf("data: %02X\n",(unsigned char)(*data_ptr));
 					}
 				}
 				break;
 			case 2:
 				{
-					//printf("t2\n");
 					s16 offset;
 					s16 j;
 					offset = get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,9)+1;
@@ -183,13 +169,11 @@ struct Data* decompress_cur_section(FILE* input) {
 					for (j=0;j<3;j++) {
 						data_ptr--;
 						*data_ptr = data_ptr[offset];
-						//printf("data: %02X\n",(unsigned char)(*data_ptr));
 					}
 				}
 				break;
 			case 3:
 				{
-					//printf("t3\n");
 					s16 offset;
 					s16 j;
 					offset = get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,10)+1;
@@ -201,13 +185,11 @@ struct Data* decompress_cur_section(FILE* input) {
 					for (j=0;j<4;j++) {
 						data_ptr--;
 						*data_ptr = data_ptr[offset];
-						//printf("data: %02X\n",(unsigned char)(*data_ptr));
 					}
 				}
 				break;
 			case 4:
 				{
-					//printf("t4\n");
 					s16 offset;
 					s16 j;
 					s16 n = get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,8)+1;
@@ -220,13 +202,11 @@ struct Data* decompress_cur_section(FILE* input) {
 					for (j=0;j<n;j++) {
 						data_ptr--;
 						*data_ptr = data_ptr[offset];
-						//printf("data: %02X\n",(unsigned char)(*data_ptr));
 					}
 				}
 				break;
 			case 5:
 				{
-					//printf("t5\n");
 					s16 n;
 					s16 i;
 					n = get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,8)+9;
@@ -238,12 +218,10 @@ struct Data* decompress_cur_section(FILE* input) {
 					for (i=0;i<n;i++) {
 						data_ptr--;
 						*data_ptr = (s8)get_bits(&in_ptr, &in_mask, &(header.start_bits),in->data,8);
-						//printf("data: %02X\n",(unsigned char)(*data_ptr));
 					}
 				}
 				break;
 			default:
-				fprintf(stderr,"error parsing prefix\n");
 				free(data);
 				free(in);
 				return 0; // ERROR while decoding

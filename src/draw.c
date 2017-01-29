@@ -7,7 +7,6 @@
 #include "particles.h"
 #include "settings.h"
 
-#ifdef NO_SF2D
 #define SET_PIXEL(buf,x,y,val) { \
 		(buf)->data[3*((x+1)*(buf)->height-(y))] = (u8)(((val)>>8)&0xFF); \
 		(buf)->data[3*((x+1)*(buf)->height-(y))+1] = (u8)(((val)>>16)&0xFF); \
@@ -17,10 +16,6 @@
 		| ((u32)((buf)->data[3*((x+1)*(buf)->height-(y))+1])<<16) \
 		| ((u32)((buf)->data[3*((x+1)*(buf)->height-(y))+2])<<24) \
 		| 0xFF)
-#else
-#define SET_PIXEL(buf,x,y, val) {(((u32*)(buf)->data)[(x)+(y)*(buf)->width]) = (val); }
-#define GET_PIXEL(buf,x,y) (((u32*)(buf)->data)[(x)+(y)*(buf)->width])
-#endif
 
 struct Buffer {
 	u16 width;
@@ -51,26 +46,12 @@ static inline struct Buffer* getScreenBuffer(ScreenBuffer buffer) {
 }
 
 void init_drawing() {
-	#ifdef NO_SF2D
 	gfxSetScreenFormat(GFX_TOP,GSP_BGR8_OES);
 	gfxSetDoubleBuffering(GFX_TOP,1);
 	gfxSetScreenFormat(GFX_BOTTOM,GSP_BGR8_OES);
 	gfxSetDoubleBuffering(GFX_BOTTOM,1);
 	top_screen_backbuffer.data = (u8*)malloc(3*400*240);
 	bottom_screen_backbuffer.data = (u8*)malloc(3*320*240);
-	#else
-	gfxExit();
-	sf2d_init();
-	sf2d_start_frame(GFX_TOP, GFX_LEFT);
-	sf2d_end_frame();
-	sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
-	sf2d_end_frame();
-	sf2d_swapbuffers();
-	top_screen_backbuffer.data = (u8*)malloc(4*400*240);
-	bottom_screen_backbuffer.data = (u8*)malloc(4*320*240);
-	top_screen.data = (u8*)malloc(4*400*240);
-	bottom_screen.data = (u8*)malloc(4*320*240);
-	#endif
 	top_screen_backbuffer.width = 400;
 	top_screen_backbuffer.height = 240;
 	bottom_screen_backbuffer.width = 320;
@@ -103,38 +84,17 @@ void begin_frame() {
 	if (!initialized) {
 		return;
 	}
-	#ifdef NO_SF2D
 	top_screen.data = gfxGetFramebuffer(GFX_TOP,GFX_LEFT,0,0);
 	bottom_screen.data = gfxGetFramebuffer(GFX_BOTTOM,GFX_LEFT,0,0);
-	#endif
 }
 
 void end_frame() {
 	if (!initialized) {
 		return;
 	}
-	#ifdef NO_SF2D
 	gfxFlushBuffers();
 	gfxSwapBuffers();
 	gspWaitForVBlank();
-	#else
-	sf2d_texture* top_screen_t = sf2d_create_texture(400, 240, TEXFMT_RGBA8, SF2D_PLACE_RAM);
-	sf2d_fill_texture_from_RGBA8(top_screen_t, top_screen.data, 400, 240);
-	sf2d_texture_tile32(top_screen_t);
-	sf2d_texture* bot_screen_t = sf2d_create_texture(320, 240, TEXFMT_RGBA8, SF2D_PLACE_RAM);
-	sf2d_fill_texture_from_RGBA8(bot_screen_t, bottom_screen.data, 320, 240);
-	sf2d_texture_tile32(bot_screen_t);
-
-	sf2d_start_frame(GFX_TOP, GFX_LEFT);
-	sf2d_draw_texture(top_screen_t,0,0);
-	sf2d_end_frame();
-	sf2d_start_frame(GFX_BOTTOM, GFX_LEFT);
-	sf2d_draw_texture(bot_screen_t,0,0);
-	sf2d_end_frame();
-	sf2d_swapbuffers();
-	sf2d_free_texture(top_screen_t);
-	sf2d_free_texture(bot_screen_t);
-	#endif
 }
 
 void copy_from_backbuffer(ScreenBuffer screen) {
@@ -147,11 +107,7 @@ void copy_from_backbuffer(ScreenBuffer screen) {
 			memcpy(
 					top_screen.data,
 					top_screen_backbuffer.data,
-					#ifdef NO_SF2D
 					3*top_screen.width*top_screen.height
-					#else
-					4*top_screen.width*top_screen.height
-					#endif
 					);
 			break;
 		case BOTTOM_SCREEN:
@@ -159,11 +115,7 @@ void copy_from_backbuffer(ScreenBuffer screen) {
 			memcpy(
 					bottom_screen.data,
 					bottom_screen_backbuffer.data,
-					#ifdef NO_SF2D
 					3*bottom_screen.width*bottom_screen.height
-					#else
-					4*bottom_screen.width*bottom_screen.height
-					#endif
 					);
 			break;
 		default:
@@ -196,11 +148,7 @@ int clear(ScreenBuffer screen) {
 		return 0;
 	}
 	memset(dest->data, 0,
-			#ifdef NO_SF2D
 			3*dest->width*dest->height
-			#else
-			4*dest->width*dest->height
-			#endif
 			);
 	return 1;
 }
@@ -218,17 +166,10 @@ int clear_rectangle(
 	if (!dest->data) {
 		return 0;
 	}
-	#ifdef NO_SF2D
 	u16 xi;
 	for (xi = 0; xi < w; xi++) {
 		memset(dest->data + 3*((xi+x+1)*dest->height - (y+h-1)), 0, 3*h);
 	}
-	#else
-	u16 yi;
-	for (yi = 0; yi < h; yi++) {
-		memset(dest->data + 4*(x + (yi+y)*dest->width), 0, 4*w);
-	}
-	#endif
 	return 1;
 }
 
@@ -370,17 +311,10 @@ static inline u32 get_value(
 				if (!(image[i+j*w] & 0xF0)) {
 					px = 0x00000000;
 				}
-				#ifdef ABGR
 				cur_a = ((float)((px >> 0) & 0xFF)) / 255.0f;
 				cur_r = ((float)((px >> 24) & 0xFF));
 				cur_g = ((float)((px >> 16) & 0xFF));
 				cur_b = ((float)((px >> 8) & 0xFF));
-				#else
-				cur_a = ((float)((px >> 24) & 0xFF)) / 255.0f;
-				cur_r = ((float)((px >> 0) & 0xFF));
-				cur_g = ((float)((px >> 8) & 0xFF));
-				cur_b = ((float)((px >> 16) & 0xFF));
-				#endif
 			}
 			alpha += weight * cur_a;
 			r += weight * cur_a * cur_r;
@@ -443,11 +377,7 @@ static inline u32 get_value(
 	if (alpha - (float)alpha_i >= 0.5 && alpha_i < 255) {
 		alpha_i++;
 	}
-	#ifdef ABGR
 	return (alpha_i<<0) | (r_i<<24) | (g_i<<16) | (b_i << 8);
-	#else
-	return (alpha_i<<24) | (r_i<<0) | (g_i<<8) | (b_i << 16);
-	#endif
 }
 
 // draw after scale with linear interpolation
@@ -501,7 +431,6 @@ int draw_scaled(
 					(float)(yi+1)/scaling,
 					palette);
 			u32 old = GET_PIXEL(dest, x+xi, y+yi);
-			#ifdef ABGR
 			float alpha = (float)((color >> 0)&0xFF) / 255.0f;
 			float b = (float)((color >> 8)&0xFF) * alpha / 255.0f
 					+ (float)((old >> 8)&0xFF) * (1.0f-alpha) / 255.0f;
@@ -523,29 +452,6 @@ int draw_scaled(
 					| (((u32)(b*255.0f)) << 8)
 					| 0x000000FF;
 			SET_PIXEL(dest, x+xi, y+yi, new);
-			#else
-			float alpha = (float)((color >> 24)&0xFF) / 255.0f;
-			float b = (float)((color >> 16)&0xFF) * alpha / 255.0f
-					+ (float)((old >> 16)&0xFF) * (1.0f-alpha) / 255.0f;
-			if (b>1.0f) {
-				b = 1.0f;
-			}
-			float g = (float)((color >> 8)&0xFF) * alpha / 255.0f
-					+ (float)((old >> 8)&0xFF) * (1.0f-alpha) / 255.0f;
-			if (g>1.0f) {
-				g = 1.0f;
-			}
-			float r = (float)((color >> 0)&0xFF) * alpha / 255.0f
-					+ (float)((old >> 0)&0xFF) * (1.0f-alpha) / 255.0f;
-			if (r>1.0f) {
-				r = 1.0f;
-			}
-			SET_PIXEL(dest, x+xi, y+yi,
-					(((u32)(r*255.0f)) << 0)
-					| (((u32)(g*255.0f)) << 8)
-					| (((u32)(b*255.0f)) << 16)
-					| 0xFF000000);
-			#endif
 		}
 	}
 	return 1;
