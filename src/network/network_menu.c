@@ -118,16 +118,20 @@ int get_aligned_username(char username[41+2*6], const udsNodeInfo* nodeinfo) {
 		msg_ptr++;\
 		*msg_ptr = 0;\
 	}
-void draw_network_view(
+int draw_network_view(
 		u8 cur_selection,
 		u8 total_networks,
 		udsNetworkScanInfo* networks,
 		struct MainMenuData* menu_data,
 		u8* network_alive) {
+	char* msg = (char*)malloc(30*(40+1)+1);
+	if (!msg) {
+		// error
+		return 0;
+	}
+	char* msg_ptr = msg;
 	tile_menu_background(BOTTOM_SCREEN_BACK, menu_data);
 
-	char* msg = (char*)malloc(30*(40+1)+1);
-	char* msg_ptr = msg;
 	DRAW_MENU("\n Choose a Game\n\n");
 	u8 cur_offset = 0;
 	for (cur_offset = 0; cur_offset < 4; cur_offset++) {
@@ -179,6 +183,7 @@ void draw_network_view(
 	DRAW_MENU_LINE("Cancel")
 	draw_menu_text(BOTTOM_SCREEN_BACK,menu_data,0,0,msg,0,1.0f);
 	free(msg);
+	return 1;
 }
 #undef DRAW_MENU
 #undef DRAW_MENU_LINE
@@ -304,12 +309,15 @@ int network_menu(
 	int up = 0;
 
 	while (aptMainLoop()) {
-		draw_network_view(
+		if (!draw_network_view(
 				cur_selection,
 				num_networks,
 				networks_scan,
 				menu_data,
-				network_alive);
+				network_alive)) {
+			// error: out of memory; exit game
+			break;
+		}
 
 		begin_frame();
 		copy_from_backbuffer(TOP_SCREEN);

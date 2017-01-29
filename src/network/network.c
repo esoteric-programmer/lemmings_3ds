@@ -17,7 +17,8 @@
 // parse level file
 // start game
 
-// TODO: tidy up (introduce subroutines to free memory); TODO: catch all errors
+// TODO: clean up code (e.g., introduce subroutines to free memory)
+// TODO: catch all errors
 
 int connection_alive() {
 	udsConnectionStatus constatus;
@@ -89,6 +90,19 @@ int server_prepare_level(
 	if (!chunk) {
 		return NETWORK_ERROR_OUT_OF_MEM;
 	}
+	struct NW_LevelData_Info* leveldata_info =
+			(struct NW_LevelData_Info*)
+			malloc(sizeof(struct NW_LevelData_Info));
+	if (!leveldata_info) {
+		free(chunk);
+		return NETWORK_ERROR_OUT_OF_MEM;
+	}
+	u8* level = (u8*)malloc(2048);
+	if (!level) {
+		free(chunk);
+		free(leveldata_info);
+		return NETWORK_ERROR_OUT_OF_MEM;
+	}
 	Result ret;
 
 	struct NW_GameInit gameinit;
@@ -105,6 +119,8 @@ int server_prepare_level(
 	// send gameinit
 	if (!send_until_confirmed(&gameinit, sizeof(gameinit), bindctx)) {
 		free(chunk);
+		free(leveldata_info);
+		free(level);
 		return NETWORK_ERROR_CONNECTION_LOST;
 	}
 
@@ -113,10 +129,6 @@ int server_prepare_level(
 		swap_exits = import_2p[game_id].swap_exit[level_id];
 	}
 
-	struct NW_LevelData_Info* leveldata_info =
-			(struct NW_LevelData_Info*)
-			malloc(sizeof(struct NW_LevelData_Info));
-	u8* level = (u8*)malloc(2048);
 	leveldata_info->msg_type = NW_LEVEL_INFO;
 	struct Data* vgagr_s0 = 0;
 	struct Data* vgagr_s1 = 0;
@@ -143,6 +155,7 @@ int server_prepare_level(
 	if (!res) {
 		free(chunk);
 		free(leveldata_info);
+		free(level);
 		return NETWORK_ERROR_READ_LEVEL_ERROR;
 	}
 	memcpy(leveldata_info->ingame_basis_palette,import[1].ingame_palette,7*sizeof(u32));
@@ -168,6 +181,7 @@ int server_prepare_level(
 			free(vgaspec);
 		}
 		free(leveldata_info);
+		free(level);
 		return NETWORK_ERROR_CONNECTION_LOST;
 	}
 
@@ -187,6 +201,21 @@ int server_prepare_level(
 	u32 chunk_num = chunk_received_offsets[3]
 			+ ((chunks[2]?chunks[2]->size:0) + CHUNK_SIZE - 1)/CHUNK_SIZE;
 	chunks_received = (u8*)malloc(chunk_num);
+	if (!chunks_received) {
+		free(chunk);
+		if (vgagr_s0) {
+			free(vgagr_s0);
+		}
+		if (vgagr_s1) {
+			free(vgagr_s1);
+		}
+		if (vgaspec) {
+			free(vgaspec);
+		}
+		free(leveldata_info);
+		free(level);
+		return NETWORK_ERROR_OUT_OF_MEM;
+	}
 	memset(chunks_received, 0, chunk_num);
 	while (chunk_num) {
 		u8 i;
@@ -217,6 +246,7 @@ int server_prepare_level(
 					free(vgaspec);
 				}
 				free(leveldata_info);
+				free(level);
 				free(chunks_received);
 				return NETWORK_ERROR_CONNECTION_LOST;
 			}
@@ -249,6 +279,18 @@ int server_prepare_level(
 					if (R_FAILED(ret)) {
 						// lost connection
 						free(chunk);
+						if (vgagr_s0) {
+							free(vgagr_s0);
+						}
+						if (vgagr_s1) {
+							free(vgagr_s1);
+						}
+						if (vgaspec) {
+							free(vgaspec);
+						}
+						free(leveldata_info);
+						free(level);
+						free(chunks_received);
 						return NETWORK_ERROR_CONNECTION_LOST;
 					}
 					if (actual_size == sizeof(struct NW_LevelData_Chunk)) {
@@ -307,6 +349,7 @@ int server_prepare_level(
 						free(vgaspec);
 					}
 					free(leveldata_info);
+					free(level);
 					free(chunks_received);
 					return NETWORK_ERROR_CONNECTION_LOST;
 				}
@@ -327,6 +370,7 @@ int server_prepare_level(
 				free(vgaspec);
 			}
 			free(leveldata_info);
+			free(level);
 			free(chunks_received);
 			if (!aptMainLoop()) {
 				return NETWORK_ERROR_OTHER;
@@ -351,22 +395,25 @@ int server_prepare_level(
 			free(vgaspec);
 		}
 		free(leveldata_info);
+		free(level);
 		return NETWORK_ERROR_CONNECTION_LOST;
 	}
 	free(chunk);
 	chunk = 0;
 	// parse level
 	res = parse_level(
-		level,
-		leveldata_info->ground_data,
-		vgagr_s0,
-		vgagr_s1,
-		vgaspec,
-		leveldata_info->ingame_basis_palette,
-		swap_exits,
-		import[game_id?OH_NO_MORE_LEMMINGS:ORIGINAL_LEMMINGS].entrance_x_offset,
-		2, // 2 player
-		output);
+			level,
+			leveldata_info->ground_data,
+			vgagr_s0,
+			vgagr_s1,
+			vgaspec,
+			leveldata_info->ingame_basis_palette,
+			swap_exits,
+			import[game_id
+				?OH_NO_MORE_LEMMINGS
+				:ORIGINAL_LEMMINGS].entrance_x_offset,
+			2, // 2 player
+			output);
 	if (vgagr_s0) {
 		free(vgagr_s0);
 		vgagr_s0 = 0;
@@ -380,6 +427,7 @@ int server_prepare_level(
 		vgaspec = 0;
 	}
 	free(leveldata_info);
+	free(level);
 	if (!res) {
 		return NETWORK_ERROR_PARSE_LEVEL_ERROR;
 	}
@@ -425,12 +473,24 @@ int client_prepare_level(
 	u8 parsed = 0;
 	u8 swap_exits = 0;
 	Result ret;
-	union RecBuf* rec_buf = (union RecBuf*)malloc(sizeof(union RecBuf));;
+	union RecBuf* rec_buf = (union RecBuf*)malloc(sizeof(union RecBuf));
+	if (!rec_buf) {
+		return NETWORK_ERROR_OUT_OF_MEM;
+	}
 	size_t actual_size;
 	u16 src_NetworkNodeID;
 
 	u8* level = (u8*)malloc(2048);
+	if (!level) {
+		free(rec_buf);
+		return NETWORK_ERROR_OUT_OF_MEM;
+	}
 	u8* ground_data = (u8*)malloc(1056);
+	if (!ground_data) {
+		free(rec_buf);
+		free(level);
+		return NETWORK_ERROR_OUT_OF_MEM;
+	}
 	struct Data* vgagr_s0 = 0;
 	struct Data* vgagr_s1 = 0;
 	struct Data* vgaspec = 0;
@@ -454,6 +514,16 @@ int client_prepare_level(
 			free(level);
 			free(ground_data);
 			free(rec_buf);
+			int i;
+			for (i=0;i<3;i++) {
+				if (*chunks[i]) {
+					free(*chunks[i]);
+					*chunks[i] = 0;
+				}
+			}
+			if (parsed) {
+				free_objects(output->object_types);
+			}
 			return NETWORK_ERROR_CONNECTION_LOST; // lost connection
 		}
 		// test for acceptance message
@@ -472,11 +542,21 @@ int client_prepare_level(
 					}
 					game_id = rec_buf->gi.game_id;
 					// just send back this message type
-					udsSendTo(UDS_HOST_NETWORKNODEID,1,UDS_SENDFLAG_Default,rec_buf->buf,1);
+					udsSendTo(
+							UDS_HOST_NETWORKNODEID,
+							1,
+							UDS_SENDFLAG_Default,
+							rec_buf->buf,
+							1);
 					break;
 				case NW_LEVEL_INFO:
 					// confirm receivement
-					udsSendTo(UDS_HOST_NETWORKNODEID,1,UDS_SENDFLAG_Default,rec_buf->buf,1);
+					udsSendTo(
+							UDS_HOST_NETWORKNODEID,
+							1,
+							UDS_SENDFLAG_Default,
+							rec_buf->buf,
+							1);
 					// initialize new level
 					if (parsed) {
 						free_objects(output->object_types);
@@ -501,28 +581,75 @@ int client_prepare_level(
 						}
 					}
 					if (actual_size != sizeof(struct NW_LevelData_Info)) {
-						// invalid message: maybe send error message, then break up connection
+						// invalid message: maybe send error message,
+						// then break up connection
 						free(level);
 						free(ground_data);
 						free(rec_buf);
+						int i;
+						for (i=0;i<3;i++) {
+							if (*chunks[i]) {
+								free(*chunks[i]);
+								*chunks[i] = 0;
+							}
+						}
 						return NETWORK_ERROR_PROTOCOL_ERROR;
 					}
 					if (rec_buf->li.vgagr_s0_size && !vgagr_s0) {
 						vgagr_s0 = (struct Data*)malloc(
 								sizeof(struct Data)
 								+ rec_buf->li.vgagr_s0_size);
+						if (!vgagr_s0) {
+							free(level);
+							free(ground_data);
+							free(rec_buf);
+							int i;
+							for (i=0;i<3;i++) {
+								if (*chunks[i]) {
+									free(*chunks[i]);
+									*chunks[i] = 0;
+								}
+							}
+							return NETWORK_ERROR_OUT_OF_MEM;
+						}
 						vgagr_s0->size = rec_buf->li.vgagr_s0_size;
 					}
 					if (rec_buf->li.vgagr_s1_size && !vgagr_s1) {
 						vgagr_s1 = (struct Data*)malloc(
 								sizeof(struct Data)
 								+ rec_buf->li.vgagr_s1_size);
+						if (!vgagr_s1) {
+							free(level);
+							free(ground_data);
+							free(rec_buf);
+							int i;
+							for (i=0;i<3;i++) {
+								if (*chunks[i]) {
+									free(*chunks[i]);
+									*chunks[i] = 0;
+								}
+							}
+							return NETWORK_ERROR_OUT_OF_MEM;
+						}
 						vgagr_s1->size = rec_buf->li.vgagr_s1_size;
 					}
 					if (rec_buf->li.vgaspec_size && !vgaspec) {
 						vgaspec = (struct Data*)malloc(
 								sizeof(struct Data)
 								+ rec_buf->li.vgaspec_size);
+						if (!vgaspec) {
+							free(level);
+							free(ground_data);
+							free(rec_buf);
+							int i;
+							for (i=0;i<3;i++) {
+								if (*chunks[i]) {
+									free(*chunks[i]);
+									*chunks[i] = 0;
+								}
+							}
+							return NETWORK_ERROR_OUT_OF_MEM;
+						}
 						vgaspec->size = rec_buf->li.vgaspec_size;
 					}
 					memcpy(
@@ -542,8 +669,16 @@ int client_prepare_level(
 					parsed = 0;
 					// get data chunk of level
 					if (actual_size < sizeof(struct NW_LevelData_Chunk)) {
-						// invalid message: maybe send error message, then break up connection
-						// TODO: free vgagr_s0, vgagr_s1, vgaspec
+						// invalid message: maybe send error message,
+						// then break up connection
+						// free vgagr_s0, vgagr_s1, vgaspec
+						int i;
+						for (i=0;i<3;i++) {
+							if (*chunks[i]) {
+								free(*chunks[i]);
+								*chunks[i] = 0;
+							}
+						}
 						free(level);
 						free(ground_data);
 						free(rec_buf);
@@ -553,8 +688,16 @@ int client_prepare_level(
 								sizeof(struct NW_LevelData_Chunk)
 								+ rec_buf->lc.length
 							|| rec_buf->lc.type > 3) {
-						// invalid message: maybe send error message, then break up connection
-						// TODO: free vgagr_s0, vgagr_s1, vgaspec
+						// invalid message: maybe send error message,
+						// then break up connection
+						// free vgagr_s0, vgagr_s1, vgaspec
+						int i;
+						for (i=0;i<3;i++) {
+							if (*chunks[i]) {
+								free(*chunks[i]);
+								*chunks[i] = 0;
+							}
+						}
 						free(level);
 						free(ground_data);
 						free(rec_buf);
@@ -563,32 +706,62 @@ int client_prepare_level(
 					if (rec_buf->lc.type) {
 						struct Data* chk = *chunks[rec_buf->lc.type-1];
 						if (!chk) {
-							// invalid message: chunk received before size of whole field is known
-							// TODO: free vgagr_s0, vgagr_s1, vgaspec
+							// invalid message: chunk received before
+							// size of whole field is known
+							// free vgagr_s0, vgagr_s1, vgaspec
+							int i;
+							for (i=0;i<3;i++) {
+								if (*chunks[i]) {
+									free(*chunks[i]);
+									*chunks[i] = 0;
+								}
+							}
 							free(level);
 							free(ground_data);
 							free(rec_buf);
 							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
 						if (chk->size < rec_buf->lc.offset + rec_buf->lc.length) {
-							// invalid message: maybe send error message, then break up connection
-							// TODO: free vgagr_s0, vgagr_s1, vgaspec
+							// invalid message: maybe send error message,
+							// then break up connection
+							// free vgagr_s0, vgagr_s1, vgaspec
+							int i;
+							for (i=0;i<3;i++) {
+								if (*chunks[i]) {
+									free(*chunks[i]);
+									*chunks[i] = 0;
+								}
+							}
 							free(level);
 							free(ground_data);
 							free(rec_buf);
 							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
-						memcpy(&chk->data[rec_buf->lc.offset], rec_buf->lc.data, rec_buf->lc.length);
+						memcpy(
+								&chk->data[rec_buf->lc.offset],
+								rec_buf->lc.data,
+								rec_buf->lc.length);
 					}else{
 						if (rec_buf->lc.offset + rec_buf->lc.length > 2048) {
-							// invalid message: maybe send error message, then break up connection
-							// TODO: free vgagr_s0, vgagr_s1, vgaspec
+							// invalid message: maybe send error message,
+							// then break up connection
+							// free vgagr_s0, vgagr_s1, vgaspec
+							int i;
+							for (i=0;i<3;i++) {
+								if (*chunks[i]) {
+									free(*chunks[i]);
+									*chunks[i] = 0;
+								}
+							}
 							free(level);
 							free(ground_data);
 							free(rec_buf);
 							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
-						memcpy(&level[rec_buf->lc.offset], rec_buf->lc.data, rec_buf->lc.length);
+						memcpy(
+								&level[rec_buf->lc.offset],
+								rec_buf->lc.data,
+								rec_buf->lc.length);
 					}
 					rec_buf->lc.length = 0;
 					udsSendTo(
@@ -601,33 +774,37 @@ int client_prepare_level(
 				case NW_LEVEL_SENT:
 					{
 						if (parsed) {
-							udsSendTo(UDS_HOST_NETWORKNODEID,1,UDS_SENDFLAG_Default,rec_buf->buf,1);
+							udsSendTo(
+									UDS_HOST_NETWORKNODEID,
+									1,
+									UDS_SENDFLAG_Default,
+									rec_buf->buf,
+									1);
 							break;
 						}
 						// parse level
 						int res = parse_level(
-							level,
-							ground_data,
-							vgagr_s0,
-							vgagr_s1,
-							vgaspec,
-							ingame_basis_palette,
-							swap_exits,
-							import[game_id?OH_NO_MORE_LEMMINGS:ORIGINAL_LEMMINGS].entrance_x_offset,
-							2, // 2 player
-							output);
+								level,
+								ground_data,
+								vgagr_s0,
+								vgagr_s1,
+								vgaspec,
+								ingame_basis_palette,
+								swap_exits,
+								import[game_id
+											?OH_NO_MORE_LEMMINGS
+											:ORIGINAL_LEMMINGS
+										].entrance_x_offset,
+								2, // 2 player
+								output);
 
-						if (vgagr_s0) {
-							free(vgagr_s0);
-							vgagr_s0 = 0;
-						}
-						if (vgagr_s1) {
-							free(vgagr_s1);
-							vgagr_s1 = 0;
-						}
-						if (vgaspec) {
-							free(vgaspec);
-							vgaspec = 0;
+						// free vgagr_s0, vgagr_s1, vgaspec
+						int i;
+						for (i=0;i<3;i++) {
+							if (*chunks[i]) {
+								free(*chunks[i]);
+								*chunks[i] = 0;
+							}
 						}
 						if (!res) {
 							// error parsing received level
@@ -644,7 +821,6 @@ int client_prepare_level(
 						udsSendTo(UDS_HOST_NETWORKNODEID,1,UDS_SENDFLAG_Default,rec_buf->buf,1);
 						if(UDS_CHECK_SENDTO_FATALERROR(ret)) {
 							// error sending message, maybe lost connection
-							// TODO: tidy up
 							free_objects(output->object_types);
 							free(level);
 							free(ground_data);
@@ -654,25 +830,44 @@ int client_prepare_level(
 					}
 					break;
 				case NW_RUN_FRAME:
-					if (!parsed) {
-						// invalid message: maybe send error message, then break up connection
-						free(level);
-						free(ground_data);
-						free(rec_buf);
-						return NETWORK_ERROR_PROTOCOL_ERROR;
+					{
+						// free vgagr_s0, vgagr_s1, vgaspec
+						int i;
+						for (i=0;i<3;i++) {
+							if (*chunks[i]) {
+								free(*chunks[i]);
+								*chunks[i] = 0;
+							}
+						}
 					}
-					// game has been started!
 					free(level);
 					free(ground_data);
 					free(rec_buf);
+					if (!parsed) {
+						// invalid message: maybe send error message,
+						// then break up connection
+						return NETWORK_ERROR_PROTOCOL_ERROR;
+					}
+					// game has been started!
 					output->player[0].max_lemmings = lemmings[0];
 					output->player[1].max_lemmings = lemmings[1];
 					return NETWORK_SUCCESS;
 					break;
 				default:
-					// invalid message: maybe send error message, then break up connection
+					// invalid message: maybe send error message,
+					// then break up connection
 					if (parsed) {
 						free_objects(output->object_types);
+					}
+					{
+						// free vgagr_s0, vgagr_s1, vgaspec
+						int i;
+						for (i=0;i<3;i++) {
+							if (*chunks[i]) {
+								free(*chunks[i]);
+								*chunks[i] = 0;
+							}
+						}
 					}
 					free(level);
 					free(ground_data);
@@ -684,12 +879,21 @@ int client_prepare_level(
 	if (parsed) {
 		free_objects(output->object_types);
 	}
+	// free vgagr_s0, vgagr_s1, vgaspec
+	int i;
+	for (i=0;i<3;i++) {
+		if (*chunks[i]) {
+			free(*chunks[i]);
+			*chunks[i] = 0;
+		}
+	}
 	free(level);
 	free(ground_data);
 	free(rec_buf);
 	return NETWORK_ERROR_OTHER;
 }
 
+// data must be ordered such that data->input_id is ascending
 struct NW_UI_Queue {
 	struct NW_User_Input* data;
 	struct NW_UI_Queue* next;
@@ -702,18 +906,29 @@ void nw_ui_queue_add_copy(
 	if (!first || !last || !data) {
 		return; // error
 	}
+	struct NW_UI_Queue* tmp = *last;
 	if (!*first) {
 		*first = (struct NW_UI_Queue*)malloc(sizeof(struct NW_UI_Queue));
 		*last = *first;
 	}else if (!*last){
 		return; // error
 	}else{
-		struct NW_UI_Queue* tmp = *last;
 		*last = (struct NW_UI_Queue*)malloc(sizeof(struct NW_UI_Queue));
 		tmp->next = *last;
 	}
+	if (!*last) {
+		return; // error
+	}
 	(*last)->next = 0;
 	(*last)->data = (struct NW_User_Input*)malloc(sizeof(struct NW_User_Input));
+	if (!(*last)->data) {
+		// error
+		if (tmp) {
+			tmp->next = 0;
+			free(*last);
+			*last = tmp;
+		}
+	}
 	memcpy((*last)->data, data, sizeof(struct NW_User_Input));
 }
 
@@ -727,25 +942,39 @@ void nw_ui_queue_add(
 	if (!first || !last || !io_state || !input_id) {
 		return; // error
 	}
+	struct NW_UI_Queue* tmp = *last;
 	if (!*first) {
 		*first = (struct NW_UI_Queue*)malloc(sizeof(struct NW_UI_Queue));
 		*last = *first;
 	}else if (!*last){
 		return; // error
 	}else{
-		struct NW_UI_Queue* tmp = *last;
 		*last = (struct NW_UI_Queue*)malloc(sizeof(struct NW_UI_Queue));
 		tmp->next = *last;
 	}
+	if (!*last) {
+		return; // error
+	}
 	(*last)->next = 0;
 	(*last)->data = (struct NW_User_Input*)malloc(sizeof(struct NW_User_Input));
+	if (!(*last)->data) {
+		// error
+		if (tmp) {
+			tmp->next = 0;
+			free(*last);
+			*last = tmp;
+		}
+	}
 	(*last)->data->msg_type = NW_USER_INPUT;
 	(*last)->data->player_id = player_id;
 	(*last)->data->x_pos = io_state->x_pos;
 	(*last)->data->num_actions = io_state->num_actions;
 	(*last)->data->frame_id = current_frame;
 	(*last)->data->input_id = (++(*input_id));
-	memcpy((*last)->data->action_queue, io_state->action_queue, sizeof(io_state->action_queue));
+	memcpy(
+			(*last)->data->action_queue,
+			io_state->action_queue,
+			sizeof(io_state->action_queue));
 }
 
 void nw_ui_queue_remove(
@@ -784,7 +1013,7 @@ void nw_ui_queue_send(
 				first->data,
 				sizeof(struct NW_User_Input));
 		if(UDS_CHECK_SENDTO_FATALERROR(ret)) {
-				return;
+			return;
 		}
 		first = first->next;
 	}
@@ -801,7 +1030,6 @@ void nw_ui_queue_clear(
 	}
 }
 
-// TODO: save all IO-Messages in Queue and resend them until the receivement is confirmed (higher confirm-id auto-confirms lower ids)
 int server_run_level(
 		udsBindContext* bindctx,
 		struct Level* level,
@@ -869,15 +1097,27 @@ int server_run_level(
 		}while(1);
 
 		// apply actions from action_queue
-		if (process_action_queue(io_state.action_queue, io_state.num_actions, level, 0, 1)) {
+		if (process_action_queue(
+				io_state.action_queue,
+				io_state.num_actions,
+				level,
+				0,
+				1)) {
 			if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
 				level->frames_left = max_level_time;
 			}
 		}
 
 		// send action queue to client!
-		if (io_state.num_actions || level->player[0].x_pos != io_state.x_pos) {
-			nw_ui_queue_add(0, &io_state, &input_id, current_frame, &nw_ui_queue_first, &nw_ui_queue_last);
+		if (io_state.num_actions
+				|| level->player[0].x_pos != io_state.x_pos) {
+			nw_ui_queue_add(
+					0,
+					&io_state,
+					&input_id,
+					current_frame,
+					&nw_ui_queue_first,
+					&nw_ui_queue_last);
 		}
 		nw_ui_queue_send(bindctx, nw_ui_queue_first);
 
@@ -900,7 +1140,6 @@ int server_run_level(
 					&actual_size,
 					&src_NetworkNodeID);
 			if (R_FAILED(ret)) {
-				// TODO: clean up!
 				stop_audio();
 				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 				return NETWORK_ERROR_CONNECTION_LOST;
@@ -922,7 +1161,12 @@ int server_run_level(
 						if (tmp == client_input_id+1) {
 							client_input_id = tmp;
 							nw.ui.msg_type = NW_USER_INPUT;
-							if (process_action_queue(nw.ui.action_queue, nw.ui.num_actions, level, 1, 1)) {
+							if (process_action_queue(
+									nw.ui.action_queue,
+									nw.ui.num_actions,
+									level,
+									1,
+									1)) {
 								if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
 									level->frames_left = max_level_time;
 								}
@@ -931,7 +1175,10 @@ int server_run_level(
 							if (nw.ui.num_actions) {
 								nw.ui.frame_id = current_frame;
 								nw.ui.input_id = (++input_id);
-								nw_ui_queue_add_copy(&nw.ui, &nw_ui_queue_first, &nw_ui_queue_last);
+								nw_ui_queue_add_copy(
+										&nw.ui,
+										&nw_ui_queue_first,
+										&nw_ui_queue_last);
 								nw_ui_queue_send(bindctx, nw_ui_queue_first);
 							}
 						}
@@ -941,7 +1188,10 @@ int server_run_level(
 				}
 			}else if (nw.msg_type == NW_RUN_FRAME) {
 				if (actual_size == sizeof(struct NW_Run_Frame)) {
-					nw_ui_queue_remove(nw.rf.required_input_id,&nw_ui_queue_first, &nw_ui_queue_last);
+					nw_ui_queue_remove(
+							nw.rf.required_input_id,
+							&nw_ui_queue_first,
+							&nw_ui_queue_last);
 				}
 			}
 			update_audio();
@@ -981,7 +1231,6 @@ int server_run_level(
 					&nw_rf,
 					sizeof(struct NW_Run_Frame));
 			if(UDS_CHECK_SENDTO_FATALERROR(ret)) {
-				// TODO: clean up!
 				stop_audio();
 				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 				return NETWORK_ERROR_CONNECTION_LOST;
@@ -1039,7 +1288,7 @@ int client_run_level(
 	end_frame();
 
 	struct InputState io_state;
-	init_io_state(&io_state, level->player[1].x_pos); // TODO: player's id?
+	init_io_state(&io_state, level->player[1].x_pos);
 
 	main_data->high_perf_palette[7] = level->palette[8];
 	init_lemmings(level);
@@ -1057,7 +1306,6 @@ int client_run_level(
 	// main loop
 	while (aptMainLoop()) {
 		if (!connection_alive()) {
-			// TODO: tidy up
 			nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 			stop_audio();
 			return NETWORK_ERROR_CONNECTION_LOST;
@@ -1090,7 +1338,8 @@ int client_run_level(
 			struct NW_Level_Result result;
 			// other expected messages do not use payload yet
 		} msg;
-		if (io_state.num_actions || level->player[1].x_pos != io_state.x_pos) {
+		if (io_state.num_actions
+				|| level->player[1].x_pos != io_state.x_pos) {
 			msg.io.msg_type = NW_CLIENT_ACTION;
 			msg.io.player_id = 1; // not used
 			msg.io.frame_id = 0; // not used
@@ -1103,7 +1352,10 @@ int client_run_level(
 					sizeof(io_state.action_queue));
 			if (io_state.num_actions) {
 				msg.io.input_id = (++last_nw_ui_client_id);
-				nw_ui_queue_add_copy(&msg.io, &nw_ui_queue_first, &nw_ui_queue_last);
+				nw_ui_queue_add_copy(
+						&msg.io,
+						&nw_ui_queue_first,
+						&nw_ui_queue_last);
 			}else{
 				udsSendTo(
 						UDS_HOST_NETWORKNODEID,
@@ -1120,8 +1372,8 @@ int client_run_level(
 
 		// receive packets from server
 		do {
-			// TODO: leave this while loop after some time
-			// to ensure that the screen does not freeze when a lot of packets are received...
+			// TODO: leave this while loop after some time to ensure that
+			// the screen does not freeze when a lot of packets are received...
 			update_audio();
 			size_t actual_size = 0;
 			u16 src_NetworkNodeID;
@@ -1132,7 +1384,6 @@ int client_run_level(
 					&actual_size,
 					&src_NetworkNodeID);
 			if (R_FAILED(ret)) {
-				// TODO: clean up!
 				nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 				stop_audio();
 				return NETWORK_ERROR_CONNECTION_LOST;
@@ -1164,8 +1415,9 @@ int client_run_level(
 						last_input_id++;
 						if (msg.io.frame_id < last_frame) {
 							// FATAL ERROR
-							// TODO: tidy up...
-							nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
+							nw_ui_queue_clear(
+									&nw_ui_queue_first,
+									&nw_ui_queue_last);
 							stop_audio();
 							return NETWORK_ERROR_PROTOCOL_ERROR;
 						}
@@ -1180,24 +1432,33 @@ int client_run_level(
 									&changes)) { // simulate one DOS frame (one step)
 								// fatal error:
 								// no action must be triggered after end of game
-								// TODO: tidy up...
-								nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
+								nw_ui_queue_clear(
+										&nw_ui_queue_first,
+										&nw_ui_queue_last);
 								stop_audio();
 								return NETWORK_ERROR_ASYNCHRONOUS;
 							}
 							if (changes) {
-								if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+								if (settings.two_player_timeout
+										== TIMEOUT_2P_INACTIVITY) {
 									level->frames_left = max_level_time;
 								}
 							}
-							if (settings.two_player_timeout == TIMEOUT_2P_NEVER) {
+							if (settings.two_player_timeout
+									== TIMEOUT_2P_NEVER) {
 								level->frames_left = max_level_time;
 							}
 							steps--;
 						}
 						// parse input...
-						if (process_action_queue(msg.io.action_queue, msg.io.num_actions, level, msg.io.player_id, 1)) {
-							if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+						if (process_action_queue(
+								msg.io.action_queue,
+								msg.io.num_actions,
+								level,
+								msg.io.player_id,
+								1)) {
+							if (settings.two_player_timeout
+									== TIMEOUT_2P_INACTIVITY) {
 								level->frames_left = max_level_time;
 							}
 						}
@@ -1209,7 +1470,10 @@ int client_run_level(
 					break;
 				case NW_CLIENT_ACTION:
 					if (actual_size == sizeof(struct NW_User_Input)) {
-						nw_ui_queue_remove(msg.io.input_id, &nw_ui_queue_first, &nw_ui_queue_last);
+						nw_ui_queue_remove(
+								msg.io.input_id,
+								&nw_ui_queue_first,
+								&nw_ui_queue_last);
 					}
 				case NW_RUN_FRAME:
 					if (actual_size == sizeof(struct NW_Run_Frame)) {
@@ -1220,20 +1484,24 @@ int client_run_level(
 								if (game_ended) {
 									// fatal error:
 									// no frame should occur after end of game
-									// TODO: tidy up...
-									nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
+									stop_audio();
+									nw_ui_queue_clear(
+											&nw_ui_queue_first,
+											&nw_ui_queue_last);
 									return NETWORK_ERROR_ASYNCHRONOUS;
 								}
 								u8 changes = 0;
+								// simulate one DOS frame (one step)
 								if (!level_step(
 										main_data,
 										level,
-										&changes)) { // simulate one DOS frame (one step)
+										&changes)) {
 									stop_audio();
 									game_ended = 1;
 								}
 								if (changes) {
-									if (settings.two_player_timeout == TIMEOUT_2P_INACTIVITY) {
+									if (settings.two_player_timeout
+											== TIMEOUT_2P_INACTIVITY) {
 										level->frames_left = max_level_time;
 									}
 								}
@@ -1281,7 +1549,6 @@ int client_run_level(
 					1);
 	}
 	// error: aptMainLoop() exit
-	// TODO: tidy up
 	nw_ui_queue_clear(&nw_ui_queue_first, &nw_ui_queue_last);
 	stop_audio();
 	return NETWORK_ERROR_OTHER;

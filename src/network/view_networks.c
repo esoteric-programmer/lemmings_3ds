@@ -379,6 +379,9 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 	char* usr_align_right = &usr[41+6];
 
 	char* msg = (char*)malloc((20+1)*5+1+30);
+	if (!msg) {
+		return MENU_ERROR;
+	}
 	sprintf(msg,
 			"  %s%s wants%s  \n"
 			" to play with you.  \n"
@@ -476,7 +479,6 @@ int on_client_connect(struct SaveGame* savegame, u8 game, u8 lvl, struct MainMen
 				}while(aptMainLoop());
 				free(level);
 				level = 0;
-				// TODO: clean up?
 			}
 			return MENU_ACTION_EXIT; // done
 		}
@@ -827,16 +829,13 @@ int connect_to_network(const udsNetworkScanInfo* scan_info, struct MainMenuData*
 								menu_data)) {
 							break;
 						}
-					}while(aptMainLoop() && level);
+					}while(aptMainLoop());
 					// restore local settings
 					settings.glitch_direct_drop = local_settings[0];
 					settings.two_player_timeout = local_settings[1];
 					settings.two_player_inspect_level = local_settings[2];
-					if (level) {
-						// TODO: clean up;
-						free(level);
-						level = 0;
-					}
+					free(level);
+					level = 0;
 				}
 			}
 			// done. -> exit connection
