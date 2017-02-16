@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <sf2d.h>
 #include "draw.h"
 #include "highperf_font.h"
 #include "lemming.h"
