@@ -554,13 +554,15 @@ int parse_level(
 		// parse extended graphic set
 		// read palette... ignore first entry (which should be 0x00)
 		// TODO: overwrite palette[0] with first entry??
-		palette[8] = 0x007C78;
+		palette[8] = 0x787C00FF;
 		for (i=1;i<8;i++) {
-			palette[i+8] = (u32)((u8)vgaspec->data[3*i+2])*255/63;
-			palette[i+8]<<=8;
-			palette[i+8] |= ((u32)((u8)vgaspec->data[3*i+1]))*255/63;
-			palette[i+8]<<=8;
-			palette[i+8] |= ((u32)((u8)vgaspec->data[3*i+0]))*255/63;
+			palette[i+8] = (u32)(0x3F & (u8)vgaspec->data[3*i+0])*255/63;
+			palette[i+8] <<= 8;
+			palette[i+8] |= ((u32)(0x3F & (u8)vgaspec->data[3*i+1]))*255/63;
+			palette[i+8] <<= 8;
+			palette[i+8] |= ((u32)(0x3F & (u8)vgaspec->data[3*i+2]))*255/63;
+			palette[i+8] <<= 8;
+			palette[i+8] |= 0xFF;
 		}
 		palette[7] = palette[8];
 
@@ -580,7 +582,11 @@ int parse_level(
 			if (vgaspec->size <= chunk_offset ){
 				break;
 			}
-			chunk_offset += decompress_rle(vgaspec->data+chunk_offset, chunk, 14400, vgaspec->size-chunk_offset);
+			chunk_offset += decompress_rle(
+					vgaspec->data+chunk_offset,
+					chunk,
+					14400,
+					vgaspec->size-chunk_offset);
 			for (j=0;j<4800;j++) {
 				// 0->0, 1->9, 2->10, ..., 7->15
 				chunk[14400+j] = (chunk[j] | chunk[4800+j] | chunk[9600+j]);
