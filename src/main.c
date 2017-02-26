@@ -23,7 +23,8 @@
 #include "settings_menu.h"
 #include "network_menu.h"
 
-const char* PATH_ROOT = LEMMINGS_DIR;
+const char* LEMMINGS_DIRS[] = {"/lemmings", "/3ds/lemmings", 0};
+const char* PATH_ROOT = 0;
 
 volatile int suspended = 0;
 aptHookCookie hookCookie;
@@ -139,16 +140,18 @@ int main() {
 
 
 	// test whether PATH_ROOT is a directory, otherwise set it to "."
-	struct stat s;
-	int err = stat(PATH_ROOT, &s);
-	if(err == -1) {
-		PATH_ROOT = ".";
-	}else{
-		if(!S_ISDIR(s.st_mode)) {
-			PATH_ROOT = ".";
+	for (i=0; (PATH_ROOT = LEMMINGS_DIRS[i]) != 0; i++) {
+		struct stat s;
+		int err = stat(PATH_ROOT, &s);
+		if(err != -1) {
+			if(S_ISDIR(s.st_mode)) {
+				break;
+			}
 		}
 	}
-
+	if (!PATH_ROOT) {
+		PATH_ROOT = ".";
+	}
 	// read level names
 	char* level_names = (char*)malloc(33*overall_num_of_levels);
 	if (!level_names) {

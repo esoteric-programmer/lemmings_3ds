@@ -2,7 +2,6 @@
 #define SETTINGS_H
 #include <3ds.h>
 
-#define LEMMINGS_DIR "/lemmings" // if it does not exist, "." will be used instead
 extern const char* PATH_ROOT;
 
 #define MAX_NUM_OF_LEMMINGS       80
