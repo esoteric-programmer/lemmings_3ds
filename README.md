@@ -8,14 +8,16 @@ To avoid duplicates, you may only fill these folders if you own all Lemmings gam
 orig, ohno, xmas91, xmas92, holi94
 For multiplayer mode, fill the subfolders of /lemmings/2p of the host system.
 
+If you modify level files later, you should delete the CACHE_xx.DAT files in the lemmings folder afterwards.
+
 The game uses the NDSP service to play audio. Thus you need a DSP firm dump to have audio.
 You may want to use your own sound and/or music files.
 Put your wave files into lemmings/audio folder.
 See README.txt in that folder for more details.
 
-\* See README.txt in these folders.
-
 These files are not included (and will never be included),
 because they are protected by copyright law.
 
 For game control, see CONTROL.txt.
+
+\* See README.txt in these folders.

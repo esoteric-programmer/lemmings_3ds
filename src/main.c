@@ -22,6 +22,7 @@
 #include "main.h"
 #include "settings_menu.h"
 #include "network_menu.h"
+#include "data_cache.h"
 
 const char* LEMMINGS_DIRS[] = {"/lemmings", "/3ds/lemmings", 0};
 const char* PATH_ROOT = 0;
@@ -160,7 +161,13 @@ int main() {
 	}
 	u16 offset = 0;
 	for (i=0;i<LEMMING_GAMES;i++) {
-		games[i] = read_level_names(i, level_names + offset);
+		games[i] = read_data_cache(i, 0, level_names + offset);
+		if (!games[i]) {
+			games[i] = read_level_names(i, level_names + offset);
+			if (games[i]) {
+				update_data_cache(i, 0, level_names + offset);
+			}
+		}
 		offset += 33*
 				(u16)import[i].num_of_difficulties *
 				(u16)import[i].num_of_level_per_difficulty;
@@ -240,12 +247,18 @@ int main() {
 	if (num_2p_level[0] || num_2p_level[1]) {
 		name_2p_level = (char*)malloc(33*(u16)(num_2p_level[0]+num_2p_level[1]));
 		if (name_2p_level[0]) {
-			if (!read_level_names_from_path(import_2p[0].level_path, &num_2p_level[0], name_2p_level)) {
+			if (!read_level_names_from_path(
+					import_2p[0].level_path,
+					&num_2p_level[0],
+					name_2p_level)) {
 				name_2p_level[0] = 0;
 			}
 		}
 		if (name_2p_level[1]) {
-			if (!read_level_names_from_path(import_2p[1].level_path, &num_2p_level[1], &name_2p_level[33*(u16)num_2p_level[0]])) {
+			if (!read_level_names_from_path(
+					import_2p[1].level_path,
+					&num_2p_level[1],
+					&name_2p_level[33*(u16)num_2p_level[0]])) {
 				name_2p_level[1] = 0;
 			}
 		}

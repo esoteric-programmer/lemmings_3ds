@@ -1,3 +1,8 @@
+Version 0.6.2
+- Data for cia version can be loaded from /3ds/lemmings now
+- Introduced cache to reduce start-up time
+- Bugfix
+
 Version 0.6.1
 - Bugfixes (note: multiplayer mode is not compatible with v0.6)
 
