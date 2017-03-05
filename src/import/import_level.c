@@ -853,13 +853,13 @@ int read_level(
 			level);
 }
 
-u8 count_custom_levels(const char* path) {
+u8 count_custom_levels(const char* path, u8 offset) {
 	if (!path) {
 		return 0;
 	}
 	u8 cnt;
 	char levelfilename[64];
-	for (cnt = 1; cnt < 100; cnt++) {
+	for (cnt = offset + 1; cnt < 100; cnt++) {
 		sprintf(levelfilename,"%s/%s/%02u.lvl",
 				PATH_ROOT,path,cnt);
 		FILE* in = fopen(levelfilename, "rb");

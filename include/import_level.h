@@ -6,7 +6,7 @@
 
 int read_level_names(u8 game, char* names);
 // count number of available custom files in specific folder
-u8 count_custom_levels(const char* path);
+u8 count_custom_levels(const char* path, u8 offset);
 // read at most num_of_level many names; on success: set num_of_levels to the number of names that have been read
 int read_level_names_from_path(const char* levelpath, u8* num_of_levels, char* names);
 

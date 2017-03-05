@@ -127,7 +127,7 @@ int server_prepare_level(
 	}
 
 	u8 swap_exits = 0;
-	if (import_2p[game_id].swap_exit && level_id < import_2p[game_id].size_swap_exit) {
+	if (import_2p[game_id].swap_exit && level_id < import_2p[game_id].num_levels) {
 		swap_exits = import_2p[game_id].swap_exit[level_id];
 	}
 

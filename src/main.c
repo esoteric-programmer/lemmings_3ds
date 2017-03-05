@@ -240,28 +240,38 @@ int main() {
 
 
 	// read 2p level names
-	u8 num_2p_level[2] = {
-			count_custom_levels(import_2p[0].level_path),
-			count_custom_levels(import_2p[1].level_path)};
-	char* name_2p_level = 0;
-	if (num_2p_level[0] || num_2p_level[1]) {
-		name_2p_level = (char*)malloc(33*(u16)(num_2p_level[0]+num_2p_level[1]));
-		if (name_2p_level[0]) {
+	char* name_2p_level = (char*)malloc(
+			33*(u16)(import_2p[0].num_levels+import_2p[1].num_levels));
+	if (!name_2p_level) {
+		die(0); // error
+	}
+	u8 num_2p_level[2];
+	num_2p_level[0] = read_data_cache(0, 1, name_2p_level);
+	num_2p_level[1] = read_data_cache(1, 1, name_2p_level + 33*(u16)import_2p[0].num_levels);
+
+	offset = 0;
+	for (i=0;i<2;i++) {
+		u8 num_lvls = count_custom_levels(import_2p[i].level_path, num_2p_level[i]);
+		if (num_lvls > import_2p[i].num_levels) {
+			num_lvls = import_2p[i].num_levels;
+		}
+		if (num_2p_level[i] != num_lvls) {
+			num_2p_level[i] = num_lvls;
 			if (!read_level_names_from_path(
-					import_2p[0].level_path,
-					&num_2p_level[0],
-					name_2p_level)) {
-				name_2p_level[0] = 0;
+					import_2p[i].level_path,
+					&num_2p_level[i],
+					name_2p_level + offset)) {
+				name_2p_level[i] = 0;
+			}else if (num_2p_level[i]){
+				// write cache!!
+				update_data_cache(i, num_2p_level[i], name_2p_level + offset);
 			}
 		}
-		if (name_2p_level[1]) {
-			if (!read_level_names_from_path(
-					import_2p[1].level_path,
-					&num_2p_level[1],
-					&name_2p_level[33*(u16)num_2p_level[0]])) {
-				name_2p_level[1] = 0;
-			}
-		}
+		offset += 33*(u16)import_2p[i].num_levels;
+	}
+	if (!num_2p_level[0] && !num_2p_level[1]) {
+		free(name_2p_level);
+		name_2p_level = 0;
 	}
 
 

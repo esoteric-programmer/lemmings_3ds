@@ -470,7 +470,7 @@ int on_client_connect(
 		}
 		if (start_game && version_received) {
 			// start network game with said client: send level to client
-			u8 num_lvl = count_custom_levels(import_2p[game].level_path);
+			u8 num_lvl = count_custom_levels(import_2p[game].level_path, 0);
 			struct Level* level = 0;
 			if (lvl < num_lvl) {
 				level = (struct Level*)malloc(sizeof(struct Level));

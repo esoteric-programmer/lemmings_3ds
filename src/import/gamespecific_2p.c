@@ -2,11 +2,9 @@
 
 extern const u32 ingame_palette[];
 
-// level 20 needs to be tested
 const u8 orig_swap_exit[] =
 		{0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0};
 
-// needs to be tested
 const u8 ohno_swap_exit[] =
 		{1, 0, 0, 0, 0, 0, 1, 1, 1, 1};
 
