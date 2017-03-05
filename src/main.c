@@ -88,8 +88,8 @@ void die() {
 	printf("Holiday Lemmings 1994       /lemmings/holi94\n");
 	printf("Holiday Lemmings 1994 Demo  /lemmings/holi94_demo\n\n\n");
 	printf(CONSOLE_RED);
-	printf("Besides that, this error may occur when the game\n");
-	printf("runs out of memory.\n\n");
+	printf("Besides that, this error may also occur when\n");
+	printf("the game runs out of memory.\n\n");
 	printf(CONSOLE_RESET);
 	printf("Press any button to exit.");
 	while (aptMainLoop()) {
@@ -156,8 +156,8 @@ int main() {
 	// read level names
 	char* level_names = (char*)malloc(33*overall_num_of_levels);
 	if (!level_names) {
-		die(0);
-		return 0; // error
+		die(); // error
+		return 1;
 	}
 	u16 offset = 0;
 	for (i=0;i<LEMMING_GAMES;i++) {
@@ -171,12 +171,19 @@ int main() {
 		offset += 33*
 				(u16)import[i].num_of_difficulties *
 				(u16)import[i].num_of_level_per_difficulty;
+		if (!aptMainLoop()) {
+			gfxExit();
+			free(level_names);
+			return 0;
+		}
 	}
 
 	// read save file
 	u8* progress = (u8*)malloc(overall_num_of_difficulties);
 	if (!progress) {
-		die(0); // error
+		free(level_names);
+		die(); // error
+		return 1;
 	}
 	struct SaveGame savegame;
 	memset(&savegame,0,sizeof(struct SaveGame));
@@ -235,6 +242,8 @@ int main() {
 			gfxSwapBuffers();
 		}
 		gfxExit();
+		free(level_names);
+		free(progress);
 		return 0; // error
 	}
 
@@ -243,7 +252,10 @@ int main() {
 	char* name_2p_level = (char*)malloc(
 			33*(u16)(import_2p[0].num_levels+import_2p[1].num_levels));
 	if (!name_2p_level) {
-		die(0); // error
+		free(level_names);
+		free(progress);
+		die(); // error
+		return 1;
 	}
 	u8 num_2p_level[2];
 	num_2p_level[0] = read_data_cache(0, 1, name_2p_level);
@@ -268,6 +280,13 @@ int main() {
 			}
 		}
 		offset += 33*(u16)import_2p[i].num_levels;
+		if (!aptMainLoop()) {
+			gfxExit();
+			free(level_names);
+			free(progress);
+			free(name_2p_level);
+			return 0;
+		}
 	}
 	if (!num_2p_level[0] && !num_2p_level[1]) {
 		free(name_2p_level);
@@ -279,14 +298,27 @@ int main() {
 	struct MainMenuData* menu_data =
 			(struct MainMenuData*)malloc(sizeof(struct MainMenuData));
 	if (!menu_data) {
-		die(0); // error
+		free(level_names);
+		free(progress);
+		if (name_2p_level) {
+			free(name_2p_level);
+		}
+		die(); // error
+		return 1;
 	}
 	memset(menu_data,0,sizeof(struct MainMenuData));
 
 	struct MainInGameData* main_data =
 			(struct MainInGameData*)malloc(sizeof(struct MainInGameData));
 	if (!main_data) {
-		die(0); // error
+		free(level_names);
+		free(progress);
+		if (name_2p_level) {
+			free(name_2p_level);
+		}
+		free(menu_data);
+		die(); // error
+		return 1;
 	}
 	memset(main_data,0,sizeof(struct MainInGameData));
 
@@ -296,11 +328,27 @@ int main() {
 	init_audio();
 	if (!read_gamespecific_data(game, menu_data, main_data)) {
 		// error!
-		die(1); // error
+		free(level_names);
+		free(progress);
+		if (name_2p_level) {
+			free(name_2p_level);
+		}
+		free(menu_data);
+		free(main_data);
+		die(); // error
+		return 1;
 	}
 	if (!update_topscreen(menu_data)) {
 		// error!
-		die(1); // error
+		free(level_names);
+		free(progress);
+		if (name_2p_level) {
+			free(name_2p_level);
+		}
+		free(menu_data);
+		free(main_data);
+		die(); // error
+		return 1;
 	}
 
 
@@ -333,7 +381,15 @@ int main() {
 					break;
 				case MENU_ERROR:
 				default:
-					die(1); // error
+					free(level_names);
+					free(progress);
+					if (name_2p_level) {
+						free(name_2p_level);
+					}
+					free(menu_data);
+					free(main_data);
+					die(); // error
+					return 1;
 			}
 		}
 		if (menu_selection == MENU_ACTION_SETTINGS) {
@@ -346,7 +402,15 @@ int main() {
 					break;
 				case MENU_ERROR:
 				default:
-					die(1); // error
+					free(level_names);
+					free(progress);
+					if (name_2p_level) {
+						free(name_2p_level);
+					}
+					free(menu_data);
+					free(main_data);
+					die(); // error
+					return 1;
 			}
 		}
 		if (menu_selection == MENU_ACTION_START_MULTI_PLAYER) {
@@ -362,13 +426,29 @@ int main() {
 						break;
 					case MENU_ERROR:
 					default:
-						die(1); // error
+						free(level_names);
+						free(progress);
+						if (name_2p_level) {
+							free(name_2p_level);
+						}
+						free(menu_data);
+						free(main_data);
+						die(); // error
+						return 1;
 				}
 			}while(result == MENU_ACTION_START_MULTI_PLAYER);
 		}
 
 		if (menu_selection == MENU_ERROR) {
-			die(1); // error
+			free(level_names);
+			free(progress);
+			if (name_2p_level) {
+				free(name_2p_level);
+			}
+			free(menu_data);
+			free(main_data);
+			die(); // error
+			return 1;
 		}
 
 		if (menu_selection == MENU_ACTION_START_SINGLE_PLAYER) {
@@ -381,8 +461,15 @@ int main() {
 				char level_id[32];
 				struct Level* level = init_level_from_dat(game, lvl, level_id);
 				if (!level) {
-					die(1);
-					break;
+					free(level_names);
+					free(progress);
+					if (name_2p_level) {
+						free(name_2p_level);
+					}
+					free(menu_data);
+					free(main_data);
+					die();
+					return 1;
 				}
 				struct LevelResult lev_result = run_level(level, level_id, menu_data, main_data);
 				free_objects(level->object_types);
@@ -390,8 +477,15 @@ int main() {
 				if (lev_result.exit_reason == LEVEL_ERROR) {
 					// an error occured
 					// error code may be coded in lev_result.lvl
-					die(1);
-					break;
+					free(level_names);
+					free(progress);
+					if (name_2p_level) {
+						free(name_2p_level);
+					}
+					free(menu_data);
+					free(main_data);
+					die();
+					return 1;
 				}
 				if (lev_result.exit_reason == LEVEL_EXIT_GAME) {
 					menu_selection = MENU_EXIT_GAME;
@@ -432,7 +526,15 @@ int main() {
 					menu_selection = MENU_EXIT_GAME;
 					break;
 				}
-				die(1); // error
+				free(level_names);
+				free(progress);
+				if (name_2p_level) {
+					free(name_2p_level);
+				}
+				free(menu_data);
+				free(main_data);
+				die(); // error
+				return 1;
 			}
 		}
 
@@ -443,6 +545,12 @@ int main() {
 	aptUnhook(&hookCookie);
 	deinit_audio();
 	gfxExit();
+	free(level_names);
+	free(progress);
+	if (name_2p_level) {
+		free(name_2p_level);
+	}
+	free(menu_data);
+	free(main_data);
 	return 0;
 }
-
