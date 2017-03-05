@@ -6,7 +6,7 @@ Copy the required* files into the following subfolders of lemmings folder:
 orig\_demo, orig, ohno\_demo, ohno, xmas91, xmas92, holi93\_demo, holi93, holi94\_demo and/or holi94. You need to fill at least one folder to play the game.
 To avoid duplicates, you may only fill these folders if you own all Lemmings games:
 orig, ohno, xmas91, xmas92, holi94
-For multiplayer mode, fill the subfolders of /lemmings/2p of the host system.
+For multiplayer mode, fill the subfolders of the 2p folder at the host system.
 
 If you modify level files later, you should delete the CACHE_xx.DAT files in the lemmings folder afterwards.
 

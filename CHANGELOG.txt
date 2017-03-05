@@ -1,6 +1,7 @@
 Version 0.6.2
-- Data for cia version can be loaded from /3ds/lemmings now
+- Data for CIA version can be loaded from /3ds/lemmings now
 - Introduced cache to reduce start-up time
+- CIA file uses homebrew logo now
 - Bugfix
 
 Version 0.6.1
