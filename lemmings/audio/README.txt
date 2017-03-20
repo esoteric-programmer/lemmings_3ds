@@ -4,8 +4,8 @@ corresponding ADLIB.DAT sound. All other sounds and tunes are
 still played by ADLIB.DAT.
 
 On Windows machines, you may run audio.bat to fill this folder
-and its subfolders. However, to do so, you need .Net 4.5 framework,
-VLC, PlayerSource_V29.zip from neolemmix website and
+and its subfolders. However, to do so, you need .Net 4.5 framework
+and PlayerSource_V29.zip from neolemmix website and
 (optionally) lem_wavs.zip from lemmings universe.
 
 Format:
