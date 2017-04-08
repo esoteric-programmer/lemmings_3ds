@@ -465,7 +465,8 @@ int draw_level(
 		s16 x_offset,
 		struct Level* level,
 		struct MainInGameData* main_data,
-		u32* level_palette) {
+		u32* level_palette,
+		u32* lemmings_palette) {
 	if (!initialized) {
 		return 0;
 	}
@@ -603,9 +604,6 @@ int draw_level(
 	}
 
 	// draw lemmings
-	u32 lemmings_palette[16];
-	memcpy(lemmings_palette, main_data->level_base_palette, 7*sizeof(u32));
-	memcpy(&lemmings_palette[7], &level_palette[7], 9*sizeof(u32));
 	draw_lemmings(
 			screen,
 			x,

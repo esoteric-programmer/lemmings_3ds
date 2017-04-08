@@ -55,7 +55,8 @@ int draw_level(
 		s16 x_offset,
 		struct Level* level,
 		struct MainInGameData* main_data,
-		u32* palette);
+		u32* palette,
+		u32* lemmings_palette);
 
 
 // draw a string using highperf-font into an RGB image

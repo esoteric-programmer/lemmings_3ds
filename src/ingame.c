@@ -161,6 +161,11 @@ void render_level_frame(
 	memcpy(highperf_palette_faded,main_data->high_perf_palette,4*16);
 	fade_palette(highperf_palette_faded, fade);
 
+	u32 lemmings_palette_faded[16];
+	memcpy(lemmings_palette_faded, main_data->level_base_palette, 7*sizeof(u32));
+	memcpy(&lemmings_palette_faded[7], &level->palette[7], 9*sizeof(u32));
+	fade_palette(lemmings_palette_faded, fade);
+
 	begin_frame();
 	//clear(BOTTOM_SCREEN);
 	draw_level(
@@ -172,7 +177,8 @@ void render_level_frame(
 			level->player[player].x_pos,
 			level,
 			main_data,
-			level_palette_faded);
+			level_palette_faded,
+			lemmings_palette_faded);
 
 	char text[41+10];
 	// example: "FALLER  1     OUT 3    IN  0%  TIME 4-54"
