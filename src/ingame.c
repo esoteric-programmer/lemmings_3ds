@@ -61,9 +61,6 @@ int level_step(
 	}
 
 	if (!level->inspect && (!level->paused || level->frame_step_forward)) {
-		if (level->frame_step_forward) {
-			level->frame_step_forward--;
-		}
 		if (level->entrances_open) {
 			if (add_lemming(level)) {
 				if (lemming_inout) {
@@ -126,6 +123,9 @@ int level_step(
 				level->object_instances[i].current_frame = obj_type->start_frame; // TODO: set to 0 instead?
 			}
 		}
+	}
+	if (level->frame_step_forward) {
+		level->frame_step_forward--;
 	}
 	u8 lem_left = 0;
 	for (p=0; p<level->num_players; p++) {
