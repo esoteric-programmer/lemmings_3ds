@@ -17,6 +17,7 @@ int level_step(
 		struct MainInGameData* main_data,
 		struct Level* level,
 		u8* lemming_inout) {
+	int i;
 	if (lemming_inout) {
 		*lemming_inout = 0;
 	}
@@ -59,7 +60,29 @@ int level_step(
 			level->player[p].request_common_nuke--;
 		}
 	}
-
+	if (!level->paused || level->frame_step_forward) {
+		for (i=0;i<32;i++) {
+			// process object!
+			struct ObjectType* obj_type = level->object_types[level->object_instances[i].type];
+			if (!(level->object_instances[i].modifier & OBJECT_USED) || !obj_type) {
+				continue;
+			}
+			if (level->object_instances[i].type == 1) {
+				// start
+				if (level->entrances_open) {
+					if (level->object_instances[i].current_frame) {
+						level->object_instances[i].current_frame++;
+					}
+				}
+				continue;
+			}
+			if (obj_type->trigger == OBJECT_TRAP && !level->object_instances[i].current_frame) {
+				// trap...
+				continue;
+			}
+			level->object_instances[i].current_frame++;
+		}
+	}
 	if (!level->inspect && (!level->paused || level->frame_step_forward)) {
 		if (level->entrances_open) {
 			if (add_lemming(level)) {
@@ -94,34 +117,14 @@ int level_step(
 			}
 		}
 	}
-	if (!level->paused || level->frame_step_forward) {
-		int i;
-		for (i=0;i<32;i++) {
-			// process object!
-			struct ObjectType* obj_type = level->object_types[level->object_instances[i].type];
-			if (!(level->object_instances[i].modifier & OBJECT_USED) || !obj_type) {
-				continue;
-			}
-			if (level->object_instances[i].type == 1) {
-				// start
-				if (level->entrances_open) {
-					if (level->object_instances[i].current_frame) {
-						level->object_instances[i].current_frame++;
-						if (level->object_instances[i].current_frame >= obj_type->end_frame) {
-							level->object_instances[i].current_frame = 0;
-						}
-					}
-				}
-				continue;
-			}
-			if (obj_type->trigger == OBJECT_TRAP && !level->object_instances[i].current_frame) {
-				// trap...
-				continue;
-			}
-			level->object_instances[i].current_frame++;
-			if (level->object_instances[i].current_frame >= obj_type->end_frame) {
-				level->object_instances[i].current_frame = obj_type->start_frame; // TODO: set to 0 instead?
-			}
+	for (i=0;i<32;i++) {
+		// reset objects?
+		struct ObjectType* obj_type = level->object_types[level->object_instances[i].type];
+		if (!(level->object_instances[i].modifier & OBJECT_USED) || !obj_type) {
+			continue;
+		}
+		if (level->object_instances[i].current_frame >= obj_type->end_frame) {
+			level->object_instances[i].current_frame = 0;
 		}
 	}
 	if (level->frame_step_forward) {
