@@ -23,8 +23,10 @@ void select_level(
 
 	u8 rating = cur_level / import[game].num_of_level_per_difficulty;
 	char msg[30*(40+1)+1];
-	sprintf(msg,"\n  Select a level\n\n\n  Rating %s\n\n",
-			import[game].difficulties[rating]);
+	sprintf(msg,"\n  Select a level\n\n\n  Rating %s %s\n\n",
+			import[game].difficulties[rating], 
+			(progress[top_offset/import[game].num_of_level_per_difficulty] >=
+			import[game].num_of_level_per_difficulty)?"*":"");
 	char* msg_ptr = msg + strlen(msg);
 	u8 i;
 	for (i=0;i<24;i++) {

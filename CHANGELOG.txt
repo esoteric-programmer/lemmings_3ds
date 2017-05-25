@@ -1,4 +1,6 @@
 Version 0.6.3
+- Completed ratings are marked with an asterisk in 1p level selection menu
+- Play a custom sound when lemming falls out of the level
 - Bugfixes
 
 Version 0.6.2
