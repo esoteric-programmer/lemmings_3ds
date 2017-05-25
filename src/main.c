@@ -159,23 +159,11 @@ int main() {
 		die(); // error
 		return 1;
 	}
-	u16 offset = 0;
-	for (i=0;i<LEMMING_GAMES;i++) {
-		games[i] = read_data_cache(i, 0, level_names + offset);
-		if (!games[i]) {
-			games[i] = read_level_names(i, level_names + offset);
-			if (games[i]) {
-				update_data_cache(i, 0, level_names + offset);
-			}
-		}
-		offset += 33*
-				(u16)import[i].num_of_difficulties *
-				(u16)import[i].num_of_level_per_difficulty;
-		if (!aptMainLoop()) {
-			gfxExit();
-			free(level_names);
-			return 0;
-		}
+
+	if (!read_data_cache(games, level_names, overall_num_of_levels)) {
+		gfxExit();
+		free(level_names);
+		return 0;
 	}
 
 	// read save file
@@ -258,10 +246,10 @@ int main() {
 		return 1;
 	}
 	u8 num_2p_level[2];
-	num_2p_level[0] = read_data_cache(0, 1, name_2p_level);
-	num_2p_level[1] = read_data_cache(1, 1, name_2p_level + 33*(u16)import_2p[0].num_levels);
+	num_2p_level[0] = read_data_cache_old(0, 1, name_2p_level);
+	num_2p_level[1] = read_data_cache_old(1, 1, name_2p_level + 33*(u16)import_2p[0].num_levels);
 
-	offset = 0;
+	int offset = 0;
 	for (i=0;i<2;i++) {
 		u8 num_lvls = count_custom_levels(import_2p[i].level_path, num_2p_level[i]);
 		if (num_lvls > import_2p[i].num_levels) {
@@ -276,7 +264,7 @@ int main() {
 				name_2p_level[i] = 0;
 			}else if (num_2p_level[i]){
 				// write cache!!
-				update_data_cache(i, num_2p_level[i], name_2p_level + offset);
+				update_data_cache_old(i, num_2p_level[i], name_2p_level + offset);
 			}
 		}
 		offset += 33*(u16)import_2p[i].num_levels;
