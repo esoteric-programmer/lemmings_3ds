@@ -515,6 +515,8 @@ int lemming_walk(struct Lemming* lem, struct Level* level, struct Image* masks[2
 			set_lemaction(lem, LEMACTION_FALL);
 		}
 		if (lem->y > LEM_MAX_Y) {
+			// play sound: fall out of level
+			play_sound(0x13);
 			lem->removed = 1;
 			return 0;
 		}
@@ -546,6 +548,8 @@ int lemming_fall(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	int i;
 	for (i=0;i<3;i++) {
 		if (lem->y+i > LEM_MAX_Y) {
+			// play sound: fall out of level
+			play_sound(0x13);
 			lem->removed = 1;
 			return 0;
 		}
@@ -651,6 +655,8 @@ int lemming_float(struct Lemming* lem, struct Level* level, struct Image* masks[
 	}
 	lem->y += dy;
 	if (lem->y > LEM_MAX_Y) {
+		// play sound: fall out of level
+		play_sound(0x13);
 		lem->removed = 1;
 		return 0;
 	}
@@ -825,6 +831,8 @@ int lemming_ohno(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	}
 	lem->y += i;
 	if (lem->y > LEM_MAX_Y) {
+		// play sound: fall out of level
+		play_sound(0x13);
 		lem->removed = 1;
 		return 0;
 	}
@@ -857,6 +865,8 @@ int lemming_dig(struct Lemming* lem, struct Level* level, struct Image* masks[23
     if (!(lem->frame_offset & 0x07)) {
         lem->y++;
         if (lem->y > LEM_MAX_Y) {
+			// play sound: fall out of level
+			play_sound(0x13);
             lem->removed = 1;
             return 0;
         }
@@ -912,6 +922,8 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 		if (lem->frame_offset == 3) {
 			lem->y++;
 			if (lem->y > LEM_MAX_Y) {
+				// play sound: fall out of level
+				play_sound(0x13);
 				lem->removed = 1;
 				return 0;
 			}
@@ -940,6 +952,8 @@ int lemming_mine(struct Lemming* lem, struct Level* level, struct Image* masks[2
 	if (lem->frame_offset == 0) {
 		lem->y++;
 		if (lem->y > LEM_MAX_Y) {
+			// play sound: fall out of level
+			play_sound(0x13);
 			lem->removed = 1;
 			return 0;
 		}

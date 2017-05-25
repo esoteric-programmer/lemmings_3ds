@@ -31,6 +31,7 @@ SFX15.WAV - Bear trap
 SFX16.WAV - "Yippieh" (Lemming exiting)
 SFX17.WAV - Drowning (in water)
 SFX18.WAV - Last 3 bricks of builder
+SFX19.WAV - Fall out of level
 
 File names compared to wave sounds of Windows Lemmings
 SFX01.WAV = changeop.wav
@@ -51,3 +52,4 @@ SFX15.WAV = thunk.wav
 SFX16.WAV = yippee.wav
 SFX17.WAV = glug.wav
 SFX18.WAV = ting.wav
+SFX19.WAV = die.wav

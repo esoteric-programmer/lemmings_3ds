@@ -36,9 +36,9 @@ u8 cur_song = 0;
 u8 audio_error_occured = 0;
 
 // wave
-struct WaveSound sound_effects[18];
+struct WaveSound sound_effects[19];
 ndspWaveBuf sound_effect_buffers[NUM_DSP_SFX_CHANNELS];
-u8 currently_triggered_wave[18];
+u8 currently_triggered_wave[19];
 
 struct WaveFile tune;
 ndspWaveBuf tune_buffers[NUM_TUNE_BUFFERS];
@@ -90,7 +90,7 @@ void update_audio() {
 		return;
 	}
 	int i;
-	for (i=0;i<18;i++) {
+	for (i=0;i<19;i++) {
 		currently_triggered_wave[i] = 0;
 	}
 	for (i=0;i<2;i++) {
@@ -188,9 +188,9 @@ void init_audio() {
 	}
 	memset(&tune,0,sizeof(struct WaveSound));
 	OPL_Init(44100);
-	memset(sound_effects,0,18*sizeof(struct WaveSound));
+	memset(sound_effects,0,19*sizeof(struct WaveSound));
 	memset(sound_effect_buffers,0,NUM_DSP_SFX_CHANNELS*sizeof(ndspWaveBuf));
-	for (i=0;i<18;i++) {
+	for (i=0;i<19;i++) {
 		char sound_fn[64];
 		sprintf(sound_fn,"%s/audio/SFX%02u.WAV", PATH_ROOT, i+1);
 		import_wave_sound(sound_effects+i, sound_fn);
@@ -375,7 +375,7 @@ void stop_audio() {
 	for (i=0; i<NUM_TUNE_BUFFERS; i++) {
 		tune_buffers[i].status = NDSP_WBUF_FREE;
 	}
-	for (i=0;i<18;i++) {
+	for (i=0;i<19;i++) {
 		currently_triggered_wave[i] = 0;
 	}
 	play_wave_tune = 0;
@@ -383,7 +383,7 @@ void stop_audio() {
 }
 
 int is_custom_sound(u8 sound) {
-	if (sound > 0 && sound <= 18) {
+	if (sound > 0 && sound <= 19) {
 		if (settings.audio_order == AUDIO_ORDER_ONLY_ADLIB
 				|| (adlib && settings.audio_order == AUDIO_ORDER_PREFER_ADLIB)
 				|| (!sound_effects[sound-1].data && !(settings.audio_order == AUDIO_ORDER_ONLY_CUSTOM))) {
@@ -399,7 +399,7 @@ void play_sound(u8 sound) {
 	if (audio_error_occured || !settings.sfx_volume) {
 		return;
 	}
-	if (sound == 0 || sound > 18) {
+	if (sound == 0 || sound > 19) {
 		return;
 	}
 	if (currently_triggered_wave[sound-1]) {

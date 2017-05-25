@@ -153,6 +153,8 @@ if exist "lem_wavs.zip" (
   ren glug.wav SFX17.WAV
   7z e lem_wavs.zip ting.wav
   ren ting.wav SFX18.WAV
+  7z e lem_wavs.zip die.wav
+  ren die.wav SFX19.WAV
 ) else (
   echo lem_wavs.zip not found, sound files will be processed from PlayerSource_V29.zip
   echo.
@@ -191,6 +193,8 @@ if exist "lem_wavs.zip" (
   ren noises.4.wav SFX17.WAV
   7z e PlayerSource_V29.zip PlayerSourceTrad\Sounds\amiga\BasicFX.8.wav
   ren BasicFX.8.wav SFX18.WAV
+  7z e PlayerSource_V29.zip PlayerSourceTrad\Sounds\amiga\BasicFX.10.wav
+  ren BasicFX.8.wav SFX19.WAV
 )
 
 echo.
